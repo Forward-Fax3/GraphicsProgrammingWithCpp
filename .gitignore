@@ -423,16 +423,10 @@ StartProj/StartProj.vcxproj
 StartProj/StartProj.vcxproj.user
 StartProj/StartProj.vcxproj.filters
 
-OOPWithCpp/OOPWithCppSSE2.vcxproj
-OOPWithCpp/OOPWithCppSSE2.vcxproj.user
-OOPWithCpp/OOPWithCppSSE2.vcxproj.filters
+OOPWithCpp/OOPWithCpp*.vcxproj
+OOPWithCpp/OOPWithCpp*.vcxproj.user
+OOPWithCpp/OOPWithCpp*.vcxproj.filters
 
-OOPWithCpp/OOPWithCppAVX2.vcxproj
-OOPWithCpp/OOPWithCppAVX2.vcxproj.user
-OOPWithCpp/OOPWithCppAVX2.vcxproj.filters
-
-OOPWithCpp/OOPWithCppAVX512.vcxproj
-OOPWithCpp/OOPWithCppAVX512.vcxproj.user
-OOPWithCpp/OOPWithCppAVX512.vcxproj.filters
+/OOPWithCpp/3rdParty/Projects/git/SDL/OOPWithCpp/
 
 bin/

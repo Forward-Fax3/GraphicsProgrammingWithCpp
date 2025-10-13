@@ -8,6 +8,13 @@ newoption
 	description = "select what type of clean you want to do."
 }
 
+-- Include directories relative to root folder (solution directory)
+IncludeDir = {}
+IncludeDir["SDL"] = "OOPWithCpp/3rd Party/Projects/git/SDL/include"
+-- IncludeDir["glm"]  = "RTIAW/3rd Party/Git/glm/"
+-- IncludeDir["CTPL"] = "RTIAW/3rd Party/Git/CTPL/"
+-- IncludeDir["stb"]  = "RTIAW/3rd Party/Git/stb/"
+
 workspace "OOPWithCpp"
 	architecture "x86_64"
 
@@ -27,12 +34,6 @@ workspace "OOPWithCpp"
 
 	floatingpoint "strict"
 
-	-- Include directories relative to root folder (solution directory)
-	IncludeDir = {}
-	IncludeDir["glm"]  = "RTIAW/3rd Party/Git/glm/"
-	IncludeDir["CTPL"] = "RTIAW/3rd Party/Git/CTPL/"
-	IncludeDir["stb"]  = "RTIAW/3rd Party/Git/stb/"
-
 	if _ACTION == "clean" then
 		os.rmdir("bin");
 		filter { "options:cleanType=vs2022" }
@@ -41,17 +42,11 @@ workspace "OOPWithCpp"
 			os.remove("StartProj/StartProj.vcxproj.user")
 			os.remove("StartProj/StartProj.vcxproj.filters")
 
-			os.remove("OOPWithCpp/OOPWithCppSEE2.vcxproj")
-			os.remove("OOPWithCpp/OOPWithCppSEE2.vcxproj.user")
-			os.remove("OOPWithCpp/OOPWithCppSEE2.vcxproj.filters")
+			os.remove("OOPWithCpp/OOPWithCpp*.vcxproj")
+			os.remove("OOPWithCpp/OOPWithCpp*.vcxproj.user")
+			os.remove("OOPWithCpp/OOPWithCpp*.vcxproj.filters")
 			
-			os.remove("OOPWithCpp/OOPWithCppAVX2.vcxproj")
-			os.remove("OOPWithCpp/OOPWithCppAVX2.vcxproj.user")
-			os.remove("OOPWithCpp/OOPWithCppAVX2.vcxproj.filters")
-			
-			os.remove("OOPWithCpp/OOPWithCppAVX512.vcxproj")
-			os.remove("OOPWithCpp/OOPWithCppAVX512.vcxproj.user")
-			os.remove("OOPWithCpp/OOPWithCppAVX512.vcxproj.filters")
+			os.remove("OOPWithCpp/3rdParty/Projects/git/SDL/OOPWithCpp")
 			filter{}
 	end
 
@@ -120,6 +115,8 @@ workspace "OOPWithCpp"
 		"GLM_FORCE_INLINE",
 	}
 
+	include "OOPWithCpp/3rdParty/Projects/git"
+
 project "StartProj"
 	location "%{prj.name}"
 	kind "ConsoleApp"
@@ -133,7 +130,7 @@ project "StartProj"
 	files
 	{
 		"%{prj.name}/src/**.cpp",
-		"%{prj.name}/src/**.h",
+		"%{prj.name}/src/**.hpp",
 	}
 
 	includedirs
@@ -167,7 +164,7 @@ project "OOPWithCppSSE2"
 	{
 		"OOPWithCpp/src/**.cpp",
 
-		"OOPWithCpp/src/**.h",
+		"OOPWithCpp/src/**.hpp",
 	}
 
 	includedirs
@@ -175,10 +172,23 @@ project "OOPWithCppSSE2"
 		"OOPWithCpp/src",
 		"OOPWithCpp/src/**",
 		
-		"%{IncludeDir.glm}",
-		"%{IncludeDir.CTPL}",
-		"%{IncludeDir.stb}",
+		"%{IncludeDir.SDL}",
+--		"%{IncludeDir.glm}",
+--		"%{IncludeDir.CTPL}",
+--		"%{IncludeDir.stb}",
 	}
+
+	links
+	{
+		"SDL3_SSE2",
+
+		"Cfgmgr32.lib",
+		"Winmm.lib",
+		"SetupAPI.lib",
+		"Imm32.lib",
+		"Version.lib"
+	}
+
 
 	defines
 	{
@@ -204,7 +214,7 @@ project "OOPWithCppAVX2"
 	{
 		"OOPWithCpp/src/**.cpp",
 
-		"OOPWithCpp/src/**.h",
+		"OOPWithCpp/src/**.hpp",
 	}
 
 	includedirs
@@ -212,9 +222,21 @@ project "OOPWithCppAVX2"
 		"OOPWithCpp/src",
 		"OOPWithCpp/src/**",
 		
-		"%{IncludeDir.glm}",
-		"%{IncludeDir.CTPL}",
-		"%{IncludeDir.stb}",
+		"%{IncludeDir.SDL}",
+--		"%{IncludeDir.glm}",
+--		"%{IncludeDir.CTPL}",
+--		"%{IncludeDir.stb}",
+	}
+
+	links
+	{
+		"SDL3_AVX2",
+		
+		"Cfgmgr32.lib",
+		"Winmm.lib",
+		"SetupAPI.lib",
+		"Imm32.lib",
+		"Version.lib"
 	}
 
 	defines
@@ -242,7 +264,7 @@ project "OOPWithCppAVX512"
 	{
 		"OOPWithCpp/src/**.cpp",
 
-		"OOPWithCpp/src/**.h",
+		"OOPWithCpp/src/**.hpp",
 	}
 
 	includedirs
@@ -250,9 +272,21 @@ project "OOPWithCppAVX512"
 		"OOPWithCpp/src",
 		"OOPWithCpp/src/**",
 		
-		"%{IncludeDir.glm}",
-		"%{IncludeDir.CTPL}",
-		"%{IncludeDir.stb}",
+		"%{IncludeDir.SDL}",
+--		"%{IncludeDir.glm}",
+--		"%{IncludeDir.CTPL}",
+--		"%{IncludeDir.stb}",
+	}
+
+	links
+	{
+		"SDL3_AVX512",
+		
+		"Cfgmgr32.lib",
+		"Winmm.lib",
+		"SetupAPI.lib",
+		"Imm32.lib",
+		"Version.lib"
 	}
 
 	defines
