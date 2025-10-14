@@ -288,3 +288,93 @@ project "SDL3_AVX512"
 
 	filter { "system:windows" }
 		systemversion "latest"
+
+project "ImGui_SSE2"
+	location "ProjectFiles/ImGui"
+	kind "staticlib"
+	staticruntime "on"
+	floatingpoint "Default"
+	vectorextensions "SSE2"
+
+	targetdir ("%{wks.location}/Bin/" .. output .. "/ImGui")
+	objdir ("%{wks.location}/Bin/intermediate/" .. output .. "/ImGui")
+
+	files
+	{
+		"ImGui/*cpp",
+		"ImGui/*.h",
+
+		"ImGui/backends/imgui_impl_sdl3.cpp",
+		"ImGui/backends/imgui_impl_sdl3.h",
+		"ImGui/backends/imgui_impl_sdlgpu3.cpp",
+		"ImGui/backends/imgui_impl_sdlgpu3.h"
+	}
+
+	includedirs
+	{
+        "ImGui",
+		"SDL/include"
+	}
+
+	filter { "system:windows" }
+		systemversion "latest"
+
+project "ImGui_AVX2"
+	location "ProjectFiles/ImGui"
+	kind "staticlib"
+	staticruntime "on"
+	floatingpoint "Default"
+	vectorextensions "AVX2"
+
+	targetdir ("%{wks.location}/Bin/" .. output .. "/ImGui")
+	objdir ("%{wks.location}/Bin/intermediate/" .. output .. "/ImGui")
+
+	files
+	{
+		"ImGui/*cpp",
+		"ImGui/*.h",
+
+		"ImGui/backends/imgui_impl_sdl3.cpp",
+		"ImGui/backends/imgui_impl_sdl3.h",
+		"ImGui/backends/imgui_impl_sdlgpu3.cpp",
+		"ImGui/backends/imgui_impl_sdlgpu3.h"
+	}
+
+	includedirs
+	{
+        "ImGui",
+		"SDL/include"
+	}
+
+	filter { "system:windows" }
+		systemversion "latest"
+
+project "ImGui_AVX512"
+	location "ProjectFiles/ImGui"
+	kind "staticlib"
+	staticruntime "on"
+	floatingpoint "Default"
+	vectorextensions "AVX512"
+
+	targetdir ("%{wks.location}/Bin/" .. output .. "/ImGui")
+	objdir ("%{wks.location}/Bin/intermediate/" .. output .. "/ImGui")
+
+	files
+	{
+		"ImGui/*cpp",
+		"ImGui/*.h",
+
+		"ImGui/backends/imgui_impl_sdl3.cpp",
+		"ImGui/backends/imgui_impl_sdl3.h",
+		"ImGui/backends/imgui_impl_sdlgpu3.cpp",
+		"ImGui/backends/imgui_impl_sdlgpu3.h"
+	}
+
+	includedirs
+	{
+        "ImGui",
+		"SDL/include"
+	}
+
+	filter { "system:windows" }
+		systemversion "latest"

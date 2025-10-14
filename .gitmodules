@@ -1,3 +1,6 @@
 [submodule "OOPWithCpp/3rdParty/Projects/git/SDL"]
 	path = OOPWithCpp/3rdParty/Projects/git/SDL
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "OOPWithCpp/3rdParty/Projects/git/ImGui"]
+	path = OOPWithCpp/3rdParty/Projects/git/ImGui
+	url = https://github.com/ocornut/imgui.git

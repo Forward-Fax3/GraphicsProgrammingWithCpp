@@ -181,6 +181,7 @@ project "OOPWithCppSSE2"
 	links
 	{
 		"SDL3_SSE2",
+		"ImGui_SSE2",
 
 		"Cfgmgr32.lib",
 		"Winmm.lib",
@@ -231,6 +232,7 @@ project "OOPWithCppAVX2"
 	links
 	{
 		"SDL3_AVX2",
+		"ImGui_AVX2",
 		
 		"Cfgmgr32.lib",
 		"Winmm.lib",
@@ -281,6 +283,7 @@ project "OOPWithCppAVX512"
 	links
 	{
 		"SDL3_AVX512",
+		"ImGui_AVX512",
 		
 		"Cfgmgr32.lib",
 		"Winmm.lib",
