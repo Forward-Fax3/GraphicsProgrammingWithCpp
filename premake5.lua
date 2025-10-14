@@ -10,7 +10,7 @@ newoption
 
 -- Include directories relative to root folder (solution directory)
 IncludeDir = {}
-IncludeDir["SDL"] = "OOPWithCpp/3rd Party/Projects/git/SDL/include"
+IncludeDir["SDL"] = "OOPWithCpp/3rdParty/Projects/git/SDL/include"
 -- IncludeDir["glm"]  = "RTIAW/3rd Party/Git/glm/"
 -- IncludeDir["CTPL"] = "RTIAW/3rd Party/Git/CTPL/"
 -- IncludeDir["stb"]  = "RTIAW/3rd Party/Git/stb/"
@@ -46,7 +46,7 @@ workspace "OOPWithCpp"
 			os.remove("OOPWithCpp/OOPWithCpp*.vcxproj.user")
 			os.remove("OOPWithCpp/OOPWithCpp*.vcxproj.filters")
 			
-			os.remove("OOPWithCpp/3rdParty/Projects/git/SDL/OOPWithCpp")
+			os.rmdir("OOPWithCpp/3rdParty/Projects/git/ProjectFiles")
 			filter{}
 	end
 

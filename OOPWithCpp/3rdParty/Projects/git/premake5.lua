@@ -1,5 +1,5 @@
 project "SDL3_SSE2"
-	location "SDL/OOPWithCpp"
+	location "ProjectFiles/SDL"
 	kind "staticlib"
 	staticruntime "on"
 	floatingpoint "Default"
@@ -98,10 +98,10 @@ project "SDL3_SSE2"
 		systemversion "latest"
         
 project "SDL3_AVX2"
-	location "SDL/OOPWithCpp"
+	location "ProjectFiles/SDL"
 	kind "staticlib"
 	staticruntime "on"
-	floatingpoint "Default"
+	floatingpoint "Default" 
 	vectorextensions "AVX2"
 
 	targetdir ("%{wks.location}/Bin/" .. output .. "/SDL")
@@ -194,7 +194,7 @@ project "SDL3_AVX2"
 		systemversion "latest"
 
 project "SDL3_AVX512"
-	location "SDL/OOPWithCpp"
+	location "ProjectFiles/SDL"
 	kind "staticlib"
 	staticruntime "on"
 	floatingpoint "Default"
