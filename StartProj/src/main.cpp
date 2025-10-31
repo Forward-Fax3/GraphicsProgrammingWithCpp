@@ -7,7 +7,7 @@
 
 #define AVX512 L"AVX512"
 #define AVX2 L"AVX2"
-#define SSE2 L"SSE2"
+#define SSE4_2 L"SSE4_2"
 
 #define DLL L".dll"
 
@@ -53,32 +53,32 @@ static bool AVX2AndFMA3Supported()
 	return doesHaveEBXfn7Features && doesHaveECXfn1Features;
 }
 
-/* static void copyFile(std::wstring_view srcPath, std::wstring_view dstPath)
+static bool SSE4_2Supported()
 {
-	std::ifstream src(srcPath.data(), std::ios::binary);
-	std::ofstream dst(dstPath.data(), std::ios::binary);
+	std::array<int, 4> cpuInfo{};
 
-	dst << src.rdbuf();
-}*/
+	__cpuid(cpuInfo.data(), 1);
+
+	int ECXFeatureBits = (1 << 20);
+	bool doesHaveECXFeatures = (cpuInfo[2] & ECXFeatureBits) == ECXFeatureBits; // checks the ECX register for SSE4.2
+
+	return doesHaveECXFeatures;
+}
 
 int main(int argc, char** argv)
 {
 	std::wstring path(L"..\\" OOP_WITH_CPP);
 
 	if (AVX512Supported())
-	{
 		path += AVX512;
-//		copyFile(SDL_START_PATH AVX512 SDL_DLL, SDL_DESTINATION_PATH);
-	}
 	else if (AVX2AndFMA3Supported())
-	{
 		path += AVX2;
-//		copyFile(SDL_START_PATH AVX2 SDL_DLL, SDL_DESTINATION_PATH);
-	}
-	else // SEE2
+	else if (SSE4_2Supported()) // SEE4_2
+		path += SSE4_2;
+	else
 	{
-		path += SSE2;
-//		copyFile(SDL_START_PATH SSE2 SDL_DLL, SDL_DESTINATION_PATH);
+		// TODO: error message SSE4.2 not supported
+		return 1;
 	}
 
 	path += DLL;
@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 		std::wcout << L"error: " << error.data() << L"Load Library" << std::endl;
 
 		system("pause>nul");
-		return 1;
+		return 2;
 	}
 
 	auto WulledEntry = std::bit_cast<Start>(GetProcAddress(dll, "EntryPoint"));
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 		std::wcout << L"error: " << error.data() << L"Load Wulled entry" << std::endl;
 
 		system("pause>nul");
-		return 2;
+		return 3;
 	}
 
 	WulledEntry(argc, argv);

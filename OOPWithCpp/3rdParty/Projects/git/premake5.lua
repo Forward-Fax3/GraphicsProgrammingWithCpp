@@ -1,4 +1,4 @@
-project "SDL3_SSE2"
+project "SDL3_SSE4_2"
 	location "ProjectFiles/SDL"
 	kind "staticlib"
 	staticruntime "on"
@@ -86,13 +86,21 @@ project "SDL3_SSE2"
 	defines
 	{
 		"_WINDOWS",
-		"SDL_DISABLE_SSE3",
-		"SDL_DISABLE_SSE4_1",
-		"SDL_DISABLE_SSE4_2",
 		"SDL_DISABLE_AVX",
 		"SDL_DISABLE_AVX2",
-		"SDL_DISABLE_AVX512F"
+		"SDL_DISABLE_AVX512F",
 	}
+
+	filter { "platforms:clang" }
+		buildoptions
+		{
+			"-msse4.2"
+		}
+	filter { "platforms:msc" }
+		buildoptions
+		{
+			"/arch:SSE4.2"
+		}
 
 	filter { "system:windows" }
 		systemversion "latest"
@@ -289,12 +297,12 @@ project "SDL3_AVX512"
 	filter { "system:windows" }
 		systemversion "latest"
 
-project "ImGui_SSE2"
+project "ImGui_SSE4_2"
 	location "ProjectFiles/ImGui"
 	kind "staticlib"
 	staticruntime "on"
 	floatingpoint "Default"
-	vectorextensions "SSE2"
+	vectorextensions "SSE4.2"
 
 	targetdir ("%{wks.location}/Bin/" .. output .. "/ImGui")
 	objdir ("%{wks.location}/Bin/intermediate/" .. output .. "/ImGui")
@@ -315,6 +323,17 @@ project "ImGui_SSE2"
         "ImGui",
 		"SDL/include"
 	}
+
+	filter { "platforms:clang" }
+		buildoptions
+		{
+			"-msse4.2"
+		}
+	filter { "platforms:msc" }
+		buildoptions
+		{
+			"/arch:SSE4.2"
+		}
 
 	filter { "system:windows" }
 		systemversion "latest"

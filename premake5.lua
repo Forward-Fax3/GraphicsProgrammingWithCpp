@@ -32,7 +32,8 @@ workspace "OOPWithCpp"
 --		"icc"
 	}
 
-	floatingpoint "strict"
+	floatingpoint "Fast"
+	floatingpointexceptions "off"
 
 	if _ACTION == "clean" then
 		os.rmdir("bin");
@@ -141,7 +142,7 @@ project "StartProj"
 
 	dependson
 	{
-		"OOPWithCppSSE2",
+		"OOPWithCppSSE4_2",
 		"OOPWithCppAVX2",
 		"OOPWithCppAVX512",
 	}
@@ -149,13 +150,13 @@ project "StartProj"
 	filter { "system:windows" }
 		systemversion "latest"
 
-project "OOPWithCppSSE2"
+project "OOPWithCppSSE4_2"
 	location "OOPWithCpp"
 	kind "sharedlib"
 	staticruntime "on"
 	warnings "Extra"
 	fatalwarnings "ALL"
-	vectorextensions "SSE2"
+	vectorextensions "SSE4.2"
 
 	targetdir ("Bin/" .. output .. "/OOPWithCpp")
 	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
@@ -180,8 +181,8 @@ project "OOPWithCppSSE2"
 
 	links
 	{
-		"SDL3_SSE2",
-		"ImGui_SSE2",
+		"SDL3_SSE4_2",
+		"ImGui_SSE4_2",
 
 		"Cfgmgr32.lib",
 		"Winmm.lib",
@@ -193,9 +194,27 @@ project "OOPWithCppSSE2"
 
 	defines
 	{
-		"GLM_FORCE_SSE2",
-		"SSE2"
+		"GLM_FORCE_SSE42",
+		"SSE4_2",
 	}
+
+	filter { "platforms:clang" }
+		buildoptions
+		{
+			"-msse4.2"
+		}
+	filter { "platforms:msc" }
+		buildoptions
+		{
+			"/arch:SSE4.2"
+		}
+	
+	
+	filter { "platforms:clang AND configureation" }
+		buildoptions
+		{
+			"-O3"
+		}
 
 	filter { "system:windows" }
 		systemversion "latest"
