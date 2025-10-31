@@ -4,3 +4,4 @@
 [submodule "OOPWithCpp/3rdParty/Projects/git/ImGui"]
 	path = OOPWithCpp/3rdParty/Projects/git/ImGui
 	url = https://github.com/ocornut/imgui.git
+	branch = docking
