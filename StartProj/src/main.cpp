@@ -1,25 +1,31 @@
-#include <Windows.h>
+﻿#include <Windows.h>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <array>
 
 
-#define AVX512 L"AVX512"
-#define AVX2 L"AVX2"
-#define SSE4_2 L"SSE4_2"
+#define AVX512 u8"AVX512"
+#define AVX2 u8"AVX2"
+#define SSE4_2 u8"SSE4_2"
 
-#define DLL L".dll"
+#define DLL u8".dll"
 
-#define OOP_WITH_CPP L"OOPWithCpp\\OOPWithCpp"
-
-#define SDL_DLL L"SDL2.dll"
-#define SDL_START_PATH L"..\\..\\..\\SDL\\DLLs\\"
-
-// static const wchar_t* SDL_DESTINATION_PATH = /*L"..\\bin\\windows\\Release\\AppStart\\"*/ SDL_DLL;
+#define OOP_WITH_CPP u8"OOPWithCpp\\OOPWithCpp"
 
 using Start = void (*)(int, char**);
 
+
+static char* ToCharPtr(const std::u8string& str)
+{
+	return std::bit_cast<char*>(str.c_str());
+}
+
+template <size_t N>
+static char* ToCharPtr(const std::array<char8_t, N>& arr)
+{
+	return std::bit_cast<char*>(arr.data());
+}
 
 static bool AVX512Supported()
 {
@@ -40,7 +46,7 @@ static bool AVX2AndFMA3Supported()
 {
 	// Check if the CPU supports AVX512
 	std::array<int, 4> cpuInfo{};
-	__cpuid(cpuInfo.data(), 7);
+	__cpuidex(cpuInfo.data(), 7, 0);
 
 	int EBXfn7FeatureBits = (1 << 5);
 	bool doesHaveEBXfn7Features = (cpuInfo[1] & EBXfn7FeatureBits) == EBXfn7FeatureBits; // checks the EBX register for AVX2
@@ -67,7 +73,7 @@ static bool SSE4_2Supported()
 
 int main(int argc, char** argv)
 {
-	std::wstring path(L"..\\" OOP_WITH_CPP);
+	std::u8string path(u8"..\\" OOP_WITH_CPP);
 
 	if (AVX512Supported())
 		path += AVX512;
@@ -77,19 +83,18 @@ int main(int argc, char** argv)
 		path += SSE4_2;
 	else
 	{
-		// TODO: error message SSE4.2 not supported
+		MessageBoxA(nullptr, "CPU does not support a minimum of SSE4.2, this is required to run this application", "CPU Not Supported", MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
 	path += DLL;
-	HMODULE dll = LoadLibraryW(path.c_str());
+	HMODULE dll = LoadLibraryA(ToCharPtr(path));
+	
 	if (dll == nullptr)
 	{
-		std::array<wchar_t, 1024> error{};
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error.data(), 1024, nullptr);
-		std::wcout << L"error: " << error.data() << L"Load Library" << std::endl;
-
-		system("pause>nul");
+		std::array<char8_t, 1024> error{};
+		FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_SYS_DEFAULT), ToCharPtr(error), 1024, nullptr);
+		MessageBoxA(nullptr, "Failed to load DLL", ToCharPtr(error), MB_OK | MB_ICONERROR);
 		return 2;
 	}
 
@@ -97,11 +102,9 @@ int main(int argc, char** argv)
 
 	if (WulledEntry == nullptr)
 	{
-		std::array<wchar_t, 1024> error{};
-		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), error.data(), 1024, nullptr);
-		std::wcout << L"error: " << error.data() << L"Load Wulled entry" << std::endl;
-
-		system("pause>nul");
+		std::array<char8_t, 1024> error{};
+		FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_SYS_DEFAULT), ToCharPtr(error), 1024, nullptr);
+		MessageBoxA(nullptr, "Failed to load entry point", ToCharPtr(error), MB_OK | MB_ICONERROR);
 		return 3;
 	}
 
