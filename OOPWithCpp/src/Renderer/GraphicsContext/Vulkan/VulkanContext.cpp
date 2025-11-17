@@ -46,14 +46,13 @@ namespace OWC::Graphics
 		if (IsExtentionAvailable(instanceExtertionProperties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
 			extentions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
+		std::vector<const char*> validationLayers;
 		if constexpr (IsDebug)
 		{
 			if (IsExtentionAvailable(instanceExtertionProperties, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
 				extentions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-			const std::vector<const char*> validationLayers = {
-				"VK_LAYER_KHRONOS_validation"
-			};
+			validationLayers.push_back("VK_LAYER_KHRONOS_validation");
 			createInfo.setEnabledLayerCount(static_cast<uint32_t>(validationLayers.size()));
 			createInfo.setPpEnabledLayerNames(validationLayers.data());
 		}
