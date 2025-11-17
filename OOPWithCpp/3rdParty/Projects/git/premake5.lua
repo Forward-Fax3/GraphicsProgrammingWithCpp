@@ -328,7 +328,9 @@ project "ImGui_SSE4_2"
 	includedirs
 	{
         "ImGui",
-		"SDL/include"
+		"SDL/include",
+	
+		"%VULKAN_SDK%/Include"
 	}
 
 	filter { "platforms:clang" }
@@ -369,7 +371,9 @@ project "ImGui_AVX2"
 	includedirs
 	{
         "ImGui",
-		"SDL/include"
+		"SDL/include",
+	
+		"%VULKAN_SDK%/Include"
 	}
 
 	filter { "system:windows" }
@@ -393,13 +397,17 @@ project "ImGui_AVX512"
 		"ImGui/backends/imgui_impl_sdl3.cpp",
 		"ImGui/backends/imgui_impl_sdl3.h",
 		"ImGui/backends/imgui_impl_sdlgpu3.cpp",
-		"ImGui/backends/imgui_impl_sdlgpu3.h"
+		"ImGui/backends/imgui_impl_sdlgpu3.h",
+		"ImGui/backends/imgui_impl_vulkan.cpp",
+		"ImGui/backends/imgui_impl_vulkan.h"
 	}
 
 	includedirs
 	{
         "ImGui",
-		"SDL/include"
+		"SDL/include",
+	
+		"%VULKAN_SDK%/Include"
 	}
 
 	filter { "platforms:clang" }
