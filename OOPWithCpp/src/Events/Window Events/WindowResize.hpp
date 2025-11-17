@@ -8,7 +8,7 @@ namespace OWC
 	{
 	public:
 		WindowResize(int width, int height)
-			: BaseEvent(EventType::WindowResize, L"Window Resize Event"), m_Width(width), m_Height(height) {}
+			: BaseEvent(EventType::WindowResize), m_Width(width), m_Height(height) {}
 		~WindowResize() override = default;
 
 		static EventType GetStaticType() { return EventType::WindowResize; }

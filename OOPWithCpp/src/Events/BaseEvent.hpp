@@ -23,15 +23,12 @@ namespace OWC
 		virtual ~BaseEvent() = default;
 
 		inline EventType GetEventType() const { return m_EventType; }
-		inline std::wstring_view GetName() const { return m_Name; }
-		inline std::wstring_view ToString() const { return m_Name; }
 
 	protected:
-		explicit BaseEvent(EventType type, std::wstring_view name)
-			: m_Name(name), m_EventType(type) {}
+		explicit BaseEvent(EventType type)
+			: m_EventType(type) {}
 
 	private:
-		std::wstring m_Name;
 		EventType m_EventType;
 		bool m_HasBeenHandled = false;
 

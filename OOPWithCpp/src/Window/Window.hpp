@@ -4,6 +4,7 @@
 
 #include "BaseEvent.hpp"
 #include "WindowEvent.hpp"
+#include "GraphicsContext.hpp"
 
 
 namespace OWC
@@ -22,7 +23,7 @@ namespace OWC
 		explicit Window(const WindowProperties& properties);
 		~Window() = default;
 
-		void Update();
+		void Update() const;
 
 		inline void SetEventCallback(const std::function<void(BaseEvent&)>& callback) { m_WindowEvent.SetCallback(callback); }
 
@@ -34,6 +35,7 @@ namespace OWC
 	private:
 		WindowEvent m_WindowEvent;
 		WindowProperties m_Properties;
-		std::unique_ptr<SDL_Window, decltype([](SDL_Window* windowPtr){ SDL_DestroyWindow(windowPtr); })> m_Window;
+		std::unique_ptr<SDL_Window, decltype([](SDL_Window* windowPtr){ SDL_DestroyWindow(windowPtr); })> m_Window = nullptr;
+		std::unique_ptr<Graphics::GraphicsContext> m_GraphicsContext = nullptr;
 	};
 }

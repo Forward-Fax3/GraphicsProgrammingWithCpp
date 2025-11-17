@@ -7,7 +7,7 @@ namespace OWC
 	class WindowCloseEvent final : public BaseEvent
 	{
 	public:
-		inline WindowCloseEvent() : BaseEvent(EventType::WindowClose, L"WindowClose") {}
+		inline WindowCloseEvent() : BaseEvent(EventType::WindowClose) {}
 		~WindowCloseEvent() override = default;
 
 		static EventType GetStaticType() { return EventType::WindowClose; }
