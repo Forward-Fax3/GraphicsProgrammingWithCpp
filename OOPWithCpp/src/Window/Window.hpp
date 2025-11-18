@@ -11,7 +11,7 @@ namespace OWC
 {
 	struct WindowProperties
 	{
-		std::wstring Title;
+		std::u8string Title;
 		int Width;
 		int Height;
 	};

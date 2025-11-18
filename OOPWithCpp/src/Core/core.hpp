@@ -1,12 +1,10 @@
 #pragma once
+#include <string>
+#include <bit>
+
 
 namespace OWC
 {
-    // Plan:
-    // - Prevent multiple inclusion with #pragma once to fix C2084.
-    // - Replace consteval with constexpr so it can be used in both const and runtime contexts to fix C3615.
-    // - Add noexcept and [[nodiscard]] for safety and clarity.
-
     [[nodiscard]] consteval bool IsDebugMode() noexcept
     {
     #ifdef NDEBUG
@@ -14,5 +12,10 @@ namespace OWC
     #else
         return true;
     #endif
+    }
+
+    [[nodiscard]] constexpr const char* ToCharPtr(const std::u8string& str)
+    {
+		return std::bit_cast<char const*>(str.c_str());
     }
 }

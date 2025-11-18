@@ -12,7 +12,7 @@ namespace OWC
 		: m_RunFlags(runFlags)
 	{
 		WindowProperties props {
-			.Title = L"OOP With Cpp",
+			.Title = u8"OOP With Cpp",
 			.Width = 1280,
 			.Height = 720
 		};

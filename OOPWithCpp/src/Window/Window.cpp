@@ -13,7 +13,7 @@ namespace OWC
 		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
 		m_Window.reset(SDL_CreateWindow( // Creates the window and stores it in the unique_ptr with a custom deleter
-			SDL_iconv_wchar_utf8(properties.Title.c_str()),
+			ToCharPtr(properties.Title),
 			m_Properties.Width, m_Properties.Height,
 			SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY
 		));
