@@ -4,12 +4,12 @@
 #include <vulkan/vulkan.hpp>
 #include <SDL3/SDL_vulkan.h>
 
+#include <iostream>
+
 
 namespace OWC::Graphics
 {
-
-
-	VulkanContext::VulkanContext(const SDL_Window& windowHandle)
+	VulkanContext::VulkanContext(const SDL_Window& windowHandle) // TODO: validation layers and debug messenger
 	{
 		const bool IsDebug = IsDebugMode();
 
@@ -66,12 +66,112 @@ namespace OWC::Graphics
 			// TODO: setup debug messenger
 		}
 
+		auto physcalDevices = vkCore.GetVKInstance().enumeratePhysicalDevices();
 
+		vkCore.SetPhysicalDevice(physcalDevices.front()); // TODO: select proper physical device
+
+		auto queueFamilies = vkCore.GetPhysicalDev().getQueueFamilyProperties();
+		constexpr size_t sizeMax = std::numeric_limits<size_t>::max();
+		[[maybe_unused]] size_t presentQueueFamilyIndex = sizeMax;
+		size_t graphicsQueueFamilyIndex = sizeMax;
+		[[maybe_unused]] size_t computeQueueFamilyIndex = sizeMax;
+		[[maybe_unused]] size_t transferQueueFamilyIndex = sizeMax;
+
+		for (size_t i = 0; i < queueFamilies.size(); i++) // try to find all queue families in one loop and have different queue families if possible
+		{
+			// TODO: add surface handle
+//			if (presentQueueFamilyIndex == sizeMax)
+//			{
+//				const vk::Bool32 presentSupport = vkCore.GetPhysicalDev().getSurfaceSupportKHR(static_cast<uint32_t>(i), vk::SurfaceKHR()); // TODO: surface handle
+//				if (presentSupport)
+//					presentQueueFamilyIndex = i;
+//			}
+
+			if (graphicsQueueFamilyIndex == sizeMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
+				graphicsQueueFamilyIndex = i;
+
+			else if (computeQueueFamilyIndex == sizeMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
+				computeQueueFamilyIndex = i;
+
+			// prefer a dedicated transfer queue family
+			else if (transferQueueFamilyIndex == sizeMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer
+				&& (queueFamilies[i].queueFlags & vk::QueueFlags(vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute)) == vk::QueueFlags(0))
+				transferQueueFamilyIndex = i;
+
+			if ((graphicsQueueFamilyIndex /*| presentQueueFamilyIndex*/ | computeQueueFamilyIndex | transferQueueFamilyIndex) != sizeMax)
+				break;
+		}
+
+		// check if compute queue family is found, otherwise find any even if it shares with others
+		if (computeQueueFamilyIndex == sizeMax)
+			for (size_t i = 0; i < queueFamilies.size(); i++)
+				if ((queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
+				{
+					computeQueueFamilyIndex = i;
+					break;
+				}
+
+		// check if transfer queue family is found, otherwise find any even if it shares with others
+		if (transferQueueFamilyIndex == sizeMax)
+			for (size_t i = 0; i < queueFamilies.size(); i++)
+				if ((queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
+				{
+					transferQueueFamilyIndex = i;
+					break;
+				}
+
+		// if no transfer queue found, use graphics queue
+		if (transferQueueFamilyIndex != sizeMax)
+			transferQueueFamilyIndex = graphicsQueueFamilyIndex;
+
+		std::cout << "Selected Queue Families: \n"
+			<< " Graphics: " << graphicsQueueFamilyIndex << "\n"
+			<< " Compute: " << computeQueueFamilyIndex << "\n"
+			<< " Transfer: " << transferQueueFamilyIndex << "\n";
+		
+		// TODO: check queue family index validity
+
+		float queuePriority = 1.0f;
+		vk::DeviceQueueCreateInfo deviceGraphicsQueueCreateInfo;
+		deviceGraphicsQueueCreateInfo
+			.setQueueFamilyIndex(static_cast<uint32_t>(graphicsQueueFamilyIndex))
+			.setQueueCount(1)
+			.setPQueuePriorities(&queuePriority);
+
+		vk::DeviceQueueCreateInfo deviceComputeQueueCreateInfo;
+		deviceComputeQueueCreateInfo
+			.setQueueFamilyIndex(static_cast<uint32_t>(computeQueueFamilyIndex))
+			.setQueueCount(1)
+			.setPQueuePriorities(&queuePriority);
+
+		vk::DeviceQueueCreateInfo deviceTransferQueueCreateInfo;
+		deviceTransferQueueCreateInfo
+			.setQueueFamilyIndex(static_cast<uint32_t>(transferQueueFamilyIndex))
+			.setQueueCount(1)
+			.setPQueuePriorities(&queuePriority);
+
+		std::array<vk::DeviceQueueCreateInfo, 3> deviceQueueCreateInfos
+		{
+			deviceGraphicsQueueCreateInfo,
+			deviceComputeQueueCreateInfo,
+			deviceTransferQueueCreateInfo
+		};
+
+		vkCore.SetDevice(
+			vkCore.GetPhysicalDev().createDevice(
+				vk::DeviceCreateInfo()
+					.setQueueCreateInfoCount(3)
+					.setPQueueCreateInfos(deviceQueueCreateInfos.data())
+			)
+		);
 	}
 
 	VulkanContext::~VulkanContext()
 	{
-		vkDestroyInstance(VulkanCore::GetConstInstance().GetVKInstance(), nullptr); // TODO: allocation callbacks
+		auto& vkCore = VulkanCore::GetConstInstance();
+
+		vkCore.GetDevice().destroy();
+		vkCore.GetVKInstance().destroy();
 		VulkanCore::Shutdown();
 	}
 
@@ -82,6 +182,6 @@ namespace OWC::Graphics
 
 	void VulkanContext::WaitForIdle()
 	{
-		vkQueueWaitIdle(VulkanCore::GetConstInstance().GetGraphicsQueue());
+		VulkanCore::GetConstInstance().GetDevice().waitIdle();
 	}
 }
