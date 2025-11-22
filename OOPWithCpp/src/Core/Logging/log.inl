@@ -27,13 +27,16 @@ namespace OWC
 		}
 		else if constexpr (level == LogLevel::Critical)
 		{
-			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 192);
-			std::cout << "[Critical]: " << std::format(str, std::forward<Args>(args)...) << '\n';
-
-			if constexpr (IsDebugMode()) // TODO: use message box for when in distribution mode
+			if constexpr (!IsDistributionMode())
+			{
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 192);
+				std::cout << "[Critical]: " << std::format(str, std::forward<Args>(args)...) << '\n';
 				__debugbreak();
+			}
 			else
-				exit(EXIT_FAILURE);
+				MessageBoxA(nullptr, std::format(str, std::forward<Args>(args)...).c_str(), "Critical Error", MB_OK | MB_ICONERROR);
+			
+			exit(EXIT_FAILURE);
 		}
 		else // compile-time safeguard
 		{

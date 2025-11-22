@@ -14,6 +14,15 @@ namespace OWC
     #endif
     }
 
+    [[nodiscard]] consteval bool IsDistributionMode() noexcept
+	{
+    #ifdef DIST
+		return true;
+    #else
+		return false;
+    #endif
+	}
+
     [[nodiscard]] constexpr const char* ToCharPtr(const std::u8string& str)
     {
 		return std::bit_cast<char const*>(str.c_str());
