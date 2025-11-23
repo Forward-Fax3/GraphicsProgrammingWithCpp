@@ -7,6 +7,19 @@
 
 namespace OWC
 {
+	template<LogLevel level>
+	inline void Log()
+	{
+		if constexpr (level == LogLevel::NewLine)
+		{
+			std::cout << '\n';
+		}
+		else
+		{
+			static_assert(false, "Log function called without message format string!");
+		}
+	}
+
 	template<LogLevel level, typename... Args>
 	inline void Log(const std::format_string<Args...> str, Args&&... args)
 	{

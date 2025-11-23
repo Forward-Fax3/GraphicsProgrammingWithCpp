@@ -5,6 +5,7 @@ namespace OWC
 {
 	enum class LogLevel : uint8_t
 	{
+		NewLine,
 		Trace,
 		Debug,
 		Warn,
