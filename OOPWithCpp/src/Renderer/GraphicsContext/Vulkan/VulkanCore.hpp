@@ -41,6 +41,12 @@ namespace OWC::Graphics
 
 		static void Init()
 		{
+			const auto runtimeVersion = vk::enumerateInstanceVersion();
+			if (runtimeVersion < g_VulkanVersion)
+				Log<LogLevel::Critical>("Vulkan runtime version {}.{}.{} is lower than the required version {}.{}.{}",
+					VK_VERSION_MAJOR(runtimeVersion), VK_VERSION_MINOR(runtimeVersion), VK_VERSION_PATCH(runtimeVersion),
+					VK_VERSION_MAJOR(g_VulkanVersion), VK_VERSION_MINOR(g_VulkanVersion), VK_VERSION_PATCH(g_VulkanVersion));
+
 			if (!s_Instance)
 				s_Instance = std::make_unique<VulkanCore>(PRIVATE());
 		}
@@ -49,6 +55,8 @@ namespace OWC::Graphics
 
 		vk::Instance& GetVKInstance() { return m_Instance; }
 		const vk::Instance& GetVKInstance() const { return m_Instance; }
+		vk::SurfaceKHR& GetSurface() { return m_Surface; }
+		const vk::SurfaceKHR& GetSurface() const { return m_Surface; }
 		vk::PhysicalDevice& GetPhysicalDev() { return m_PhysicalDevice; }
 		const vk::PhysicalDevice& GetPhysicalDev() const { return m_PhysicalDevice; }
 		vk::Device& GetDevice() { return m_Device; }
@@ -57,12 +65,14 @@ namespace OWC::Graphics
 		const vk::Queue& GetGraphicsQueue() const { return m_GraphicsQueue; }
 
 		void SetInstance(const vk::Instance& instance) { m_Instance = instance; }
+		void SetSurface(const vk::SurfaceKHR& surface) { m_Surface = surface; }
 		void SetPhysicalDevice(const vk::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
 		void SetDevice(const vk::Device& device) { m_Device = device; }
 		void SetGraphicsQueue(const vk::Queue& graphicsQueue) { m_GraphicsQueue = graphicsQueue; }
 
 	private:
 		vk::Instance m_Instance = vk::Instance();
+		vk::SurfaceKHR m_Surface = vk::SurfaceKHR();
 		vk::PhysicalDevice m_PhysicalDevice = vk::PhysicalDevice();
 		vk::Device m_Device = vk::Device();
 		vk::Queue m_GraphicsQueue = vk::Queue();

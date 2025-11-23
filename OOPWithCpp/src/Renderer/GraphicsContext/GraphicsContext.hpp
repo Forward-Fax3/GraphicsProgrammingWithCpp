@@ -16,7 +16,7 @@ namespace OWC::Graphics
 
 		virtual void WaitForIdle() = 0;
 
-		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(const SDL_Window& windowHandle);
+		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle);
 
 	protected:
 		GraphicsContext() = default; // protected constructor to prevent direct instantiation
