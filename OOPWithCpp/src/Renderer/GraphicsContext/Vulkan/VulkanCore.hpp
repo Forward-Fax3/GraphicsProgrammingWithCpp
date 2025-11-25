@@ -46,6 +46,9 @@ namespace OWC::Graphics
 				Log<LogLevel::Critical>("Vulkan runtime version {}.{}.{} is lower than the required version {}.{}.{}",
 					VK_VERSION_MAJOR(runtimeVersion), VK_VERSION_MINOR(runtimeVersion), VK_VERSION_PATCH(runtimeVersion),
 					VK_VERSION_MAJOR(g_VulkanVersion), VK_VERSION_MINOR(g_VulkanVersion), VK_VERSION_PATCH(g_VulkanVersion));
+			else
+				Log<LogLevel::Trace>("Vulkan runtime version {}.{}.{} detected",
+					VK_VERSION_MAJOR(runtimeVersion), VK_VERSION_MINOR(runtimeVersion), VK_VERSION_PATCH(runtimeVersion));
 
 			if (!s_Instance)
 				s_Instance = std::make_unique<VulkanCore>(PRIVATE());

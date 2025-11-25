@@ -14,18 +14,33 @@ namespace OWC::Graphics
 			uint32_t GraphicsFamily = std::numeric_limits<uint32_t>::max();
 			uint32_t ComputeFamily = std::numeric_limits<uint32_t>::max();
 			uint32_t TransferFamily = std::numeric_limits<uint32_t>::max();
+
+
+			// helper function to check if all families are found
+			[[nodiscard]] inline bool FoundAll() const
+			{
+				return (PresentFamily | GraphicsFamily |
+						ComputeFamily | TransferFamily)
+						!= std::numeric_limits<uint32_t>::max();
+			}
 		};
 
 	public:
 		explicit VulkanContext(SDL_Window& windowHandle);
 		~VulkanContext() override;
+		VulkanContext(const VulkanContext&) = delete;
+		VulkanContext& operator=(const VulkanContext&) = delete;
+		VulkanContext(VulkanContext&&) = delete;
+		VulkanContext& operator=(VulkanContext&&) = delete;
 
 		void SwapBuffers() override;
 		void WaitForIdle() override;
 
 	private:
 		void StartInstance();
+#ifndef DIST
 		void EnableVulkanDebugging();
+#endif
 		void SurfaceInit(SDL_Window& windowHandle);
 		// void SelectPhysicalDevice(); TODO: implement physical device selection
 		QueueFamilyIndices FindQueueFamilies();
@@ -33,6 +48,8 @@ namespace OWC::Graphics
 		void CreateLogicalDevice(const QueueFamilyIndices& indices);
 
 	private:
-		std::enable_if_t<!IsDistributionMode(), vk::DebugUtilsMessengerEXT> m_DebugCallback{};
+#ifndef DIST
+		vk::DebugUtilsMessengerEXT m_DebugCallback{};
+#endif
 	};
 }

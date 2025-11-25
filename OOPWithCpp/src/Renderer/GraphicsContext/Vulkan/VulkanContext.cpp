@@ -38,7 +38,9 @@ namespace OWC::Graphics
 		try
 		{
 			StartInstance();
+#ifndef DIST
 			EnableVulkanDebugging();
+#endif
 			SurfaceInit(windowHandle);
 			auto physcalDevices = VulkanCore::GetConstInstance().GetVKInstance().enumeratePhysicalDevices();
 			VulkanCore::GetInstance().SetPhysicalDevice(physcalDevices.front()); // TODO: select proper physical device
@@ -61,15 +63,16 @@ namespace OWC::Graphics
 
 		SDL_Vulkan_DestroySurface(vkCore.GetVKInstance(), vkCore.GetSurface(), nullptr);
 		vkCore.GetDevice().destroy();
-		if constexpr (!IsDistributionMode())
-			if (m_DebugCallback)
+#ifndef DIST
+		if (m_DebugCallback)
 				vkCore.GetVKInstance().destroyDebugUtilsMessengerEXT(m_DebugCallback);
+#endif
 		vkCore.GetVKInstance().destroy();
 
 		VulkanCore::Shutdown();
 	}
 
-	void VulkanContext::SwapBuffers()
+	void VulkanContext::SwapBuffers() // TODO: rename and implement
 	{
 
 	}
@@ -100,20 +103,22 @@ namespace OWC::Graphics
 
 		auto instanceExtertionProperties = vk::enumerateInstanceExtensionProperties();
 
-		if (IsExtentionAvailable(instanceExtertionProperties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
-			extentions.emplace_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+		if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRGetPhysicalDeviceProperties2ExtensionName))
+			extentions.emplace_back(vk::KHRGetPhysicalDeviceProperties2ExtensionName);
 
 		std::vector<const char*> validationLayers;
 		if constexpr (!IsDistributionMode())
 		{
-			if (IsExtentionAvailable(instanceExtertionProperties, VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
-				extentions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-			else
-				Log<LogLevel::Critical>("Vulkan extension {} is not available", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			if (IsExtentionAvailable(instanceExtertionProperties, vk::EXTDebugUtilsExtensionName))
+			{
+				extentions.emplace_back(vk::EXTDebugUtilsExtensionName);
 
-			validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-			createInfo.setEnabledLayerCount(static_cast<uint32_t>(validationLayers.size()));
-			createInfo.setPpEnabledLayerNames(validationLayers.data());
+				validationLayers.push_back("VK_LAYER_KHRONOS_validation");
+				createInfo.setEnabledLayerCount(static_cast<uint32_t>(validationLayers.size()));
+				createInfo.setPpEnabledLayerNames(validationLayers.data());
+			}
+			else
+				Log<LogLevel::Warn>("Vulkan extension {} is not available", vk::EXTDebugUtilsExtensionName);
 		}
 
 		createInfo.setEnabledExtensionCount(static_cast<uint32_t>(extentions.size()));
@@ -121,48 +126,46 @@ namespace OWC::Graphics
 		VulkanCore::GetInstance().SetInstance(vk::createInstance(createInfo));
 	}
 
+#ifndef DIST
 	void VulkanContext::EnableVulkanDebugging()
 	{
-		if constexpr (!IsDistributionMode())
-		{
-			pfnVkCreateDebugUtilsMessengerEXT = std::bit_cast<PFN_vkCreateDebugUtilsMessengerEXT>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateDebugUtilsMessengerEXT"));
-			pfnVkDestroyDebugUtilsMessengerEXT = std::bit_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
-			if (!pfnVkCreateDebugUtilsMessengerEXT || !pfnVkDestroyDebugUtilsMessengerEXT)
-				Log<LogLevel::Critical>("Failed to load Vulkan debug utils functions");
-
-			m_DebugCallback = VulkanCore::GetConstInstance().GetVKInstance().createDebugUtilsMessengerEXT(
-				vk::DebugUtilsMessengerCreateInfoEXT()
-				.setMessageSeverity(
-					vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-					vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
-					vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-					vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
-				).setMessageType(
-					vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-					vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-					vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-				).setPfnUserCallback( // TODO: do more with pCallbackData
-					[](
-						vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-						vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
-						const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
-						void* // unused userData
-						) -> vk::Bool32
-					{
-						if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
-							Log<LogLevel::Error>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
-						else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
-							Log<LogLevel::Warn>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
-						else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
-							Log<LogLevel::Trace>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
-						else
-							Log<LogLevel::Trace>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
-						return VK_FALSE;
-					}
-				)
-			);
-		}
+		pfnVkCreateDebugUtilsMessengerEXT = std::bit_cast<PFN_vkCreateDebugUtilsMessengerEXT>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+		pfnVkDestroyDebugUtilsMessengerEXT = std::bit_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
+		if (!pfnVkCreateDebugUtilsMessengerEXT || !pfnVkDestroyDebugUtilsMessengerEXT)
+			Log<LogLevel::Critical>("Failed to load Vulkan debug utils functions");
+		m_DebugCallback = VulkanCore::GetConstInstance().GetVKInstance().createDebugUtilsMessengerEXT(
+			vk::DebugUtilsMessengerCreateInfoEXT()
+			.setMessageSeverity(
+				vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+				vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+				vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+				vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
+			).setMessageType(
+				vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+				vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+				vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+			).setPfnUserCallback( // TODO: do more with pCallbackData
+				[](
+					vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+					vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
+					const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData,
+					void* // unused userData
+					) -> vk::Bool32
+				{
+					if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
+						Log<LogLevel::Error>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
+					else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning)
+						Log<LogLevel::Warn>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
+					else if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo)
+						Log<LogLevel::Trace>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
+					else
+						Log<LogLevel::Trace>("Vulkan Validation Layer: {}: {}", vk::to_string(messageTypes), pCallbackData->pMessage);
+					return VK_FALSE;
+				}
+			)
+		);
 	}
+#endif
 
 	void VulkanContext::SurfaceInit(SDL_Window& windowHandle)
 	{
@@ -196,12 +199,7 @@ namespace OWC::Graphics
 				indices.TransferFamily = i;
 
 			// break early if all found
-			if ((
-					indices.PresentFamily |
-					indices.GraphicsFamily |
-					indices.ComputeFamily |
-					indices.TransferFamily)
-				!= indexMax)
+			if (indices.FoundAll())
 				break;
 		}
 
