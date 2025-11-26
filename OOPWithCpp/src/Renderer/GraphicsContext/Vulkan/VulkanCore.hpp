@@ -66,12 +66,21 @@ namespace OWC::Graphics
 		const vk::Device& GetDevice() const { return m_Device; }
 		vk::Queue& GetGraphicsQueue() { return m_GraphicsQueue; }
 		const vk::Queue& GetGraphicsQueue() const { return m_GraphicsQueue; }
+		vk::SwapchainKHR& GetSwapchain() { return m_Swapchain; }
+		const vk::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
+		std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
+		const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
+		std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
+		const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
 
 		void SetInstance(const vk::Instance& instance) { m_Instance = instance; }
 		void SetSurface(const vk::SurfaceKHR& surface) { m_Surface = surface; }
 		void SetPhysicalDevice(const vk::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
 		void SetDevice(const vk::Device& device) { m_Device = device; }
 		void SetGraphicsQueue(const vk::Queue& graphicsQueue) { m_GraphicsQueue = graphicsQueue; }
+		void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
+		void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
+		void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
 
 	private:
 		vk::Instance m_Instance = vk::Instance();
@@ -79,6 +88,9 @@ namespace OWC::Graphics
 		vk::PhysicalDevice m_PhysicalDevice = vk::PhysicalDevice();
 		vk::Device m_Device = vk::Device();
 		vk::Queue m_GraphicsQueue = vk::Queue();
+		vk::SwapchainKHR m_Swapchain = vk::SwapchainKHR();
+		std::vector<vk::Image> m_SwapchainImages;
+		std::vector<vk::ImageView> m_SwapchainImageViews;
 
 		static std::unique_ptr<VulkanCore> s_Instance;
 	};

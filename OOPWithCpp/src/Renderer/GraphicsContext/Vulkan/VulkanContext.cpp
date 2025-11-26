@@ -13,7 +13,7 @@
 PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT;
 PFN_vkDestroyDebugUtilsMessengerEXT pfnVkDestroyDebugUtilsMessengerEXT;
 
-static VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugUtilsMessengerEXT(
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugUtilsMessengerEXT(
 	VkInstance instance,
 	const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
 	const VkAllocationCallbacks* pAllocator,
@@ -22,7 +22,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL vkCreateDebugUtilsMessengerEXT(
 	return pfnVkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, pAllocator, pMessenger);
 }
 
-static VKAPI_ATTR void VKAPI_CALL vkDestroyDebugUtilsMessengerEXT(
+VKAPI_ATTR void VKAPI_CALL vkDestroyDebugUtilsMessengerEXT(
 	VkInstance instance,
 	VkDebugUtilsMessengerEXT messenger,
 	VkAllocationCallbacks const* pAllocator)
@@ -49,7 +49,7 @@ static void PrintVulkanDebugMessages(vk::DebugUtilsMessageSeverityFlagBitsEXT me
 		OWC::Log<Trace>("Vulkan Validation Layer:\n{}", loggedMessage);
 }
 
-static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects info logging
+static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects info logging and add auto flush after certain amount of messages or time
 	vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
 	vk::DebugUtilsMessengerCallbackDataEXT const* pCallbackData,
@@ -60,9 +60,13 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 	static int32_t lastMessageID = std::numeric_limits<int32_t>::max();
 	static vk::DebugUtilsMessageSeverityFlagBitsEXT lastMessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT();
 	static bool firstMessage = true;
+	(void)s_Mutex;
 
 	if (pCallbackData == nullptr)
 	{
+		if (s_MessagesLogged.empty())
+			return VK_FALSE;
+
 		std::lock_guard lock(s_Mutex);
 		PrintVulkanDebugMessages(lastMessageSeverity, s_MessagesLogged);
 		s_MessagesLogged.clear();
@@ -127,8 +131,20 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 		PrintVulkanDebugMessages(lastMessageSeverity, s_MessagesLogged);
 		s_MessagesLogged.clear();
 		s_MessagesLogged.emplace_back(std::move(str));
-		lastMessageID = pCallbackData->messageIdNumber;
-		lastMessageSeverity = messageSeverity;
+		if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
+		{
+			// flush immediately on error messages
+			PrintVulkanDebugMessages(messageSeverity, s_MessagesLogged);
+			s_MessagesLogged.clear();
+			lastMessageID = std::numeric_limits<int32_t>::max();
+			lastMessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT();
+			firstMessage = true;
+		}
+		else
+		{
+			lastMessageID = pCallbackData->messageIdNumber;
+			lastMessageSeverity = messageSeverity;
+		}
 	}
 
 	return VK_FALSE;
@@ -151,6 +167,7 @@ namespace OWC::Graphics
 			VulkanCore::GetInstance().SetPhysicalDevice(physcalDevices.front()); // TODO: select proper physical device
 			auto queueFamilyIndices = FindQueueFamilies();
 			CreateLogicalDevice(queueFamilyIndices);
+			SetupSwapchain(windowHandle, queueFamilyIndices);
 		}
 		catch (const vk::SystemError& err)
 		{
@@ -175,9 +192,21 @@ namespace OWC::Graphics
 		WaitForIdle();
 		auto& vkCore = VulkanCore::GetConstInstance();
 
+		for (const auto& imageView : vkCore.GetSwapchainImageViews())
+			vkCore.GetDevice().destroyImageView(imageView);
+
+		vkCore.GetDevice().destroySwapchainKHR(vkCore.GetSwapchain());
 		SDL_Vulkan_DestroySurface(vkCore.GetVKInstance(), vkCore.GetSurface(), nullptr);
 		vkCore.GetDevice().destroy();
 #ifndef DIST
+		// flush any remaining logged messages before destroying the debug messenger
+		debugMessageFunc(
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo,
+			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral,
+			nullptr,
+			nullptr
+		);
+
 		if (m_DebugCallback)
 				vkCore.GetVKInstance().destroyDebugUtilsMessengerEXT(m_DebugCallback);
 #endif
@@ -203,12 +232,11 @@ namespace OWC::Graphics
 			uint32_t numberOfSDLExtensions = 0;
 			const auto extentionsTemp = SDL_Vulkan_GetInstanceExtensions(&numberOfSDLExtensions);
 
-			if constexpr (!IsDistributionMode()) // +2 for debug utils and get physical device properties 2
+			if constexpr (!IsDistributionMode()) // +3 for debug utils and get physical device properties 2 and surface extensions
+				extentions.reserve(numberOfSDLExtensions + 3);
+			else // +2 for get physical device properties 2 and surface extensions
 				extentions.reserve(numberOfSDLExtensions + 2);
-			else // +1 for get physical device properties 2
-				extentions.reserve(numberOfSDLExtensions + 1);
 
-			extentions.reserve(numberOfSDLExtensions);
 			for (size_t i = 0; i < numberOfSDLExtensions; i++)
 				extentions.emplace_back(extentionsTemp[i]);
 		}
@@ -217,9 +245,28 @@ namespace OWC::Graphics
 
 		auto instanceExtertionProperties = vk::enumerateInstanceExtensionProperties();
 
+		for (const auto& ext : extentions)
+			if (!IsExtentionAvailable(instanceExtertionProperties, ext))
+				Log<LogLevel::Critical>("Vulkan extension {} is not available", ext);
+
+		if (std::ranges::find(extentions, vk::KHRSurfaceExtensionName) == extentions.end())
+		{
+			if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRSurfaceExtensionName))
+				extentions.emplace_back(vk::KHRSurfaceExtensionName);
+			else
+				Log<LogLevel::Critical>("Vulkan extension {} is not available", vk::KHRSurfaceExtensionName);
+		}
+
 		if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRGetPhysicalDeviceProperties2ExtensionName))
 			extentions.emplace_back(vk::KHRGetPhysicalDeviceProperties2ExtensionName);
+		else
+			Log<LogLevel::Critical>("Vulkan extension {} is not available", vk::KHRGetPhysicalDeviceProperties2ExtensionName);
 
+		if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRGetSurfaceCapabilities2ExtensionName))
+			extentions.emplace_back(vk::KHRGetSurfaceCapabilities2ExtensionName);
+		else
+			Log<LogLevel::Critical>("Vulkan extension {} is not available", vk::KHRGetSurfaceCapabilities2ExtensionName);
+		
 		std::vector<const char*> validationLayers;
 		if constexpr (!IsDistributionMode())
 		{
@@ -353,7 +400,7 @@ namespace OWC::Graphics
 		}
 	}
 
-	void VulkanContext::CreateLogicalDevice(const QueueFamilyIndices& indices)
+	void VulkanContext::CreateLogicalDevice(QueueFamilyIndices& indices)
 	{
 		size_t numberOfUniqueQueueFamilies = 0;
 		float queuePriority = 1.0f;
@@ -393,17 +440,150 @@ namespace OWC::Graphics
 		deviceQueueCreateInfos.reserve(numberOfUniqueQueueFamilies);
 		deviceQueueCreateInfos.emplace_back(deviceGraphicsQueueCreateInfo);
 
+		indices.uniqueIndices.reserve(numberOfUniqueQueueFamilies);
+		indices.uniqueIndices.emplace_back(indices.GraphicsFamily);
+
 		if (indices.ComputeFamily != indices.GraphicsFamily)
+		{
 			deviceQueueCreateInfos.emplace_back(deviceComputeQueueCreateInfo);
+			indices.uniqueIndices.emplace_back(indices.ComputeFamily);
+		}
 		if (indices.TransferFamily != indices.GraphicsFamily && indices.TransferFamily != indices.ComputeFamily)
+		{
 			deviceQueueCreateInfos.emplace_back(deviceTransferQueueCreateInfo);
+			indices.uniqueIndices.emplace_back(indices.TransferFamily);
+		}
+
+		const std::vector<const char*> deviceExtensions = {
+			vk::KHRSwapchainExtensionName,
+			vk::KHRMaintenance1ExtensionName
+		};
 
 		VulkanCore::GetInstance().SetDevice(
 			VulkanCore::GetConstInstance().GetPhysicalDev().createDevice(
 				vk::DeviceCreateInfo()
 				.setQueueCreateInfoCount(static_cast<uint32_t>(deviceQueueCreateInfos.size()))
 				.setPQueueCreateInfos(deviceQueueCreateInfos.data())
+				.setEnabledExtensionCount(static_cast<uint32_t>(deviceExtensions.size()))
+				.setPpEnabledExtensionNames(deviceExtensions.data())
 			)
 		);
+
+		auto findPresentQueue = std::ranges::find_if(indices.uniqueIndices, [&](uint32_t index) {
+			return index == indices.PresentFamily;
+			});
+
+		if (findPresentQueue == indices.uniqueIndices.end())
+		{
+			indices.uniqueIndices.reserve(indices.uniqueIndices.size() + 1);
+			indices.uniqueIndices.emplace_back(indices.PresentFamily);
+		}
+	}
+
+	void VulkanContext::SetupSwapchain(SDL_Window& windowHandle, const QueueFamilyIndices& queueFamilyIndices)
+	{
+		(void)windowHandle;
+
+		vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
+		std::vector<vk::SurfaceFormatKHR> surfaceFormats = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceFormatsKHR(VulkanCore::GetConstInstance().GetSurface());
+		if (surfaceFormats.empty())
+			Log<LogLevel::Critical>("Failed to find any surface formats for the swapchain");
+		
+		vk::Format format = (surfaceFormats[0].format == vk::Format::eUndefined) ? vk::Format::eR8G8B8A8Unorm : surfaceFormats[0].format;
+		vk::ColorSpaceKHR colorSpace = surfaceFormats[0].colorSpace;
+
+		Log<LogLevel::Debug>("Vulkan Swapchain Surface Format selected:");
+		Log<LogLevel::Debug>(" Format: {}", vk::to_string(format));
+		Log<LogLevel::Debug>(" Color Space: {}", vk::to_string(colorSpace));
+
+		vk::SurfaceCapabilities2KHR surfaceCapabilities = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceCapabilities2KHR(VulkanCore::GetConstInstance().GetSurface());
+		if (surfaceCapabilities.surfaceCapabilities.currentExtent.width == 0 || surfaceCapabilities.surfaceCapabilities.currentExtent.height == 0)
+			Log<LogLevel::Critical>("Failed to get valid surface extents for the swapchain");
+
+		vk::Extent2D swapchainExtent = surfaceCapabilities.surfaceCapabilities.currentExtent;
+		Log<LogLevel::Debug>("Vulkan Swapchain Surface Capabilities:");
+		Log<LogLevel::Debug>(" Current Extent: {}x{}", swapchainExtent.width, swapchainExtent.height);
+
+		auto presentModeCompatibilities = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfacePresentModesKHR(VulkanCore::GetConstInstance().GetSurface());
+
+		if (presentModeCompatibilities.size() == 0)
+			Log<LogLevel::Critical>("Failed to find any present modes for the swapchain");
+
+		Log<LogLevel::Debug>("Vulkan Swapchain Present Modes supported:");
+		for (const auto& presentMode : presentModeCompatibilities)
+			Log<LogLevel::Debug>(" {}", vk::to_string(presentMode));
+
+		vk::PresentModeKHR selectedPresentMode = vk::PresentModeKHR::eFifo; // guaranteed to be available
+		// prefer mailbox present mode if available
+		for (const auto& presentMode : presentModeCompatibilities)
+			if (presentMode == vk::PresentModeKHR::eMailbox)
+			{
+				selectedPresentMode = vk::PresentModeKHR::eMailbox;
+				break;
+			}
+
+		Log<LogLevel::Debug>("Vulkan Swapchain Present Mode selected: {}", vk::to_string(selectedPresentMode));
+
+		vk::SurfaceTransformFlagBitsKHR preTransform = (surfaceCapabilities.surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
+			? vk::SurfaceTransformFlagBitsKHR::eIdentity
+			: surfaceCapabilities.surfaceCapabilities.currentTransform;
+
+		vk::SwapchainCreateInfoKHR swapchainCreateInfo;
+		swapchainCreateInfo
+			.setSurface(VulkanCore::GetConstInstance().GetSurface())
+			.setMinImageCount(surfaceCapabilities.surfaceCapabilities.minImageCount + 1)
+			.setImageFormat(format)
+			.setImageColorSpace(colorSpace)
+			.setImageExtent(swapchainExtent)
+			.setImageArrayLayers(1)
+			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
+			.setImageSharingMode(vk::SharingMode::eExclusive)
+			.setPreTransform(preTransform)
+			.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
+			.setPresentMode(selectedPresentMode)
+			.setClipped(VK_TRUE);
+
+		if (queueFamilyIndices.uniqueIndices.size() > 1)
+			swapchainCreateInfo
+				.setImageSharingMode(vk::SharingMode::eConcurrent)
+				.setQueueFamilyIndexCount(static_cast<uint32_t>(queueFamilyIndices.uniqueIndices.size()))
+				.setPQueueFamilyIndices(queueFamilyIndices.uniqueIndices.data());
+
+		VulkanCore::GetInstance().SetSwapchain(VulkanCore::GetConstInstance().GetDevice().createSwapchainKHR(swapchainCreateInfo));
+
+		VulkanCore::GetInstance().SetSwapchainImages(
+			VulkanCore::GetConstInstance().GetDevice().getSwapchainImagesKHR(VulkanCore::GetConstInstance().GetSwapchain())
+		);
+
+		Log<LogLevel::Debug>("Vulkan Swapchain created with {} images", VulkanCore::GetConstInstance().GetSwapchainImages().size());
+
+		std::vector<vk::ImageView> swapchainImageViews;
+		swapchainImageViews.reserve(VulkanCore::GetConstInstance().GetSwapchainImages().size());
+
+		for (const auto& image : VulkanCore::GetConstInstance().GetSwapchainImages())
+		{
+			vk::ImageViewCreateInfo imageViewCreateInfo;
+			imageViewCreateInfo
+				.setImage(image)
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(format)
+				.setComponents(
+					vk::ComponentMapping()
+					.setR(vk::ComponentSwizzle::eIdentity)
+					.setG(vk::ComponentSwizzle::eIdentity)
+					.setB(vk::ComponentSwizzle::eIdentity)
+					.setA(vk::ComponentSwizzle::eIdentity)
+				).setSubresourceRange(
+					vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)
+				);
+			swapchainImageViews.emplace_back(VulkanCore::GetConstInstance().GetDevice().createImageView(imageViewCreateInfo));
+		}
+
+		Log<LogLevel::NewLine>();
 	}
 }

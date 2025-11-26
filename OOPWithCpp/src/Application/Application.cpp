@@ -13,8 +13,8 @@ namespace OWC
 	{
 		WindowProperties props {
 			.Title = u8"OOP With Cpp",
-			.Width = 1280,
-			.Height = 720
+			.Width = 1920,
+			.Height = 1080
 		};
 		m_Window = std::make_unique<Window>(props);
 		m_Window->SetEventCallback([this](BaseEvent& e) { this->OnEvent(e); });
