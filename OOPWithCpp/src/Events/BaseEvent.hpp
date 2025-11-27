@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <string>
+#include <functional>
 
 
 namespace OWC
@@ -23,6 +23,7 @@ namespace OWC
 		virtual ~BaseEvent() = default;
 
 		inline EventType GetEventType() const { return m_EventType; }
+		inline bool HasBeenHandled() const { return m_HasBeenHandled; }
 
 	protected:
 		explicit BaseEvent(EventType type)

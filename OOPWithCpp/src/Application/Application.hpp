@@ -4,9 +4,9 @@
 
 #include "Window.hpp"
 #include "BaseEvent.hpp"
+#include "LayerStack.hpp"
 
 
-// OWC - OOP With Cpp
 namespace OWC
 {
 	class Application
@@ -26,8 +26,8 @@ namespace OWC
 		void OnWindowClose();
 
 	private:
-		std::bitset<2>& m_RunFlags; // Bit 0: Application running, Bit 1: restart application
-
 		std::unique_ptr<Window> m_Window = nullptr;
+		std::unique_ptr<LayerStack> m_LayerStack = nullptr;
+		std::bitset<2>& m_RunFlags; // Bit 0: Application running, Bit 1: restart application
 	};
 }

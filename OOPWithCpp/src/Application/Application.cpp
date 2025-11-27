@@ -18,12 +18,15 @@ namespace OWC
 		};
 		m_Window = std::make_unique<Window>(props);
 		m_Window->SetEventCallback([this](BaseEvent& e) { this->OnEvent(e); });
+		m_LayerStack = std::make_unique<LayerStack>();
 	}
 
 	void Application::Run()
 	{
 		while (m_RunFlags.test(0)) // While application is running
 		{
+			m_LayerStack->OnUpdate();
+			m_LayerStack->ImGuiRender();
 			m_Window->Update();
 		}
 	}
@@ -37,9 +40,17 @@ namespace OWC
 			return true;
 			});
 
+		if (event.HasBeenHandled())
+			return;
+
 		dispacher.Dispatch<WindowResize>([this](const WindowResize& e) {
 			return this->m_Window->Resize(e.GetWidth(), e.GetHeight());
 			});
+
+		if (event.HasBeenHandled())
+			return;
+
+		m_LayerStack->OnEvent(event);
 	}
 
 	void Application::OnWindowClose()

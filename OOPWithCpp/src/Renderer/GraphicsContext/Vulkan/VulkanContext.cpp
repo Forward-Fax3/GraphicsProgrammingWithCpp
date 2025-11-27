@@ -362,6 +362,9 @@ namespace OWC::Graphics
 		if (!IsExtentionAvailable(supportedExtensions, vk::KHRSwapchainExtensionName))
 			return { false, 0 };
 
+		if (!IsExtentionAvailable(supportedExtensions, vk::KHRMaintenance1ExtensionName))
+			return { false, 0 };
+
 		return { true, score };
 	}
 
