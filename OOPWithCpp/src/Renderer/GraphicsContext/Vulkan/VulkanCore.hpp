@@ -41,6 +41,14 @@ namespace OWC::Graphics
 
 		static void Init()
 		{
+			if (!s_Instance)
+				s_Instance = std::make_unique<VulkanCore>(PRIVATE());
+			else
+			{
+				Log<LogLevel::Warn>("VulkanCore instance already exists!");
+				return;
+			}
+
 			const auto runtimeVersion = vk::enumerateInstanceVersion();
 			if (runtimeVersion < g_VulkanVersion)
 				Log<LogLevel::Critical>("Vulkan runtime version {}.{}.{} is lower than the required version {}.{}.{}",
@@ -49,48 +57,49 @@ namespace OWC::Graphics
 			else
 				Log<LogLevel::Trace>("Vulkan runtime version {}.{}.{} detected",
 					VK_VERSION_MAJOR(runtimeVersion), VK_VERSION_MINOR(runtimeVersion), VK_VERSION_PATCH(runtimeVersion));
-
-			if (!s_Instance)
-				s_Instance = std::make_unique<VulkanCore>(PRIVATE());
 		}
 
 		static void Shutdown() { s_Instance.reset(); }
 
-		vk::Instance& GetVKInstance() { return m_Instance; }
-		const vk::Instance& GetVKInstance() const { return m_Instance; }
-		vk::SurfaceKHR& GetSurface() { return m_Surface; }
-		const vk::SurfaceKHR& GetSurface() const { return m_Surface; }
-		vk::PhysicalDevice& GetPhysicalDev() { return m_PhysicalDevice; }
-		const vk::PhysicalDevice& GetPhysicalDev() const { return m_PhysicalDevice; }
-		vk::Device& GetDevice() { return m_Device; }
-		const vk::Device& GetDevice() const { return m_Device; }
-		vk::Queue& GetGraphicsQueue() { return m_GraphicsQueue; }
-		const vk::Queue& GetGraphicsQueue() const { return m_GraphicsQueue; }
-		vk::SwapchainKHR& GetSwapchain() { return m_Swapchain; }
-		const vk::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
-		std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
-		const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
-		std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
-		const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
+		[[nodiscard]] inline const vk::Instance& GetVKInstance() const { return m_Instance; }
+		[[nodiscard]] inline const vk::SurfaceKHR& GetSurface() const { return m_Surface; }
+		[[nodiscard]] inline const vk::PhysicalDevice& GetPhysicalDev() const { return m_PhysicalDevice; }
+		[[nodiscard]] inline const vk::Device& GetDevice() const { return m_Device; }
+		[[nodiscard]] inline const vk::Queue& GetPresentQueue() const { return m_PresentQueue; }
+		[[nodiscard]] inline const vk::Queue& GetGraphicsQueue() const { return m_GraphicsQueue; }
+		[[nodiscard]] inline const vk::Queue& GetComputeQueue() const { return m_ComputeQueue; }
+		[[nodiscard]] inline const vk::Queue& GetTransferQueue() const { return m_TransferQueue; }
+		[[nodiscard]] inline const vk::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
+		[[nodiscard]] inline const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
+		[[nodiscard]] inline const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
 
-		void SetInstance(const vk::Instance& instance) { m_Instance = instance; }
-		void SetSurface(const vk::SurfaceKHR& surface) { m_Surface = surface; }
-		void SetPhysicalDevice(const vk::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
-		void SetDevice(const vk::Device& device) { m_Device = device; }
-		void SetGraphicsQueue(const vk::Queue& graphicsQueue) { m_GraphicsQueue = graphicsQueue; }
-		void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
-		void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
-		void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
+		[[nodiscard]] inline std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
+		[[nodiscard]] inline std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
+
+		inline void SetInstance(const vk::Instance& instance) { m_Instance = instance; }
+		inline void SetSurface(const vk::SurfaceKHR& surface) { m_Surface = surface; }
+		inline void SetPhysicalDevice(const vk::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
+		inline void SetDevice(const vk::Device& device) { m_Device = device; }
+		inline void SetPresentQueue(const vk::Queue& presentQueue) { m_PresentQueue = presentQueue; }
+		inline void SetGraphicsQueue(const vk::Queue& graphicsQueue) { m_GraphicsQueue = graphicsQueue; }
+		inline void SetComputeQueue(const vk::Queue& computeQueue) { m_ComputeQueue = computeQueue; }
+		inline void SetTransferQueue(const vk::Queue& transferQueue) { m_TransferQueue = transferQueue; }
+		inline void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
+		inline void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
+		inline void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
 
 	private:
 		vk::Instance m_Instance = vk::Instance();
 		vk::SurfaceKHR m_Surface = vk::SurfaceKHR();
 		vk::PhysicalDevice m_PhysicalDevice = vk::PhysicalDevice();
 		vk::Device m_Device = vk::Device();
+		vk::Queue m_PresentQueue = vk::Queue();
 		vk::Queue m_GraphicsQueue = vk::Queue();
+		vk::Queue m_ComputeQueue = vk::Queue();
+		vk::Queue m_TransferQueue = vk::Queue();
 		vk::SwapchainKHR m_Swapchain = vk::SwapchainKHR();
-		std::vector<vk::Image> m_SwapchainImages;
-		std::vector<vk::ImageView> m_SwapchainImageViews;
+		std::vector<vk::Image> m_SwapchainImages = {};
+		std::vector<vk::ImageView> m_SwapchainImageViews = {};
 
 		static std::unique_ptr<VulkanCore> s_Instance;
 	};

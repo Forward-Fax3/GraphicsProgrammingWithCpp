@@ -15,7 +15,7 @@ namespace OWC::Graphics
 			uint32_t ComputeFamily = std::numeric_limits<uint32_t>::max();
 			uint32_t TransferFamily = std::numeric_limits<uint32_t>::max();
 			
-			std::vector<uint32_t> uniqueIndices;
+			std::vector<uint32_t> uniqueIndices = {};
 
 			// helper function to check if all families are found
 			[[nodiscard]] inline bool FoundAll() const
@@ -48,8 +48,9 @@ namespace OWC::Graphics
 		std::pair<bool, uint32_t> IsPhysicalDeviceSuitable(const vk::PhysicalDevice& device);
 		QueueFamilyIndices FindQueueFamilies();
 		void CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties> queueFamilies, QueueFamilyIndices& indices);
+		void GetAndStoreGlobalQueueFamilies(const QueueFamilyIndices& indices);
 		void CreateLogicalDevice(QueueFamilyIndices& indices);
-		void SetupSwapchain(SDL_Window& windowHandle, const QueueFamilyIndices& queueFamilyIndices);
+		void SetupSwapchain(const QueueFamilyIndices& queueFamilyIndices);
 
 	private:
 #ifndef DIST

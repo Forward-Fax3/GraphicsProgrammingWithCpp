@@ -1,5 +1,7 @@
 #include <limits>
+#include <ranges>
 #include <mutex>
+#include <map>
 
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_to_string.hpp>
@@ -60,14 +62,14 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 	static int32_t lastMessageID = std::numeric_limits<int32_t>::max();
 	static vk::DebugUtilsMessageSeverityFlagBitsEXT lastMessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT();
 	static bool firstMessage = true;
-	(void)s_Mutex;
 
 	if (pCallbackData == nullptr)
 	{
+		std::lock_guard lock(s_Mutex);
+
 		if (s_MessagesLogged.empty())
 			return VK_FALSE;
 
-		std::lock_guard lock(s_Mutex);
 		PrintVulkanDebugMessages(lastMessageSeverity, s_MessagesLogged);
 		s_MessagesLogged.clear();
 		lastMessageID = std::numeric_limits<int32_t>::max();
@@ -166,7 +168,8 @@ namespace OWC::Graphics
 			SelectPhysicalDevice();
 			auto queueFamilyIndices = FindQueueFamilies();
 			CreateLogicalDevice(queueFamilyIndices);
-			SetupSwapchain(windowHandle, queueFamilyIndices);
+			GetAndStoreGlobalQueueFamilies(queueFamilyIndices);
+			SetupSwapchain(queueFamilyIndices);
 		}
 		catch (const vk::SystemError& err)
 		{
@@ -383,7 +386,7 @@ namespace OWC::Graphics
 		{
 			if (indices.PresentFamily == indexMax &&
 				VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceSupportKHR(i, VulkanCore::GetConstInstance().GetSurface()))
-					indices.PresentFamily = i;
+				indices.PresentFamily = i;
 
 			if (indices.GraphicsFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
 				indices.GraphicsFamily = i;
@@ -458,62 +461,40 @@ namespace OWC::Graphics
 
 	void VulkanContext::CreateLogicalDevice(QueueFamilyIndices& indices)
 	{
-		size_t numberOfUniqueQueueFamilies = 0;
-		float queuePriority = 1.0f;
-
-		vk::DeviceQueueCreateInfo deviceGraphicsQueueCreateInfo;
-		vk::DeviceQueueCreateInfo deviceComputeQueueCreateInfo;
-		vk::DeviceQueueCreateInfo deviceTransferQueueCreateInfo;
-
-		deviceGraphicsQueueCreateInfo
-			.setQueueFamilyIndex(indices.GraphicsFamily)
-			.setQueueCount(1)
-			.setPQueuePriorities(&queuePriority);
-
-		numberOfUniqueQueueFamilies++;
-
-		if (indices.ComputeFamily != indices.GraphicsFamily)
-		{
-			numberOfUniqueQueueFamilies++;
-
-			deviceComputeQueueCreateInfo
-				.setQueueFamilyIndex(indices.ComputeFamily)
-				.setQueueCount(1)
-				.setPQueuePriorities(&queuePriority);
-		}
-
-		if (indices.TransferFamily != indices.GraphicsFamily && indices.TransferFamily != indices.ComputeFamily)
-		{
-			numberOfUniqueQueueFamilies++;
-			deviceTransferQueueCreateInfo
-				.setQueueFamilyIndex(indices.TransferFamily)
-				.setQueueCount(1)
-				.setPQueuePriorities(&queuePriority);
-		}
-
-		
-		std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos;
-		deviceQueueCreateInfos.reserve(numberOfUniqueQueueFamilies);
-		deviceQueueCreateInfos.emplace_back(deviceGraphicsQueueCreateInfo);
-
-		indices.uniqueIndices.reserve(numberOfUniqueQueueFamilies);
-		indices.uniqueIndices.emplace_back(indices.GraphicsFamily);
-
-		if (indices.ComputeFamily != indices.GraphicsFamily)
-		{
-			deviceQueueCreateInfos.emplace_back(deviceComputeQueueCreateInfo);
-			indices.uniqueIndices.emplace_back(indices.ComputeFamily);
-		}
-		if (indices.TransferFamily != indices.GraphicsFamily && indices.TransferFamily != indices.ComputeFamily)
-		{
-			deviceQueueCreateInfos.emplace_back(deviceTransferQueueCreateInfo);
-			indices.uniqueIndices.emplace_back(indices.TransferFamily);
-		}
-
-		const std::vector<const char*> deviceExtensions = {
+		const std::array<const char*, 2> deviceExtensions = {
 			vk::KHRSwapchainExtensionName,
 			vk::KHRMaintenance1ExtensionName
 		};
+
+		std::map<uint32_t, std::pair<uint32_t, std::vector<float>>> uniqueQueueFamiliesMap;
+
+		for (const auto& index : { indices.GraphicsFamily, indices.ComputeFamily, indices.TransferFamily })
+		{
+			if (!uniqueQueueFamiliesMap.contains(index))
+				uniqueQueueFamiliesMap[index].first = 1;
+			else
+				uniqueQueueFamiliesMap[index].first++;
+
+			uniqueQueueFamiliesMap[index].second.push_back(1.0f);
+		}
+
+		// ensure present family is also included if it is in its own queue family
+		if (!uniqueQueueFamiliesMap.contains(indices.PresentFamily))
+		{
+			uniqueQueueFamiliesMap[indices.PresentFamily].first = 1;
+			uniqueQueueFamiliesMap[indices.PresentFamily].second.push_back(1.0f);
+		}
+
+		std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos;
+		deviceQueueCreateInfos.reserve(uniqueQueueFamiliesMap.size());
+
+		for (const auto& [familyIndex, familyData] : uniqueQueueFamiliesMap)
+			deviceQueueCreateInfos.emplace_back(
+				vk::DeviceQueueCreateInfo()
+				.setQueueFamilyIndex(familyIndex)
+				.setQueueCount(familyData.first)
+				.setPQueuePriorities(familyData.second.data())
+			);
 
 		VulkanCore::GetInstance().SetDevice(
 			VulkanCore::GetConstInstance().GetPhysicalDev().createDevice(
@@ -525,21 +506,36 @@ namespace OWC::Graphics
 			)
 		);
 
-		auto findPresentQueue = std::ranges::find_if(indices.uniqueIndices, [&](uint32_t index) {
-			return index == indices.PresentFamily;
-			});
-
-		if (findPresentQueue == indices.uniqueIndices.end())
-		{
-			indices.uniqueIndices.reserve(indices.uniqueIndices.size() + 1);
-			indices.uniqueIndices.emplace_back(indices.PresentFamily);
-		}
+		indices.uniqueIndices.reserve(uniqueQueueFamiliesMap.size());
+		for (const auto& familyIndex : std::views::keys(uniqueQueueFamiliesMap))
+			indices.uniqueIndices.emplace_back(familyIndex);
 	}
 
-	void VulkanContext::SetupSwapchain(SDL_Window& windowHandle, const QueueFamilyIndices& queueFamilyIndices)
+	void VulkanContext::GetAndStoreGlobalQueueFamilies(const QueueFamilyIndices& indices)
 	{
-		(void)windowHandle;
+		std::map<uint32_t, uint32_t> queueFamilyUsageCount;
 
+		auto l_getQueue = [&](uint32_t familyIndex) -> vk::Queue {
+			if (!queueFamilyUsageCount.contains(familyIndex))
+				queueFamilyUsageCount[familyIndex] = 0;
+
+			return VulkanCore::GetConstInstance().GetDevice().getQueue(familyIndex, queueFamilyUsageCount[familyIndex]++);
+		};
+		
+		VulkanCore::GetInstance().SetGraphicsQueue(l_getQueue(indices.GraphicsFamily));
+		VulkanCore::GetInstance().SetComputeQueue(l_getQueue(indices.ComputeFamily));
+		VulkanCore::GetInstance().SetTransferQueue(l_getQueue(indices.TransferFamily));
+
+		if (queueFamilyUsageCount.contains(indices.PresentFamily))
+			VulkanCore::GetInstance().SetPresentQueue(
+				VulkanCore::GetConstInstance().GetDevice().getQueue(indices.PresentFamily, 0)
+			);
+		else
+			VulkanCore::GetInstance().SetPresentQueue(l_getQueue(indices.PresentFamily));
+	}
+
+	void VulkanContext::SetupSwapchain(const QueueFamilyIndices& queueFamilyIndices)
+	{
 		vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
 		std::vector<vk::SurfaceFormatKHR> surfaceFormats = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceFormatsKHR(VulkanCore::GetConstInstance().GetSurface());
 		if (surfaceFormats.empty())
