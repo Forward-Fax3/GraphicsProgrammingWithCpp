@@ -1,4 +1,4 @@
-#include <limits>
+﻿#include <limits>
 #include <ranges>
 #include <mutex>
 #include <map>
@@ -12,6 +12,7 @@
 #include "Log.hpp"
 
 
+#ifndef DIST
 PFN_vkCreateDebugUtilsMessengerEXT pfnVkCreateDebugUtilsMessengerEXT;
 PFN_vkDestroyDebugUtilsMessengerEXT pfnVkDestroyDebugUtilsMessengerEXT;
 
@@ -68,14 +69,14 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 		std::lock_guard lock(s_Mutex);
 
 		if (s_MessagesLogged.empty())
-			return VK_FALSE;
+			return vk::False;
 
 		PrintVulkanDebugMessages(lastMessageSeverity, s_MessagesLogged);
 		s_MessagesLogged.clear();
 		lastMessageID = std::numeric_limits<int32_t>::max();
 		lastMessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT();
 		firstMessage = true;
-		return VK_FALSE;
+		return vk::False;
 	}
 
 	std::string str = std::format(
@@ -149,8 +150,9 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 		}
 	}
 
-	return VK_FALSE;
+	return vk::False;
 }
+#endif
 
 namespace OWC::Graphics
 {
@@ -170,6 +172,7 @@ namespace OWC::Graphics
 			CreateLogicalDevice(queueFamilyIndices);
 			GetAndStoreGlobalQueueFamilies(queueFamilyIndices);
 			SetupSwapchain(queueFamilyIndices);
+			CreateRenderPass();
 		}
 		catch (const vk::SystemError& err)
 		{
@@ -180,6 +183,7 @@ namespace OWC::Graphics
 			Log<LogLevel::Critical>("Vulkan Context initialization failed: {}", ex.what());
 		}
 
+#ifndef DIST 
 		// flush any logged messages during initialization
 		debugMessageFunc(
 			vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo,
@@ -187,12 +191,15 @@ namespace OWC::Graphics
 			nullptr,
 			nullptr
 		);
+#endif
 	}
 
 	VulkanContext::~VulkanContext()
 	{
 		WaitForIdle();
 		auto& vkCore = VulkanCore::GetConstInstance();
+
+		vkCore.GetDevice().destroyRenderPass(vkCore.GetRenderPass());
 
 		for (const auto& imageView : vkCore.GetSwapchainImageViews())
 			vkCore.GetDevice().destroyImageView(imageView);
@@ -226,6 +233,18 @@ namespace OWC::Graphics
 	{
 
 	}
+
+#ifndef DIST
+	void VulkanContext::FlushValidationMessages()
+	{
+		debugMessageFunc(
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo,
+			vk::DebugUtilsMessageTypeFlagsEXT(),
+			nullptr,
+			nullptr
+		);
+	}
+#endif
 
 	void VulkanContext::WaitForIdle()
 	{
@@ -289,8 +308,19 @@ namespace OWC::Graphics
 				Log<LogLevel::Warn>("Vulkan extension {} is not available", vk::EXTDebugUtilsExtensionName);
 		}
 
-		createInfo.setEnabledExtensionCount(static_cast<uint32_t>(extentions.size()));
-		createInfo.setPpEnabledExtensionNames(extentions.data());
+		vk::ApplicationInfo appInfo;
+		appInfo
+			.setPApplicationName("OOPWithCpp Application")
+			.setApplicationVersion(VK_MAKE_VERSION(0, 0, 1))
+			.setPEngineName("OOPWithCpp Engine")
+			.setEngineVersion(VK_MAKE_VERSION(0, 0, 1))
+			.setApiVersion(g_VulkanVersion);
+
+		createInfo
+			.setEnabledExtensionCount(static_cast<uint32_t>(extentions.size()))
+			.setPpEnabledExtensionNames(extentions.data())
+			.setPApplicationInfo(&appInfo);
+
 		VulkanCore::GetInstance().SetInstance(vk::createInstance(createInfo));
 	}
 
@@ -371,6 +401,9 @@ namespace OWC::Graphics
 			return { false, 0 };
 
 		if (!IsExtentionAvailable(supportedExtensions, vk::KHRMaintenance1ExtensionName))
+			return { false, 0 };
+
+		if (!IsExtentionAvailable(supportedExtensions, vk::KHRShaderDrawParametersExtensionName))
 			return { false, 0 };
 
 		return { true, score };
@@ -461,9 +494,10 @@ namespace OWC::Graphics
 
 	void VulkanContext::CreateLogicalDevice(QueueFamilyIndices& indices)
 	{
-		const std::array<const char*, 2> deviceExtensions = {
+		const std::array<const char*, 3> deviceExtensions = {
 			vk::KHRSwapchainExtensionName,
-			vk::KHRMaintenance1ExtensionName
+			vk::KHRMaintenance1ExtensionName,
+			vk::KHRShaderDrawParametersExtensionName
 		};
 
 		std::map<uint32_t, std::pair<uint32_t, std::vector<float>>> uniqueQueueFamiliesMap;
@@ -540,12 +574,12 @@ namespace OWC::Graphics
 		std::vector<vk::SurfaceFormatKHR> surfaceFormats = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceFormatsKHR(VulkanCore::GetConstInstance().GetSurface());
 		if (surfaceFormats.empty())
 			Log<LogLevel::Critical>("Failed to find any surface formats for the swapchain");
-		
-		vk::Format format = (surfaceFormats[0].format == vk::Format::eUndefined) ? vk::Format::eR8G8B8A8Unorm : surfaceFormats[0].format;
+
+		VulkanCore::GetInstance().SetSwapchainImageFormat((surfaceFormats[0].format == vk::Format::eUndefined) ? vk::Format::eR8G8B8A8Unorm : surfaceFormats[0].format);
 		vk::ColorSpaceKHR colorSpace = surfaceFormats[0].colorSpace;
 
 		Log<LogLevel::Debug>("Vulkan Swapchain Surface Format selected:");
-		Log<LogLevel::Debug>(" Format: {}", vk::to_string(format));
+		Log<LogLevel::Debug>(" Format: {}", vk::to_string(VulkanCore::GetConstInstance().GetSwapchainImageFormat()));
 		Log<LogLevel::Debug>(" Color Space: {}", vk::to_string(colorSpace));
 
 		vk::SurfaceCapabilities2KHR surfaceCapabilities = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceCapabilities2KHR(VulkanCore::GetConstInstance().GetSurface());
@@ -585,7 +619,7 @@ namespace OWC::Graphics
 		swapchainCreateInfo
 			.setSurface(VulkanCore::GetConstInstance().GetSurface())
 			.setMinImageCount(surfaceCapabilities.surfaceCapabilities.minImageCount + 1)
-			.setImageFormat(format)
+			.setImageFormat(VulkanCore::GetConstInstance().GetSwapchainImageFormat())
 			.setImageColorSpace(colorSpace)
 			.setImageExtent(swapchainExtent)
 			.setImageArrayLayers(1)
@@ -594,7 +628,7 @@ namespace OWC::Graphics
 			.setPreTransform(preTransform)
 			.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
 			.setPresentMode(selectedPresentMode)
-			.setClipped(VK_TRUE);
+			.setClipped(vk::True);
 
 		if (queueFamilyIndices.uniqueIndices.size() > 1)
 			swapchainCreateInfo
@@ -618,7 +652,7 @@ namespace OWC::Graphics
 			imageViewCreateInfo
 				.setImage(image)
 				.setViewType(vk::ImageViewType::e2D)
-				.setFormat(format)
+				.setFormat(VulkanCore::GetConstInstance().GetSwapchainImageFormat())
 				.setComponents(
 					vk::ComponentMapping()
 					.setR(vk::ComponentSwizzle::eIdentity)
@@ -637,5 +671,39 @@ namespace OWC::Graphics
 		}
 
 		Log<LogLevel::NewLine>();
+	}
+
+	void VulkanContext::CreateRenderPass()
+	{
+		vk::AttachmentDescription colorAttachment{};
+		colorAttachment
+			.setFormat(VulkanCore::GetConstInstance().GetSwapchainImageFormat())
+			.setSamples(vk::SampleCountFlagBits::e1)
+			.setLoadOp(vk::AttachmentLoadOp::eClear)
+			.setStoreOp(vk::AttachmentStoreOp::eStore)
+			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
+			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
+
+		vk::AttachmentReference colorAttachmentRef{};
+		colorAttachmentRef
+			.setAttachment(0)
+			.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
+
+		vk::SubpassDescription subpass{};
+		subpass
+			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
+			.setColorAttachmentCount(1)
+			.setPColorAttachments(&colorAttachmentRef);
+
+		vk::RenderPassCreateInfo renderPassInfo{};
+		renderPassInfo
+			.setAttachmentCount(1)
+			.setPAttachments(&colorAttachment)
+			.setSubpassCount(1)
+			.setPSubpasses(&subpass);
+
+		VulkanCore::GetInstance().SetRenderPass(VulkanCore::GetConstInstance().GetDevice().createRenderPass(renderPassInfo));
 	}
 }

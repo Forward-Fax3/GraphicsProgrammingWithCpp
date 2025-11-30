@@ -1,4 +1,4 @@
-#include "SDL3/SDL.h"
+﻿#include "SDL3/SDL.h"
 
 #include "Window.hpp"
 
@@ -37,6 +37,10 @@ namespace OWC
 	{
 		PollEvents();
 		m_GraphicsContext->SwapPresentImage();
+
+#ifndef DIST
+		m_GraphicsContext->FlushValidationMessages();
+#endif
 	}
 
 	bool Window::Resize(int width, int height)

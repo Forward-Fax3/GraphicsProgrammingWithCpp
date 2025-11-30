@@ -1,9 +1,10 @@
-#include "Application.hpp"
+﻿#include "Application.hpp"
 #include "BaseEvent.hpp"
 #include "WindowCloseEvent.hpp"
 #include "WindowResize.hpp"
 #include "Renderer.hpp"
 #include "Log.hpp"
+#include "TestLayer.hpp"
 
 
 namespace OWC
@@ -28,10 +29,12 @@ namespace OWC
 		m_Window->SetEventCallback([](BaseEvent& e) { s_Instance->OnEvent(e); });
 		Renderer::Init();
 		m_LayerStack = std::make_unique<LayerStack>();
+		PushLayer(std::make_shared<TestLayer>());
 	}
 
 	Application::~Application()
 	{
+		m_Shader.reset();
 		m_LayerStack->ClearLayers();
 		m_LayerStack.reset();
 		Renderer::Shutdown();

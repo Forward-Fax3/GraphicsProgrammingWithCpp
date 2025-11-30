@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <memory>
 
 #include <SDL3/SDL_video.h>
@@ -21,6 +21,9 @@ namespace OWC::Graphics
 		virtual void SwapPresentImage() = 0;
 
 		virtual void WaitForIdle() = 0;
+#ifndef DIST
+		virtual void FlushValidationMessages() = 0;
+#endif
 
 		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle);
 

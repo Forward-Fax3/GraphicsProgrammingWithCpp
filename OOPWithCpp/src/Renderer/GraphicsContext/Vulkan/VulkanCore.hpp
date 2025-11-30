@@ -70,8 +70,10 @@ namespace OWC::Graphics
 		[[nodiscard]] inline const vk::Queue& GetComputeQueue() const { return m_ComputeQueue; }
 		[[nodiscard]] inline const vk::Queue& GetTransferQueue() const { return m_TransferQueue; }
 		[[nodiscard]] inline const vk::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
+		[[nodiscard]] inline const vk::Format& GetSwapchainImageFormat() const { return m_SwapchainImageFormat; }
 		[[nodiscard]] inline const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
 		[[nodiscard]] inline const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
+		[[nodiscard]] inline const vk::RenderPass& GetRenderPass() const { return m_RenderPass; }
 
 		[[nodiscard]] inline std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
 		[[nodiscard]] inline std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
@@ -84,9 +86,11 @@ namespace OWC::Graphics
 		inline void SetGraphicsQueue(const vk::Queue& graphicsQueue) { m_GraphicsQueue = graphicsQueue; }
 		inline void SetComputeQueue(const vk::Queue& computeQueue) { m_ComputeQueue = computeQueue; }
 		inline void SetTransferQueue(const vk::Queue& transferQueue) { m_TransferQueue = transferQueue; }
+		inline void SetSwapchainImageFormat(const vk::Format& format) { m_SwapchainImageFormat = format; }
 		inline void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
 		inline void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
 		inline void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
+		inline void SetRenderPass(const vk::RenderPass& renderPass) { m_RenderPass = renderPass; }
 
 	private:
 		vk::Instance m_Instance = vk::Instance();
@@ -98,8 +102,10 @@ namespace OWC::Graphics
 		vk::Queue m_ComputeQueue = vk::Queue();
 		vk::Queue m_TransferQueue = vk::Queue();
 		vk::SwapchainKHR m_Swapchain = vk::SwapchainKHR();
+		vk::Format m_SwapchainImageFormat = vk::Format::eUndefined;
 		std::vector<vk::Image> m_SwapchainImages = {};
 		std::vector<vk::ImageView> m_SwapchainImageViews = {};
+		vk::RenderPass m_RenderPass = vk::RenderPass();
 
 		static std::unique_ptr<VulkanCore> s_Instance;
 	};

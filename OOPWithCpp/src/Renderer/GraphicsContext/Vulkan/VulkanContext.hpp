@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "GraphicsContext.hpp"
 #include <vulkan/vulkan.hpp>
 
@@ -37,6 +37,9 @@ namespace OWC::Graphics
 		void FinishRender() override;
 		void SwapPresentImage() override;
 		void WaitForIdle() override;
+#ifndef DIST
+		void FlushValidationMessages() override;
+#endif
 
 	private:
 		void StartInstance();
@@ -51,6 +54,7 @@ namespace OWC::Graphics
 		void GetAndStoreGlobalQueueFamilies(const QueueFamilyIndices& indices);
 		void CreateLogicalDevice(QueueFamilyIndices& indices);
 		void SetupSwapchain(const QueueFamilyIndices& queueFamilyIndices);
+		void CreateRenderPass();
 
 	private:
 #ifndef DIST

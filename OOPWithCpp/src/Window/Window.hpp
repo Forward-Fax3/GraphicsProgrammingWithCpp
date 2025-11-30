@@ -32,6 +32,9 @@ namespace OWC
 		Graphics::GraphicsContext& GetGraphicsContext() const { return *m_GraphicsContext; }
 		std::weak_ptr<Graphics::GraphicsContext> GetGraphicsContextPtr() const { return m_GraphicsContext; }
 
+		int GetWidth() const { return m_Properties.Width; }
+		int GetHeight() const { return m_Properties.Height; }
+
 	private:
 		void PollEvents() const;
 
