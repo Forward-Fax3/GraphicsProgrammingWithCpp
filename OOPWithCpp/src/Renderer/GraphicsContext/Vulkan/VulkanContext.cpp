@@ -178,13 +178,13 @@ namespace OWC::Graphics
 #endif
 			SurfaceInit(windowHandle);
 			SelectPhysicalDevice();
-			auto queueFamilyIndices = FindQueueFamilies();
-			CreateLogicalDevice(queueFamilyIndices);
-			GetAndStoreGlobalQueueFamilies(queueFamilyIndices);
-			SetupSwapchain(queueFamilyIndices);
+			FindQueueFamilies();
+			CreateLogicalDevice();
+			GetAndStoreGlobalQueueFamilies();
+			CreateSwapchain();
 			CreateRenderPass();
-			CreateFramebuffers();
-			CreateCommandPools(queueFamilyIndices);
+			CreateFramebuffers(1920, 1080);
+			CreateCommandPools();
 		}
 		catch (const vk::SystemError& err)
 		{
@@ -220,15 +220,9 @@ namespace OWC::Graphics
 		vkCore.GetDevice().destroyCommandPool(vkCore.GetComputeCommandPool());
 		vkCore.GetDevice().destroyCommandPool(vkCore.GetTransferCommandPool());
 
-		for (const auto& frameBuffer : vkCore.GetSwapchainFramebuffers())
-			vkCore.GetDevice().destroyFramebuffer(frameBuffer);
+		DestroySwapchain();
 
 		vkCore.GetDevice().destroyRenderPass(vkCore.GetRenderPass());
-
-		for (const auto& imageView : vkCore.GetSwapchainImageViews())
-			vkCore.GetDevice().destroyImageView(imageView);
-
-		vkCore.GetDevice().destroySwapchainKHR(vkCore.GetSwapchain());
 		SDL_Vulkan_DestroySurface(vkCore.GetVKInstance(), vkCore.GetSurface(), nullptr);
 		vkCore.GetDevice().destroy();
 #ifndef DIST
@@ -264,7 +258,7 @@ namespace OWC::Graphics
 
 		if (result != vk::Result::eSuccess)
 		{
-			Log<LogLevel::Error>("error");
+			RecreateSwapchain();
 		}
 	}
 
@@ -448,90 +442,87 @@ namespace OWC::Graphics
 		return { true, score };
 	}
 
-	VulkanContext::QueueFamilyIndices VulkanContext::FindQueueFamilies()
+	void VulkanContext::FindQueueFamilies()
 	{
 		auto queueFamilies = VulkanCore::GetConstInstance().GetPhysicalDev().getQueueFamilyProperties();
 		constexpr uint32_t indexMax = std::numeric_limits<uint32_t>::max();
-		QueueFamilyIndices indices;
 
 		for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilies.size()); i++) // try to find all queue families in one loop and have different queue families if possible
 		{
-			if (indices.PresentFamily == indexMax &&
+			if (m_QueueFamilyIndices.PresentFamily == indexMax &&
 				VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceSupportKHR(i, VulkanCore::GetConstInstance().GetSurface()))
-				indices.PresentFamily = i;
+				m_QueueFamilyIndices.PresentFamily = i;
 
-			if (indices.GraphicsFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
-				indices.GraphicsFamily = i;
+			if (m_QueueFamilyIndices.GraphicsFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics)
+				m_QueueFamilyIndices.GraphicsFamily = i;
 
 			// prefer a dedicated compute queue family
-			else if (indices.ComputeFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
-				indices.ComputeFamily = i;
+			else if (m_QueueFamilyIndices.ComputeFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
+				m_QueueFamilyIndices.ComputeFamily = i;
 
 			// prefer a dedicated transfer queue family
-			else if (indices.TransferFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer
+			else if (m_QueueFamilyIndices.TransferFamily == indexMax && (queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer
 				&& (queueFamilies[i].queueFlags & vk::QueueFlags(vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute)) == vk::QueueFlags(0))
-				indices.TransferFamily = i;
+				m_QueueFamilyIndices.TransferFamily = i;
 
 			// break early if all found
-			if (indices.FoundAll())
+			if (m_QueueFamilyIndices.FoundAll())
 				break;
 		}
 
-		CheckQueueFamilyValidity(queueFamilies, indices);
+		CheckQueueFamilyValidity(queueFamilies);
 
 		Log<LogLevel::Debug>("Vulkan Queue Families found:");
-		Log<LogLevel::Debug>(" Present Queue Family Index: {}", indices.PresentFamily);
-		Log<LogLevel::Debug>(" Graphics Queue Family Index: {}", indices.GraphicsFamily);
-		Log<LogLevel::Debug>(" Compute Queue Family Index: {}", indices.ComputeFamily);
-		Log<LogLevel::Debug>(" Transfer Queue Family Index: {}", indices.TransferFamily);
+		Log<LogLevel::Debug>(" Present Queue Family Index: {}", m_QueueFamilyIndices.PresentFamily);
+		Log<LogLevel::Debug>(" Graphics Queue Family Index: {}", m_QueueFamilyIndices.GraphicsFamily);
+		Log<LogLevel::Debug>(" Compute Queue Family Index: {}", m_QueueFamilyIndices.ComputeFamily);
+		Log<LogLevel::Debug>(" Transfer Queue Family Index: {}", m_QueueFamilyIndices.TransferFamily);
 		Log<LogLevel::NewLine>();
-
-		return indices;
 	}
 
-	void VulkanContext::CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties> queueFamilies, QueueFamilyIndices& indices)
+	void VulkanContext::CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties> queueFamilies)
 	{
 		constexpr uint32_t indexMax = std::numeric_limits<uint32_t>::max();
 
-		if (indices.PresentFamily == indexMax)
+		if (m_QueueFamilyIndices.PresentFamily == indexMax)
 			Log<LogLevel::Critical>("Failed to find a valid present queue family index");
-		else if (indices.GraphicsFamily == indexMax)
+		else if (m_QueueFamilyIndices.GraphicsFamily == indexMax)
 			Log<LogLevel::Critical>("Failed to find a valid graphics queue family index");
-		else if (indices.ComputeFamily == indexMax) // check if compute queue family is found, otherwise find any even if it shares with others
+		else if (m_QueueFamilyIndices.ComputeFamily == indexMax) // check if compute queue family is found, otherwise find any even if it shares with others
 		{
 			Log<LogLevel::Warn>("Failed to find a unique compute queue family index, any compute queue will be searched for now");
 
 			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilies.size()); i++)
 				if ((queueFamilies[i].queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute)
 				{
-					indices.ComputeFamily = i;
+					m_QueueFamilyIndices.ComputeFamily = i;
 					break;
 				}
 		}
 
-		if (indices.ComputeFamily == indexMax)
+		if (m_QueueFamilyIndices.ComputeFamily == indexMax)
 			Log<LogLevel::Critical>("Failed to find a valid compute queue family index");
-		else if (indices.TransferFamily == indexMax) // check if transfer queue family is found, otherwise find any even if it shares with others
+		else if (m_QueueFamilyIndices.TransferFamily == indexMax) // check if transfer queue family is found, otherwise find any even if it shares with others
 		{
 			Log<LogLevel::Trace>("Failed to find a unique transfer queue family index, any transfer queue will be searched for now");
 
 			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilies.size()); i++)
 				if ((queueFamilies[i].queueFlags & vk::QueueFlagBits::eTransfer) == vk::QueueFlagBits::eTransfer)
 				{
-					indices.TransferFamily = i;
+					m_QueueFamilyIndices.TransferFamily = i;
 					break;
 				}
 		}
 
 		// if still not found, use graphics queue family
-		if (indices.TransferFamily == indexMax)
+		if (m_QueueFamilyIndices.TransferFamily == indexMax)
 		{
 			Log<LogLevel::Trace>("Failed to find a transfer queue bit in any family index, graphics queue family will be used implicitly instead");
-			indices.TransferFamily = indices.GraphicsFamily;
+			m_QueueFamilyIndices.TransferFamily = m_QueueFamilyIndices.GraphicsFamily;
 		}
 	}
 
-	void VulkanContext::CreateLogicalDevice(QueueFamilyIndices& indices)
+	void VulkanContext::CreateLogicalDevice()
 	{
 		const std::array<const char*, 3> deviceExtensions = {
 			vk::KHRSwapchainExtensionName,
@@ -541,7 +532,7 @@ namespace OWC::Graphics
 
 		std::map<uint32_t, std::pair<uint32_t, std::vector<float>>> uniqueQueueFamiliesMap;
 
-		for (const auto& index : { indices.GraphicsFamily, indices.ComputeFamily, indices.TransferFamily })
+		for (const auto& index : { m_QueueFamilyIndices.GraphicsFamily, m_QueueFamilyIndices.ComputeFamily, m_QueueFamilyIndices.TransferFamily })
 		{
 			if (!uniqueQueueFamiliesMap.contains(index))
 				uniqueQueueFamiliesMap[index].first = 1;
@@ -552,10 +543,10 @@ namespace OWC::Graphics
 		}
 
 		// ensure present family is also included if it is in its own queue family
-		if (!uniqueQueueFamiliesMap.contains(indices.PresentFamily))
+		if (!uniqueQueueFamiliesMap.contains(m_QueueFamilyIndices.PresentFamily))
 		{
-			uniqueQueueFamiliesMap[indices.PresentFamily].first = 1;
-			uniqueQueueFamiliesMap[indices.PresentFamily].second.push_back(1.0f);
+			uniqueQueueFamiliesMap[m_QueueFamilyIndices.PresentFamily].first = 1;
+			uniqueQueueFamiliesMap[m_QueueFamilyIndices.PresentFamily].second.push_back(1.0f);
 		}
 
 		std::vector<vk::DeviceQueueCreateInfo> deviceQueueCreateInfos;
@@ -579,12 +570,12 @@ namespace OWC::Graphics
 			)
 		);
 
-		indices.uniqueIndices.reserve(uniqueQueueFamiliesMap.size());
+		m_QueueFamilyIndices.uniqueIndices.reserve(uniqueQueueFamiliesMap.size());
 		for (const auto& familyIndex : std::views::keys(uniqueQueueFamiliesMap))
-			indices.uniqueIndices.emplace_back(familyIndex);
+			m_QueueFamilyIndices.uniqueIndices.emplace_back(familyIndex);
 	}
 
-	void VulkanContext::GetAndStoreGlobalQueueFamilies(const QueueFamilyIndices& indices)
+	void VulkanContext::GetAndStoreGlobalQueueFamilies()
 	{
 		std::map<uint32_t, uint32_t> queueFamilyUsageCount;
 
@@ -595,19 +586,19 @@ namespace OWC::Graphics
 			return VulkanCore::GetConstInstance().GetDevice().getQueue(familyIndex, queueFamilyUsageCount[familyIndex]++);
 		};
 		
-		VulkanCore::GetInstance().SetGraphicsQueue(l_getQueue(indices.GraphicsFamily));
-		VulkanCore::GetInstance().SetComputeQueue(l_getQueue(indices.ComputeFamily));
-		VulkanCore::GetInstance().SetTransferQueue(l_getQueue(indices.TransferFamily));
+		VulkanCore::GetInstance().SetGraphicsQueue(l_getQueue(m_QueueFamilyIndices.GraphicsFamily));
+		VulkanCore::GetInstance().SetComputeQueue(l_getQueue(m_QueueFamilyIndices.ComputeFamily));
+		VulkanCore::GetInstance().SetTransferQueue(l_getQueue(m_QueueFamilyIndices.TransferFamily));
 
-		if (queueFamilyUsageCount.contains(indices.PresentFamily))
+		if (queueFamilyUsageCount.contains(m_QueueFamilyIndices.PresentFamily))
 			VulkanCore::GetInstance().SetPresentQueue(
-				VulkanCore::GetConstInstance().GetDevice().getQueue(indices.PresentFamily, 0)
+				VulkanCore::GetConstInstance().GetDevice().getQueue(m_QueueFamilyIndices.PresentFamily, 0)
 			);
 		else
-			VulkanCore::GetInstance().SetPresentQueue(l_getQueue(indices.PresentFamily));
+			VulkanCore::GetInstance().SetPresentQueue(l_getQueue(m_QueueFamilyIndices.PresentFamily));
 	}
 
-	void VulkanContext::SetupSwapchain(const QueueFamilyIndices& queueFamilyIndices)
+	void VulkanContext::CreateSwapchain()
 	{
 		vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
 		std::vector<vk::SurfaceFormatKHR> surfaceFormats = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceFormatsKHR(VulkanCore::GetConstInstance().GetSurface());
@@ -669,11 +660,11 @@ namespace OWC::Graphics
 			.setPresentMode(selectedPresentMode)
 			.setClipped(vk::True);
 
-		if (queueFamilyIndices.uniqueIndices.size() > 1)
+		if (m_QueueFamilyIndices.uniqueIndices.size() > 1)
 			swapchainCreateInfo
 				.setImageSharingMode(vk::SharingMode::eConcurrent)
-				.setQueueFamilyIndexCount(static_cast<uint32_t>(queueFamilyIndices.uniqueIndices.size()))
-				.setPQueueFamilyIndices(queueFamilyIndices.uniqueIndices.data());
+				.setQueueFamilyIndexCount(static_cast<uint32_t>(m_QueueFamilyIndices.uniqueIndices.size()))
+				.setPQueueFamilyIndices(m_QueueFamilyIndices.uniqueIndices.data());
 
 		VulkanCore::GetInstance().SetSwapchain(VulkanCore::GetConstInstance().GetDevice().createSwapchainKHR(swapchainCreateInfo));
 
@@ -712,7 +703,7 @@ namespace OWC::Graphics
 		Log<LogLevel::NewLine>();
 	}
 
-	void VulkanContext::CreateFramebuffers()
+	void VulkanContext::CreateFramebuffers(uint32_t width, uint32_t height)
 	{
 		std::vector<vk::Framebuffer>& swapchainFramebuffers = VulkanCore::GetInstance().GetSwapchainFramebuffers();
 		swapchainFramebuffers.reserve(VulkanCore::GetConstInstance().GetSwapchainImageViews().size());
@@ -723,8 +714,8 @@ namespace OWC::Graphics
 					.setRenderPass(VulkanCore::GetConstInstance().GetRenderPass())
 					.setAttachmentCount(1)
 					.setPAttachments(&imageView)
-					.setWidth(1920)
-					.setHeight(1080)
+					.setWidth(width)
+					.setHeight(height)
 					.setLayers(1)
 				)
 			);
@@ -764,12 +755,12 @@ namespace OWC::Graphics
 		VulkanCore::GetInstance().SetRenderPass(VulkanCore::GetConstInstance().GetDevice().createRenderPass(renderPassInfo));
 	}
 
-	void VulkanContext::CreateCommandPools(QueueFamilyIndices& indices)
+	void VulkanContext::CreateCommandPools() const
 	{
 		VulkanCore::GetInstance().SetGraphicsCommandPool(
 			VulkanCore::GetConstInstance().GetDevice().createCommandPool(
 				vk::CommandPoolCreateInfo()
-				.setQueueFamilyIndex(indices.GraphicsFamily)
+				.setQueueFamilyIndex(m_QueueFamilyIndices.GraphicsFamily)
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 			)
 		);
@@ -777,7 +768,7 @@ namespace OWC::Graphics
 		VulkanCore::GetInstance().SetComputeCommandPool(
 			VulkanCore::GetConstInstance().GetDevice().createCommandPool(
 				vk::CommandPoolCreateInfo()
-				.setQueueFamilyIndex(indices.ComputeFamily)
+				.setQueueFamilyIndex(m_QueueFamilyIndices.ComputeFamily)
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 			)
 		);
@@ -785,9 +776,33 @@ namespace OWC::Graphics
 		VulkanCore::GetInstance().SetTransferCommandPool(
 			VulkanCore::GetConstInstance().GetDevice().createCommandPool(
 				vk::CommandPoolCreateInfo()
-				.setQueueFamilyIndex(indices.TransferFamily)
+				.setQueueFamilyIndex(m_QueueFamilyIndices.TransferFamily)
 				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 			)
 		);
+	}
+
+	void VulkanContext::DestroySwapchain()
+	{
+		const auto& vkCore = VulkanCore::GetConstInstance();
+
+		for (const auto& frameBuffer : vkCore.GetSwapchainFramebuffers())
+			vkCore.GetDevice().destroyFramebuffer(frameBuffer);
+
+		for (const auto& imageView : vkCore.GetSwapchainImageViews())
+			vkCore.GetDevice().destroyImageView(imageView);
+
+		vkCore.GetDevice().destroySwapchainKHR(vkCore.GetSwapchain());
+	}
+
+	void VulkanContext::RecreateSwapchain()
+	{
+		const auto& app = Application::GetConstInstance();
+		DestroySwapchain();
+		VulkanCore::GetInstance().GetSwapchainImages().clear();
+		VulkanCore::GetInstance().GetSwapchainImageViews().clear();
+		VulkanCore::GetInstance().GetSwapchainFramebuffers().clear();
+		CreateSwapchain();
+		CreateFramebuffers(app.GetWindowWidth(), app.GetWindowHeight());
 	}
 }

@@ -49,18 +49,23 @@ namespace OWC::Graphics
 		void SurfaceInit(SDL_Window& windowHandle);
 		void SelectPhysicalDevice();
 		std::pair<bool, uint32_t> IsPhysicalDeviceSuitable(const vk::PhysicalDevice& device);
-		QueueFamilyIndices FindQueueFamilies();
-		void CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties> queueFamilies, QueueFamilyIndices& indices);
-		void GetAndStoreGlobalQueueFamilies(const QueueFamilyIndices& indices);
-		void CreateLogicalDevice(QueueFamilyIndices& indices);
-		void SetupSwapchain(const QueueFamilyIndices& queueFamilyIndices);
-		void CreateFramebuffers();
+		void FindQueueFamilies();
+		void CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties> queueFamilies);
+		void GetAndStoreGlobalQueueFamilies();
+		void CreateLogicalDevice();
+		void CreateSwapchain();
+		void CreateFramebuffers(uint32_t width, uint32_t height);
 		void CreateRenderPass();
-		void CreateCommandPools(QueueFamilyIndices& indices);
+		void CreateCommandPools() const;
+
+		void DestroySwapchain();
+
+		void RecreateSwapchain();
 
 	private:
 #ifndef DIST
 		vk::DebugUtilsMessengerEXT m_DebugCallback{};
 #endif
+		QueueFamilyIndices m_QueueFamilyIndices{};
 	};
 }
