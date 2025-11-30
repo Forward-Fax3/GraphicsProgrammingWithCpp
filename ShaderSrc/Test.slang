@@ -1,9 +1,10 @@
 struct VertexData
 {
 	static float2[] data = {
-		{0.0, -0.5},
-		{0.5, 0.5},
-		{-0.5, 0.5}
+		{-0.5,  0.5},
+        { 0.5, -0.5},
+		{-0.5, -0.5},
+		{ 0.5,  0.5}
 	};
 };
 
@@ -27,7 +28,7 @@ VertexStageOutput vertexMain(uint VetexIndex : SV_VertexID)
 //    float3 color    = assembledVertex.color;
 
 //    output.coarseVertex.color = color;
-    output.sv_position = float4(VertexData.data[VetexIndex], 1.0);
+    output.sv_position = float4(VertexData.data[VetexIndex % 4], 1.0);
 
     return output;
 }

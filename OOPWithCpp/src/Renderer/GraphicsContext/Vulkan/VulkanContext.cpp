@@ -195,7 +195,10 @@ namespace OWC::Graphics
 			Log<LogLevel::Critical>("Vulkan Context initialization failed: {}", ex.what());
 		}
 
-		VulkanCore::GetInstance().IncrementCurrentFrameIndex();
+		vk::Result result = VulkanCore::GetInstance().IncrementCurrentFrameIndex();
+
+		if (result != vk::Result::eSuccess)
+			Log<LogLevel::Critical>("VulkanContext::VulkanContext: Failed to acquire initial swapchain image!");
 
 #ifndef DIST 
 		// flush any logged messages during initialization
@@ -256,15 +259,36 @@ namespace OWC::Graphics
 			.setPImageIndices(&indices)
 		);
 
-		if (result != vk::Result::eSuccess)
+		size_t retryCount = 0;
+		while (result != vk::Result::eSuccess)
 		{
+			if (retryCount++ >= 3)
+				Log<LogLevel::Critical>("VulkanContext::FinishRender: Failed to present image after 3 retries.");
+
 			RecreateSwapchain();
+
+			result = VulkanCore::GetConstInstance().GetPresentQueue().presentKHR(
+				vk::PresentInfoKHR()
+				.setSwapchains(vkCore.GetSwapchain())
+				.setSwapchainCount(1)
+				.setPImageIndices(&indices)
+			);
 		}
 	}
 
 	void VulkanContext::SwapPresentImage()
 	{
-		VulkanCore::GetInstance().IncrementCurrentFrameIndex();
+		vk::Result result = VulkanCore::GetInstance().IncrementCurrentFrameIndex();
+		size_t retryCount = 0;
+
+		while (result != vk::Result::eSuccess)
+		{
+			if (retryCount++ >= 3)
+				Log<LogLevel::Critical>("VulkanContext::SwapPresentImage: Failed to acquire next image after 3 retries.");
+
+			RecreateSwapchain();
+			result = VulkanCore::GetInstance().IncrementCurrentFrameIndex();
+		}
 	}
 
 #ifndef DIST
@@ -798,10 +822,12 @@ namespace OWC::Graphics
 	void VulkanContext::RecreateSwapchain()
 	{
 		const auto& app = Application::GetConstInstance();
+		auto& vkCore = VulkanCore::GetInstance();
+		WaitForIdle();
 		DestroySwapchain();
-		VulkanCore::GetInstance().GetSwapchainImages().clear();
-		VulkanCore::GetInstance().GetSwapchainImageViews().clear();
-		VulkanCore::GetInstance().GetSwapchainFramebuffers().clear();
+		vkCore.GetSwapchainImages().clear();
+		vkCore.GetSwapchainImageViews().clear();
+		vkCore.GetSwapchainFramebuffers().clear();
 		CreateSwapchain();
 		CreateFramebuffers(app.GetWindowWidth(), app.GetWindowHeight());
 	}

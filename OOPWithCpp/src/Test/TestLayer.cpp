@@ -38,7 +38,7 @@ namespace OWC
 		// TODO: Move this to Renderer instead of it being done it vkCore
 		const Graphics::VulkanCore& vkCore = Graphics::VulkanCore::GetConstInstance();
 		vkCore.BeginRenderPass(m_CommandBuffer, m_Shader->GetPipeline());
-		m_CommandBuffer.draw(3, 1, 0, 0);
+		m_CommandBuffer.draw(6, 1, 0, 0);
 		vkCore.EndRenderPass(m_CommandBuffer);
 		vkCore.SubmitGraphicsCommandBuffer(m_CommandBuffer);
 	}

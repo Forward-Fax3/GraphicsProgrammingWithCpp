@@ -35,13 +35,12 @@ namespace OWC
 
 	void Window::Update() const
 	{
+		PollEvents();
 		m_GraphicsContext->SwapPresentImage();
 
 #ifndef DIST
 		m_GraphicsContext->FlushValidationMessages();
 #endif
-
-		PollEvents();
 	}
 
 	bool Window::Resize(int width, int height)

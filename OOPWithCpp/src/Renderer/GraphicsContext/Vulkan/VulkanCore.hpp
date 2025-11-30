@@ -115,19 +115,23 @@ namespace OWC::Graphics
 		inline void SetSwapchainFramebuffers(const std::vector<vk::Framebuffer>& swapchainFramebuffers) { m_SwapchainFramebuffers = swapchainFramebuffers; }
 		inline void SetRenderPass(const vk::RenderPass& renderPass) { m_RenderPass = renderPass; }
 
-		inline void IncrementCurrentFrameIndex()
+		[[nodiscard]] inline vk::Result IncrementCurrentFrameIndex()
 		{
 			if (m_ImageAvailableSemaphore)
 				m_Device.destroySemaphore(m_ImageAvailableSemaphore);
 
 			m_ImageAvailableSemaphore = m_Device.createSemaphore(vk::SemaphoreCreateInfo());
-			m_CurrentFrameIndex = m_Device.acquireNextImage2KHR(
+			auto result = m_Device.acquireNextImage2KHR(
 				vk::AcquireNextImageInfoKHR()
 				.setSwapchain(m_Swapchain)
 				.setSemaphore(m_ImageAvailableSemaphore)
 				.setTimeout(16'666)
 				.setDeviceMask(1)
-			).value;
+			);
+
+			m_CurrentFrameIndex = result.value;
+
+			return result.result;
 		}
 
 	private:
