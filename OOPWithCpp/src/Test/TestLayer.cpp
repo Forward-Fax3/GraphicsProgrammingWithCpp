@@ -1,6 +1,7 @@
 ﻿#include "TestLayer.hpp"
 #include "Log.hpp"
 #include "LoadFile.hpp"
+#include "VulkanCore.hpp"
 
 
 namespace OWC
@@ -21,10 +22,25 @@ namespace OWC
 		};
 
 		m_Shader = Graphics::BaseShader::CreateShader(shaderDatas);
+
+		m_CommandBuffer = Graphics::VulkanCore::GetInstance().GetGraphicsCommandBuffer();
+	}
+
+	TestLayer::~TestLayer()
+	{
+		Graphics::VulkanCore::GetInstance().GetDevice().freeCommandBuffers(
+			Graphics::VulkanCore::GetInstance().GetGraphicsCommandPool(),
+			m_CommandBuffer);
 	}
 
 	void TestLayer::OnUpdate()
 	{
+		// TODO: Move this to Renderer instead of it being done it vkCore
+		const Graphics::VulkanCore& vkCore = Graphics::VulkanCore::GetConstInstance();
+		vkCore.BeginRenderPass(m_CommandBuffer, m_Shader->GetPipeline());
+		m_CommandBuffer.draw(3, 1, 0, 0);
+		vkCore.EndRenderPass(m_CommandBuffer);
+		vkCore.SubmitGraphicsCommandBuffer(m_CommandBuffer);
 	}
 
 	void TestLayer::ImGuiRender()

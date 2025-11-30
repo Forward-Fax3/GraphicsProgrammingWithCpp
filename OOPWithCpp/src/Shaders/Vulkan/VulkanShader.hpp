@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "BaseShader.hpp"
 
 #include <string>
@@ -27,8 +27,7 @@ namespace OWC::Graphics
 		VulkanShader(VulkanShader&&) noexcept = default;
 		VulkanShader& operator=(VulkanShader&&) noexcept = default;
 
-		void Bind() const override;
-		void Unbind() const override;
+		[[nodiscard]] vk::Pipeline GetPipeline() const override { return m_Pipeline; }
 
 	private:
 		void CreateVulkanPipeline(const std::vector<VulkanShaderData>& vulkanShaderDatas);

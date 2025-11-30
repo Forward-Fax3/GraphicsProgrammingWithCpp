@@ -7,6 +7,7 @@
 #include <vulkan/vulkan_to_string.hpp>
 #include <SDL3/SDL_vulkan.h>
 
+#include "Application.hpp"
 #include "VulkanContext.hpp"
 #include "VulkanCore.hpp"
 #include "Log.hpp"
@@ -125,9 +126,18 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 	else if (firstMessage)
 	{
 		s_MessagesLogged.emplace_back(std::move(str));
-		lastMessageID = pCallbackData->messageIdNumber;
-		lastMessageSeverity = messageSeverity;
-		firstMessage = false;
+
+		if (messageSeverity & vk::DebugUtilsMessageSeverityFlagBitsEXT::eError)
+		{
+			PrintVulkanDebugMessages(messageSeverity, s_MessagesLogged);
+			s_MessagesLogged.clear();
+		}
+		else
+		{
+			lastMessageID = pCallbackData->messageIdNumber;
+			lastMessageSeverity = messageSeverity;
+			firstMessage = false;
+		}
 	}
 	else
 	{
@@ -173,6 +183,8 @@ namespace OWC::Graphics
 			GetAndStoreGlobalQueueFamilies(queueFamilyIndices);
 			SetupSwapchain(queueFamilyIndices);
 			CreateRenderPass();
+			CreateFramebuffers();
+			CreateCommandPools(queueFamilyIndices);
 		}
 		catch (const vk::SystemError& err)
 		{
@@ -182,6 +194,8 @@ namespace OWC::Graphics
 		{
 			Log<LogLevel::Critical>("Vulkan Context initialization failed: {}", ex.what());
 		}
+
+		VulkanCore::GetInstance().IncrementCurrentFrameIndex();
 
 #ifndef DIST 
 		// flush any logged messages during initialization
@@ -198,6 +212,16 @@ namespace OWC::Graphics
 	{
 		WaitForIdle();
 		auto& vkCore = VulkanCore::GetConstInstance();
+
+		vkCore.GetDevice().destroyFence(vkCore.GetInFlightFence());
+		vkCore.GetDevice().destroySemaphore(vkCore.GetImageAvailableSemaphore());
+
+		vkCore.GetDevice().destroyCommandPool(vkCore.GetGraphicsCommandPool());
+		vkCore.GetDevice().destroyCommandPool(vkCore.GetComputeCommandPool());
+		vkCore.GetDevice().destroyCommandPool(vkCore.GetTransferCommandPool());
+
+		for (const auto& frameBuffer : vkCore.GetSwapchainFramebuffers())
+			vkCore.GetDevice().destroyFramebuffer(frameBuffer);
 
 		vkCore.GetDevice().destroyRenderPass(vkCore.GetRenderPass());
 
@@ -226,12 +250,27 @@ namespace OWC::Graphics
 
 	void VulkanContext::FinishRender()
 	{
-		
+		const auto& vkCore = VulkanCore::GetConstInstance();
+
+		while (vkCore.GetDevice().waitForFences(vkCore.GetInFlightFence(), vk::True, 16'666) == vk::Result::eTimeout);
+
+		auto indices = static_cast<uint32_t>(vkCore.GetCurrentFrameIndex());
+		auto result = VulkanCore::GetConstInstance().GetPresentQueue().presentKHR(
+			vk::PresentInfoKHR()
+			.setSwapchains(vkCore.GetSwapchain())
+			.setSwapchainCount(1)
+			.setPImageIndices(&indices)
+		);
+
+		if (result != vk::Result::eSuccess)
+		{
+			Log<LogLevel::Error>("error");
+		}
 	}
 
 	void VulkanContext::SwapPresentImage()
 	{
-
+		VulkanCore::GetInstance().IncrementCurrentFrameIndex();
 	}
 
 #ifndef DIST
@@ -673,6 +712,24 @@ namespace OWC::Graphics
 		Log<LogLevel::NewLine>();
 	}
 
+	void VulkanContext::CreateFramebuffers()
+	{
+		std::vector<vk::Framebuffer>& swapchainFramebuffers = VulkanCore::GetInstance().GetSwapchainFramebuffers();
+		swapchainFramebuffers.reserve(VulkanCore::GetConstInstance().GetSwapchainImageViews().size());
+
+		for (const auto& imageView : VulkanCore::GetConstInstance().GetSwapchainImageViews())
+			swapchainFramebuffers.emplace_back(VulkanCore::GetConstInstance().GetDevice().createFramebuffer(
+				vk::FramebufferCreateInfo()
+					.setRenderPass(VulkanCore::GetConstInstance().GetRenderPass())
+					.setAttachmentCount(1)
+					.setPAttachments(&imageView)
+					.setWidth(1920)
+					.setHeight(1080)
+					.setLayers(1)
+				)
+			);
+	}
+
 	void VulkanContext::CreateRenderPass()
 	{
 		vk::AttachmentDescription colorAttachment{};
@@ -705,5 +762,32 @@ namespace OWC::Graphics
 			.setPSubpasses(&subpass);
 
 		VulkanCore::GetInstance().SetRenderPass(VulkanCore::GetConstInstance().GetDevice().createRenderPass(renderPassInfo));
+	}
+
+	void VulkanContext::CreateCommandPools(QueueFamilyIndices& indices)
+	{
+		VulkanCore::GetInstance().SetGraphicsCommandPool(
+			VulkanCore::GetConstInstance().GetDevice().createCommandPool(
+				vk::CommandPoolCreateInfo()
+				.setQueueFamilyIndex(indices.GraphicsFamily)
+				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+			)
+		);
+
+		VulkanCore::GetInstance().SetComputeCommandPool(
+			VulkanCore::GetConstInstance().GetDevice().createCommandPool(
+				vk::CommandPoolCreateInfo()
+				.setQueueFamilyIndex(indices.ComputeFamily)
+				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+			)
+		);
+
+		VulkanCore::GetInstance().SetTransferCommandPool(
+			VulkanCore::GetConstInstance().GetDevice().createCommandPool(
+				vk::CommandPoolCreateInfo()
+				.setQueueFamilyIndex(indices.TransferFamily)
+				.setFlags(vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+			)
+		);
 	}
 }

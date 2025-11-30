@@ -54,7 +54,9 @@ namespace OWC::Graphics
 		void GetAndStoreGlobalQueueFamilies(const QueueFamilyIndices& indices);
 		void CreateLogicalDevice(QueueFamilyIndices& indices);
 		void SetupSwapchain(const QueueFamilyIndices& queueFamilyIndices);
+		void CreateFramebuffers();
 		void CreateRenderPass();
+		void CreateCommandPools(QueueFamilyIndices& indices);
 
 	private:
 #ifndef DIST

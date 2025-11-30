@@ -39,16 +39,6 @@ namespace OWC::Graphics
 			VulkanCore::GetInstance().GetDevice().destroyShaderModule(shaderModule);
 	}
 
-	void VulkanShader::Bind() const
-	{
-
-	}
-
-	void VulkanShader::Unbind() const
-	{
-
-	}
-
 	void VulkanShader::CreateVulkanPipeline(const std::vector<VulkanShaderData>& vulkanShaderDatas)
 	{
 		Log<LogLevel::Trace>("VulkanShader::CreateVulkanPipeline: Creating Vulkan pipeline with {} shader stages.", vulkanShaderDatas.size());

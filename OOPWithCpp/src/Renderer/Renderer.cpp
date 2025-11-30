@@ -1,4 +1,4 @@
-#include "Application.hpp"
+﻿#include "Application.hpp"
 #include "Renderer.hpp"
 
 
@@ -19,6 +19,5 @@ namespace OWC
 	void Renderer::FinishRender()
 	{
 		s_GC->FinishRender();
-		s_GC->SwapPresentImage();
 	}
 };

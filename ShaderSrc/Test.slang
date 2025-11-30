@@ -1,8 +1,3 @@
-cbuffer Uniforms
-{
-    float4x4 modelViewProjection;
-}
-
 struct VertexData
 {
 	static float2[] data = {
@@ -10,11 +5,6 @@ struct VertexData
 		{0.5, 0.5},
 		{-0.5, 0.5}
 	};
-};
-
-struct CoarseVertex
-{
-//    float3 color;
 };
 
 struct Fragment
