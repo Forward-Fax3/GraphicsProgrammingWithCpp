@@ -250,9 +250,9 @@ namespace OWC::Graphics
 	{
 		auto& vkCore = VulkanCore::GetInstance();
 		auto [temp, _] = vkCore.GetRenderPassDatas();
-		std::vector<std::shared_ptr<VulkanRenderPass>>& renderPassData = temp.get();
+		std::vector<std::shared_ptr<VulkanRenderPass>>& renderPassDatas = temp.get();
 
-		for (const auto& renderPassData : renderPassData)
+		for (const auto& renderPassData : renderPassDatas)
 			while (vkCore.GetDevice().waitForFences(renderPassData->GetFence(), vk::True, 16'666) == vk::Result::eTimeout);
 
 		auto indices = static_cast<uint32_t>(vkCore.GetCurrentFrameIndex());
@@ -281,7 +281,7 @@ namespace OWC::Graphics
 			m_RenderPassNeedsRecreating = true;
 		}
 
-		renderPassData.clear();
+		renderPassDatas.clear();
 	}
 
 	void VulkanContext::SwapPresentImage()

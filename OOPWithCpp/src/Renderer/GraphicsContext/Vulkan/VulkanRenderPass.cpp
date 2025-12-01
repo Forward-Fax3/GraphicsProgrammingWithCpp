@@ -95,7 +95,6 @@ namespace OWC::Graphics
 			return eCompute;
 		default:
 			Log<LogLevel::Critical>("VulkanRenderPass::GetPipelineBindPoint: Unknown RenderPassType");
-			return eGraphics;
 		}
 	}
 
