@@ -277,6 +277,8 @@ namespace OWC::Graphics
 				.setSwapchainCount(1)
 				.setPImageIndices(&indices)
 			);
+
+			m_RenderPassNeedsRecreating = true;
 		}
 
 		renderPassData.clear();
@@ -294,6 +296,7 @@ namespace OWC::Graphics
 
 			RecreateSwapchain();
 			result = VulkanCore::GetInstance().IncrementCurrentFrameIndex();
+			m_RenderPassNeedsRecreating = true;
 		}
 	}
 
@@ -312,6 +315,11 @@ namespace OWC::Graphics
 	void VulkanContext::WaitForIdle()
 	{
 		VulkanCore::GetConstInstance().GetDevice().waitIdle();
+	}
+
+	void VulkanContext::AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData)
+	{
+		VulkanCore::GetInstance().AddRenderPassData(renderPassData);
 	}
 
 	void VulkanContext::StartInstance()
@@ -836,10 +844,5 @@ namespace OWC::Graphics
 		vkCore.GetSwapchainFramebuffers().clear();
 		CreateSwapchain();
 		CreateFramebuffers(app.GetWindowWidth(), app.GetWindowHeight());
-	}
-
-	void VulkanContext::AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData)
-	{
-		VulkanCore::GetInstance().AddRenderPassData(renderPassData);
 	}
 }

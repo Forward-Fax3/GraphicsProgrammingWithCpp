@@ -1,4 +1,5 @@
 ﻿#include "TestLayer.hpp"
+#include "Application.hpp"
 #include "Log.hpp"
 #include "LoadFile.hpp"
 #include "Renderer.hpp"
@@ -25,15 +26,15 @@ namespace OWC
 
 		m_Shader = BaseShader::CreateShader(shaderDatas);
 
-		m_renderPass = (Renderer::BeginPass(RenderPassType::Graphics));
-		Renderer::PipelineBind(m_renderPass, *m_Shader);
-		Renderer::Draw(m_renderPass, 6);
-		Renderer::EndPass(m_renderPass);
+		setupRenderPass();
 	}
 
 	void TestLayer::OnUpdate()
 	{
 		using namespace OWC::Graphics;
+		if (Application::GetConstInstance().GetWindow().GetGraphicsContext().RenderPassNeedsRecreating())
+			setupRenderPass();
+
 		Renderer::RestartRenderPass(m_renderPass);
 		Renderer::SubmitRenderPass(m_renderPass);
 	}
@@ -43,6 +44,15 @@ namespace OWC
 	}
 
 	void TestLayer::OnEvent(class BaseEvent&)
-	{ // not needed
+	{ // not needed for this test layer
+	}
+
+	void TestLayer::setupRenderPass()
+	{
+		using namespace OWC::Graphics;
+		m_renderPass = (Renderer::BeginPass(RenderPassType::Graphics));
+		Renderer::PipelineBind(m_renderPass, *m_Shader);
+		Renderer::Draw(m_renderPass, 6);
+		Renderer::EndPass(m_renderPass);
 	}
 }

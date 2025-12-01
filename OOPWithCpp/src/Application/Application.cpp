@@ -62,9 +62,6 @@ namespace OWC
 			return true;
 			});
 
-		if (event.HasBeenHandled())
-			return;
-
 		dispacher.Dispatch<WindowResize>([](const WindowResize& e) {
 			return s_Instance->m_Window->Resize(e.GetWidth(), e.GetHeight());
 			});

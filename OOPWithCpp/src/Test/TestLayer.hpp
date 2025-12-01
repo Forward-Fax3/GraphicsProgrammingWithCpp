@@ -23,6 +23,9 @@ namespace OWC
 		void OnEvent(class BaseEvent& event) override;
 
 	private:
+		void setupRenderPass();
+
+	private:
 		std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
 		std::shared_ptr<Graphics::RenderPassData> m_renderPass = nullptr;
 	};

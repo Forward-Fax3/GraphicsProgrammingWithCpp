@@ -44,6 +44,8 @@ namespace OWC::Graphics
 #endif
 		void AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData) override;
 
+		[[nodiscard]] bool RenderPassNeedsRecreating() const override { return m_RenderPassNeedsRecreating; }
+
 	private:
 		void StartInstance();
 #ifndef DIST
@@ -70,5 +72,7 @@ namespace OWC::Graphics
 		vk::DebugUtilsMessengerEXT m_DebugCallback{};
 #endif
 		QueueFamilyIndices m_QueueFamilyIndices{};
+
+		bool m_RenderPassNeedsRecreating = false;
 	};
 }

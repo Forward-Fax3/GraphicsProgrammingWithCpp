@@ -34,6 +34,8 @@ namespace OWC::Graphics
 
 		virtual void AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData) = 0;
 
+		[[nodiscard]] virtual bool RenderPassNeedsRecreating() const = 0;
+
 		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle);
 
 	protected:

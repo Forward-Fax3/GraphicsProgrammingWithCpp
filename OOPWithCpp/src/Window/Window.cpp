@@ -50,8 +50,8 @@ namespace OWC
 			SDL_SetWindowSize(m_Window.get(), width, height);
 			m_Properties.Width = width;
 			m_Properties.Height = height;
-			return true;
 		}
+		// always return false so that layers can handle the resize event if needed
 		return false;
 	}
 
