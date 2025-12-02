@@ -167,6 +167,14 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 
 namespace OWC::Graphics
 {
+	std::array<const char*, 5> VulkanContext::s_DeviceExtensions = {
+			vk::KHRSwapchainExtensionName,
+			vk::KHRMaintenance1ExtensionName,
+			vk::KHRShaderDrawParametersExtensionName,
+			vk::KHRDynamicRenderingExtensionName,
+			vk::KHRSynchronization2ExtensionName
+	};
+
 	VulkanContext::VulkanContext(SDL_Window& windowHandle)
 	{
 		VulkanCore::Init();
@@ -342,46 +350,27 @@ namespace OWC::Graphics
 				extentions.emplace_back(extentionsTemp[i]);
 		}
 
-		vk::InstanceCreateInfo createInfo;
-
 		auto instanceExtertionProperties = vk::enumerateInstanceExtensionProperties();
 
-		for (const auto& ext : extentions)
-			if (!IsExtentionAvailable(instanceExtertionProperties, ext))
-				Log<LogLevel::Critical>("Vulkan extension {} is not available", ext);
-
-		if (std::ranges::find(extentions, vk::KHRSurfaceExtensionName) == extentions.end())
-		{
-			if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRSurfaceExtensionName))
-				extentions.emplace_back(vk::KHRSurfaceExtensionName);
-			else
-				Log<LogLevel::Critical>("Vulkan extension {} is not available", vk::KHRSurfaceExtensionName);
-		}
-
-		if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRGetPhysicalDeviceProperties2ExtensionName))
 			extentions.emplace_back(vk::KHRGetPhysicalDeviceProperties2ExtensionName);
-		else
-			Log<LogLevel::Critical>("Vulkan extension {} is not available", vk::KHRGetPhysicalDeviceProperties2ExtensionName);
-
-		if (IsExtentionAvailable(instanceExtertionProperties, vk::KHRGetSurfaceCapabilities2ExtensionName))
 			extentions.emplace_back(vk::KHRGetSurfaceCapabilities2ExtensionName);
-		else
-			Log<LogLevel::Critical>("Vulkan extension {} is not available", vk::KHRGetSurfaceCapabilities2ExtensionName);
+		
+		vk::InstanceCreateInfo createInfo;
 		
 		std::vector<const char*> validationLayers;
 		if constexpr (!IsDistributionMode())
 		{
-			if (IsExtentionAvailable(instanceExtertionProperties, vk::EXTDebugUtilsExtensionName))
-			{
 				extentions.emplace_back(vk::EXTDebugUtilsExtensionName);
 
 				validationLayers.push_back("VK_LAYER_KHRONOS_validation");
 				createInfo.setEnabledLayerCount(static_cast<uint32_t>(validationLayers.size()));
 				createInfo.setPpEnabledLayerNames(validationLayers.data());
 			}
-			else
-				Log<LogLevel::Warn>("Vulkan extension {} is not available", vk::EXTDebugUtilsExtensionName);
-		}
+
+		const auto [extensionsAvailable, missingExtension] = IsExtentionAvailable(instanceExtertionProperties, extentions);
+
+		if (!extensionsAvailable)
+			Log<LogLevel::Critical>("Vulkan instance is missing required extension: {}", missingExtension);
 
 		constexpr vk::ApplicationInfo appInfo = vk::ApplicationInfo()
 			.setPApplicationName("OOPWithCpp Application")
@@ -471,20 +460,14 @@ namespace OWC::Graphics
 
 		score += deviceProperties.properties.limits.maxImageDimension2D;
 
-		if (!IsExtentionAvailable(supportedExtensions, vk::KHRSwapchainExtensionName))
+		const auto [extensionsAvailable, missingExtension] = IsExtentionAvailable(supportedExtensions, s_DeviceExtensions);
+		if (!extensionsAvailable)
+		{
+			Log<LogLevel::Warn>("Physical device {} is missing required extension: {}",
+				deviceProperties.properties.deviceName.data(),
+				missingExtension);
 			return { false, 0 };
-
-		if (!IsExtentionAvailable(supportedExtensions, vk::KHRMaintenance1ExtensionName))
-			return { false, 0 };
-
-		if (!IsExtentionAvailable(supportedExtensions, vk::KHRShaderDrawParametersExtensionName))
-			return { false, 0 };
-
-		if (!IsExtentionAvailable(supportedExtensions, vk::KHRDynamicRenderingExtensionName))
-			return { false, 0 };
-
-		if (!IsExtentionAvailable(supportedExtensions, vk::KHRSynchronization2ExtensionName))
-			return { false, 0 };
+		}
 
 		return { true, score };
 	}
@@ -571,14 +554,6 @@ namespace OWC::Graphics
 
 	void VulkanContext::CreateLogicalDevice()
 	{
-		constexpr std::array<const char*, 5> deviceExtensions = {
-			vk::KHRSwapchainExtensionName,
-			vk::KHRMaintenance1ExtensionName,
-			vk::KHRShaderDrawParametersExtensionName,
-			vk::KHRDynamicRenderingExtensionName,
-			vk::KHRSynchronization2ExtensionName
-		};
-
 		std::map<uint32_t, std::pair<uint32_t, std::vector<float>>> uniqueQueueFamiliesMap;
 
 		for (const auto& index : { m_QueueFamilyIndices.GraphicsFamily, m_QueueFamilyIndices.ComputeFamily, m_QueueFamilyIndices.TransferFamily })
@@ -621,8 +596,8 @@ namespace OWC::Graphics
 				vk::DeviceCreateInfo()
 				.setQueueCreateInfoCount(static_cast<uint32_t>(deviceQueueCreateInfos.size()))
 				.setPQueueCreateInfos(deviceQueueCreateInfos.data())
-				.setEnabledExtensionCount(static_cast<uint32_t>(deviceExtensions.size()))
-				.setPpEnabledExtensionNames(deviceExtensions.data())
+				.setEnabledExtensionCount(static_cast<uint32_t>(s_DeviceExtensions.size()))
+				.setPpEnabledExtensionNames(s_DeviceExtensions.data())
 				.setPNext(&dynamic_rendering_feature)
 			)
 		);

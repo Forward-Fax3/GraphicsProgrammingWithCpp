@@ -77,5 +77,7 @@ namespace OWC::Graphics
 
 		bool m_RenderPassNeedsRecreating = false;
 		bool m_IsMinimized = false;
+
+		static std::array<const char*, 5> s_DeviceExtensions;
 	};
 }

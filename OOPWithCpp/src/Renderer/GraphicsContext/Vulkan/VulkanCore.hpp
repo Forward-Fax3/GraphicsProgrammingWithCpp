@@ -12,13 +12,35 @@ namespace OWC::Graphics
 {
 	constexpr auto g_VulkanVersion = VK_MAKE_VERSION(1, 4, 0);
 
-	inline bool IsExtentionAvailable(const std::vector<vk::ExtensionProperties>& extentions, std::string_view requstExtention)
+	[[nodiscard]] inline bool IsExtentionAvailable(const std::vector<vk::ExtensionProperties>& extentions, std::string_view requstExtention)
 	{
-		for (const auto& ext : extentions)
-			if (requstExtention == ext.extensionName)
-				return true;
+		auto it = std::ranges::find_if(extentions, [&requstExtention](const vk::ExtensionProperties& ext) {
+			return requstExtention == ext.extensionName;
+			});
 
-		return false;
+		return it != extentions.end();
+	}
+
+	[[nodiscard]] inline std::pair<bool, std::string_view> IsExtentionAvailable(const std::vector<vk::ExtensionProperties>& extentions, std::span<const char*> requstLayer)
+	{
+		bool allAvailable = true;
+		std::string_view missingExt;
+		for (const std::string_view requstExt : requstLayer)
+		{
+			auto it = std::ranges::find_if(extentions, [&requstExt](const vk::ExtensionProperties& ext) {
+				return ext.extensionName == requstExt;
+				}
+			);
+
+			if (it == extentions.end())
+			{
+				allAvailable = false;
+				missingExt = requstExt;
+				break;
+			}
+		}
+
+		return { allAvailable, missingExt };
 	}
 
 	class VulkanCore
