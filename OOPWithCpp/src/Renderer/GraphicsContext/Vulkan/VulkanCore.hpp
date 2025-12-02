@@ -87,15 +87,11 @@ namespace OWC::Graphics
 		[[nodiscard]] inline const vk::Format& GetSwapchainImageFormat() const { return m_SwapchainImageFormat; }
 		[[nodiscard]] inline const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
 		[[nodiscard]] inline const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
-		[[nodiscard]] inline const std::vector<vk::Framebuffer>& GetSwapchainFramebuffers() const { return m_SwapchainFramebuffers; }
-		[[nodiscard]] inline const vk::RenderPass& GetRenderPass() const { return m_RenderPass; }
 		[[nodiscard]] inline size_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		[[nodiscard]] inline const vk::Semaphore& GetImageAvailableSemaphore() const { return m_ImageAvailableSemaphore; }
-		[[nodiscard]] inline const vk::Framebuffer& GetCurrentFrameBuffer() const { return m_SwapchainFramebuffers[m_CurrentFrameIndex]; }
 
 		[[nodiscard]] inline std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
 		[[nodiscard]] inline std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
-		[[nodiscard]] inline std::vector<vk::Framebuffer>& GetSwapchainFramebuffers() { return m_SwapchainFramebuffers; }
 		[[nodiscard]] inline size_t& GetCurrentFrameIndex() { return m_CurrentFrameIndex; }
 		[[nodiscard]] inline std::pair<std::reference_wrapper<std::vector<std::shared_ptr<VulkanRenderPass>>>, std::unique_lock<std::mutex>> GetRenderPassDatas() { return { std::ref(m_RenderPassDatas), std::unique_lock(m_RenderPassesMutex) }; }
 
@@ -114,8 +110,6 @@ namespace OWC::Graphics
 		inline void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
 		inline void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
 		inline void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
-		inline void SetSwapchainFramebuffers(const std::vector<vk::Framebuffer>& swapchainFramebuffers) { m_SwapchainFramebuffers = swapchainFramebuffers; }
-		inline void SetRenderPass(const vk::RenderPass& renderPass) { m_RenderPass = renderPass; }
 
 		inline void CreateImageAvailableSemaphore()
 		{
@@ -130,10 +124,10 @@ namespace OWC::Graphics
 		{
 			auto result = m_Device.acquireNextImage2KHR(
 				vk::AcquireNextImageInfoKHR()
-				.setSwapchain(m_Swapchain)
-				.setSemaphore(m_ImageAvailableSemaphore)
-				.setTimeout(16'666)
-				.setDeviceMask(1)
+					.setSwapchain(m_Swapchain)
+					.setSemaphore(m_ImageAvailableSemaphore)
+					.setTimeout(16'666)
+					.setDeviceMask(1)
 			);
 
 			m_CurrentFrameIndex = result.value;
@@ -173,8 +167,6 @@ namespace OWC::Graphics
 		vk::Format m_SwapchainImageFormat = vk::Format::eUndefined;
 		std::vector<vk::Image> m_SwapchainImages = {};
 		std::vector<vk::ImageView> m_SwapchainImageViews = {};
-		std::vector<vk::Framebuffer> m_SwapchainFramebuffers = {};
-		vk::RenderPass m_RenderPass = vk::RenderPass();
 
 		vk::Semaphore m_ImageAvailableSemaphore = vk::Semaphore();
 		std::vector<vk::Semaphore> m_ImageAvailableSemaphores = {};

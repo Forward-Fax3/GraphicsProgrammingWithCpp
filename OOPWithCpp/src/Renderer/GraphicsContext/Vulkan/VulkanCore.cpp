@@ -30,9 +30,9 @@ namespace OWC::Graphics
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_GraphicsCommandPool)
-			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandBufferCount(1)
+				.setCommandPool(m_GraphicsCommandPool)
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandBufferCount(1)
 		);
 		return commandBuffers[0];
 	}
@@ -41,9 +41,9 @@ namespace OWC::Graphics
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_ComputeCommandPool)
-			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandBufferCount(1)
+				.setCommandPool(m_ComputeCommandPool)
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandBufferCount(1)
 		);
 		return commandBuffers[0];
 	}
@@ -52,9 +52,9 @@ namespace OWC::Graphics
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_TransferCommandPool)
-			.setLevel(vk::CommandBufferLevel::ePrimary)
-			.setCommandBufferCount(1)
+				.setCommandPool(m_TransferCommandPool)
+				.setLevel(vk::CommandBufferLevel::ePrimary)
+				.setCommandBufferCount(1)
 		);
 		return commandBuffers[0];
 	}

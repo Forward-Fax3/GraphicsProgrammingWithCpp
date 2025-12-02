@@ -48,7 +48,7 @@ namespace OWC::Graphics
 
 		void Minimize() override;
 		void Restore() override;
-		void resize(int width, int height) override { RecreateSwapchain(width, height); }
+		void resize() override { RecreateSwapchain(); }
 
 	private:
 		void StartInstance();
@@ -63,15 +63,11 @@ namespace OWC::Graphics
 		void GetAndStoreGlobalQueueFamilies() const;
 		void CreateLogicalDevice();
 		void CreateSwapchain();
-		void CreateFramebuffers(SDL_Window& windowHandle);
-		void CreateFramebuffers(int width, int height);
-		void CreateRenderPass();
 		void CreateCommandPools() const;
 
 		void DestroySwapchain();
 
 		void RecreateSwapchain();
-		void RecreateSwapchain(int width, int height);
 
 	private:
 #ifndef DIST

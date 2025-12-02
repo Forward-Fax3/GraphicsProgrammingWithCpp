@@ -152,6 +152,7 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 			lastMessageID = std::numeric_limits<int32_t>::max();
 			lastMessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT();
 			firstMessage = true;
+			__debugbreak();
 		}
 		else
 		{
@@ -183,8 +184,6 @@ namespace OWC::Graphics
 			CreateLogicalDevice();
 			GetAndStoreGlobalQueueFamilies();
 			CreateSwapchain();
-			CreateRenderPass();
-			CreateFramebuffers(windowHandle);
 			CreateCommandPools();
 			vkCore.CreateImageAvailableSemaphore();
 		}
@@ -229,7 +228,6 @@ namespace OWC::Graphics
 
 		DestroySwapchain();
 
-		vkCore.GetDevice().destroyRenderPass(vkCore.GetRenderPass());
 		SDL_Vulkan_DestroySurface(vkCore.GetVKInstance(), vkCore.GetSurface(), nullptr);
 		vkCore.GetDevice().destroy();
 #ifndef DIST
@@ -293,7 +291,6 @@ namespace OWC::Graphics
 		auto& vkCore = VulkanCore::GetInstance();
 		vkCore.SetNextImageAvailableSemaphore();
 		vk::Result result = vkCore.IncrementCurrentFrameIndex();
-		(void)result;
 		size_t retryCount = 0;
 
 		while (result == vk::Result::eSuboptimalKHR || result == vk::Result::eErrorOutOfDateKHR)
@@ -386,8 +383,7 @@ namespace OWC::Graphics
 				Log<LogLevel::Warn>("Vulkan extension {} is not available", vk::EXTDebugUtilsExtensionName);
 		}
 
-		vk::ApplicationInfo appInfo;
-		appInfo
+		constexpr vk::ApplicationInfo appInfo = vk::ApplicationInfo()
 			.setPApplicationName("OOPWithCpp Application")
 			.setApplicationVersion(VK_MAKE_VERSION(0, 0, 1))
 			.setPEngineName("OOPWithCpp Engine")
@@ -484,6 +480,12 @@ namespace OWC::Graphics
 		if (!IsExtentionAvailable(supportedExtensions, vk::KHRShaderDrawParametersExtensionName))
 			return { false, 0 };
 
+		if (!IsExtentionAvailable(supportedExtensions, vk::KHRDynamicRenderingExtensionName))
+			return { false, 0 };
+
+		if (!IsExtentionAvailable(supportedExtensions, vk::KHRSynchronization2ExtensionName))
+			return { false, 0 };
+
 		return { true, score };
 	}
 
@@ -569,10 +571,12 @@ namespace OWC::Graphics
 
 	void VulkanContext::CreateLogicalDevice()
 	{
-		const std::array<const char*, 3> deviceExtensions = {
+		constexpr std::array<const char*, 5> deviceExtensions = {
 			vk::KHRSwapchainExtensionName,
 			vk::KHRMaintenance1ExtensionName,
-			vk::KHRShaderDrawParametersExtensionName
+			vk::KHRShaderDrawParametersExtensionName,
+			vk::KHRDynamicRenderingExtensionName,
+			vk::KHRSynchronization2ExtensionName
 		};
 
 		std::map<uint32_t, std::pair<uint32_t, std::vector<float>>> uniqueQueueFamiliesMap;
@@ -605,6 +609,13 @@ namespace OWC::Graphics
 				.setPQueuePriorities(familyData.second.data())
 			);
 
+		vk::PhysicalDeviceSynchronization2Features synchronization2_feature = vk::PhysicalDeviceSynchronization2Features()
+			.setSynchronization2(vk::True);
+
+		const vk::PhysicalDeviceDynamicRenderingFeatures dynamic_rendering_feature = vk::PhysicalDeviceDynamicRenderingFeatures()
+			.setPNext(&synchronization2_feature)
+			.setDynamicRendering(vk::True);
+
 		VulkanCore::GetInstance().SetDevice(
 			VulkanCore::GetConstInstance().GetPhysicalDev().createDevice(
 				vk::DeviceCreateInfo()
@@ -612,6 +623,7 @@ namespace OWC::Graphics
 				.setPQueueCreateInfos(deviceQueueCreateInfos.data())
 				.setEnabledExtensionCount(static_cast<uint32_t>(deviceExtensions.size()))
 				.setPpEnabledExtensionNames(deviceExtensions.data())
+				.setPNext(&dynamic_rendering_feature)
 			)
 		);
 
@@ -648,8 +660,9 @@ namespace OWC::Graphics
 		if (m_IsMinimized)
 			return;
 
-		vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo{};
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceFormatsKHR(VulkanCore::GetConstInstance().GetSurface());
+		auto& vkCore = VulkanCore::GetConstInstance();
+
+		std::vector<vk::SurfaceFormatKHR> surfaceFormats = vkCore.GetPhysicalDev().getSurfaceFormatsKHR(vkCore.GetSurface());
 		if (surfaceFormats.empty())
 			Log<LogLevel::Critical>("Failed to find any surface formats for the swapchain");
 
@@ -657,22 +670,10 @@ namespace OWC::Graphics
 		vk::ColorSpaceKHR colorSpace = surfaceFormats[0].colorSpace;
 
 		Log<LogLevel::Debug>("Vulkan Swapchain Surface Format selected:");
-		Log<LogLevel::Debug>(" Format: {}", vk::to_string(VulkanCore::GetConstInstance().GetSwapchainImageFormat()));
+		Log<LogLevel::Debug>(" Format: {}", vk::to_string(vkCore.GetSwapchainImageFormat()));
 		Log<LogLevel::Debug>(" Color Space: {}", vk::to_string(colorSpace));
 
-		vk::SurfaceCapabilities2KHR surfaceCapabilities{};
-		try
-		{
-			surfaceCapabilities = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfaceCapabilities2KHR(VulkanCore::GetConstInstance().GetSurface());
-		}
-		catch (const vk::NativeWindowInUseKHRError& err)
-		{
-			Log<LogLevel::Critical>("Failed to get surface capabilities for the swapchain: {}", err.what());
-		}
-		catch (const vk::SystemError& err)
-		{
-			Log<LogLevel::Critical>("Failed to get surface capabilities for the swapchain: {}", err.what());
-		}
+		vk::SurfaceCapabilities2KHR surfaceCapabilities = vkCore.GetPhysicalDev().getSurfaceCapabilities2KHR(vkCore.GetSurface());
 
 		if (surfaceCapabilities.surfaceCapabilities.currentExtent.width == 0 || surfaceCapabilities.surfaceCapabilities.currentExtent.height == 0)
 			Log<LogLevel::Critical>("Failed to get valid surface extents for the swapchain");
@@ -682,7 +683,7 @@ namespace OWC::Graphics
 		Log<LogLevel::Debug>("Vulkan Swapchain Surface Capabilities:");
 		Log<LogLevel::Debug>(" Current Extent: {}x{}", swapchainExtent.width, swapchainExtent.height);
 
-		auto presentModeCompatibilities = VulkanCore::GetConstInstance().GetPhysicalDev().getSurfacePresentModesKHR(VulkanCore::GetConstInstance().GetSurface());
+		auto presentModeCompatibilities = vkCore.GetPhysicalDev().getSurfacePresentModesKHR(vkCore.GetSurface());
 
 		if (presentModeCompatibilities.size() == 0)
 			Log<LogLevel::Critical>("Failed to find any present modes for the swapchain");
@@ -706,11 +707,10 @@ namespace OWC::Graphics
 			? vk::SurfaceTransformFlagBitsKHR::eIdentity
 			: surfaceCapabilities.surfaceCapabilities.currentTransform;
 
-		vk::SwapchainCreateInfoKHR swapchainCreateInfo;
-		swapchainCreateInfo
-			.setSurface(VulkanCore::GetConstInstance().GetSurface())
+		vk::SwapchainCreateInfoKHR swapchainCreateInfo = vk::SwapchainCreateInfoKHR()
+			.setSurface(vkCore.GetSurface())
 			.setMinImageCount(surfaceCapabilities.surfaceCapabilities.minImageCount + 1)
-			.setImageFormat(VulkanCore::GetConstInstance().GetSwapchainImageFormat())
+			.setImageFormat(vkCore.GetSwapchainImageFormat())
 			.setImageColorSpace(colorSpace)
 			.setImageExtent(swapchainExtent)
 			.setImageArrayLayers(1)
@@ -727,25 +727,23 @@ namespace OWC::Graphics
 				.setQueueFamilyIndexCount(static_cast<uint32_t>(m_QueueFamilyIndices.uniqueIndices.size()))
 				.setPQueueFamilyIndices(m_QueueFamilyIndices.uniqueIndices.data());
 
-		VulkanCore::GetInstance().SetSwapchain(VulkanCore::GetConstInstance().GetDevice().createSwapchainKHR(swapchainCreateInfo));
+		VulkanCore::GetInstance().SetSwapchain(vkCore.GetDevice().createSwapchainKHR(swapchainCreateInfo));
 
 		VulkanCore::GetInstance().SetSwapchainImages(
-			VulkanCore::GetConstInstance().GetDevice().getSwapchainImagesKHR(VulkanCore::GetConstInstance().GetSwapchain())
+			vkCore.GetDevice().getSwapchainImagesKHR(vkCore.GetSwapchain())
 		);
 
-		Log<LogLevel::Debug>("Vulkan Swapchain created with {} images", VulkanCore::GetConstInstance().GetSwapchainImages().size());
+		Log<LogLevel::Debug>("Vulkan Swapchain created with {} images", vkCore.GetSwapchainImages().size());
 
 		std::vector<vk::ImageView>& swapchainImageViews = VulkanCore::GetInstance().GetSwapchainImageViews();
 
-		for (const auto& image : VulkanCore::GetConstInstance().GetSwapchainImages())
+		for (const auto& image : vkCore.GetSwapchainImages())
 		{
-			vk::ImageViewCreateInfo imageViewCreateInfo;
-			imageViewCreateInfo
+			vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo()
 				.setImage(image)
 				.setViewType(vk::ImageViewType::e2D)
-				.setFormat(VulkanCore::GetConstInstance().GetSwapchainImageFormat())
-				.setComponents(
-					vk::ComponentMapping()
+				.setFormat(vkCore.GetSwapchainImageFormat())
+				.setComponents(vk::ComponentMapping()
 					.setR(vk::ComponentSwizzle::eIdentity)
 					.setG(vk::ComponentSwizzle::eIdentity)
 					.setB(vk::ComponentSwizzle::eIdentity)
@@ -758,69 +756,10 @@ namespace OWC::Graphics
 					.setBaseArrayLayer(0)
 					.setLayerCount(1)
 				);
-			swapchainImageViews.emplace_back(VulkanCore::GetConstInstance().GetDevice().createImageView(imageViewCreateInfo));
+			swapchainImageViews.emplace_back(vkCore.GetDevice().createImageView(imageViewCreateInfo));
 		}
 
 		Log<LogLevel::NewLine>();
-	}
-
-	void VulkanContext::CreateFramebuffers(SDL_Window& windowHandle)
-	{
-		int width = 0;
-		int height = 0;
-		SDL_GetWindowSize(&windowHandle, &width, &height);
-		CreateFramebuffers(width, height);
-	}
-
-	void VulkanContext::CreateFramebuffers(int width, int height)
-	{
-		std::vector<vk::Framebuffer>& swapchainFramebuffers = VulkanCore::GetInstance().GetSwapchainFramebuffers();
-		swapchainFramebuffers.reserve(VulkanCore::GetConstInstance().GetSwapchainImageViews().size());
-
-		for (const auto& imageView : VulkanCore::GetConstInstance().GetSwapchainImageViews())
-			swapchainFramebuffers.emplace_back(VulkanCore::GetConstInstance().GetDevice().createFramebuffer(
-				vk::FramebufferCreateInfo()
-				.setRenderPass(VulkanCore::GetConstInstance().GetRenderPass())
-				.setAttachmentCount(1)
-				.setPAttachments(&imageView)
-				.setWidth(width)
-				.setHeight(height)
-				.setLayers(1)
-			));
-	}
-
-	void VulkanContext::CreateRenderPass()
-	{
-		vk::AttachmentDescription colorAttachment{};
-		colorAttachment
-			.setFormat(VulkanCore::GetConstInstance().GetSwapchainImageFormat())
-			.setSamples(vk::SampleCountFlagBits::e1)
-			.setLoadOp(vk::AttachmentLoadOp::eClear)
-			.setStoreOp(vk::AttachmentStoreOp::eStore)
-			.setStencilLoadOp(vk::AttachmentLoadOp::eDontCare)
-			.setStencilStoreOp(vk::AttachmentStoreOp::eDontCare)
-			.setInitialLayout(vk::ImageLayout::eUndefined)
-			.setFinalLayout(vk::ImageLayout::ePresentSrcKHR);
-
-		vk::AttachmentReference colorAttachmentRef{};
-		colorAttachmentRef
-			.setAttachment(0)
-			.setLayout(vk::ImageLayout::eColorAttachmentOptimal);
-
-		vk::SubpassDescription subpass{};
-		subpass
-			.setPipelineBindPoint(vk::PipelineBindPoint::eGraphics)
-			.setColorAttachmentCount(1)
-			.setPColorAttachments(&colorAttachmentRef);
-
-		vk::RenderPassCreateInfo renderPassInfo{};
-		renderPassInfo
-			.setAttachmentCount(1)
-			.setPAttachments(&colorAttachment)
-			.setSubpassCount(1)
-			.setPSubpasses(&subpass);
-
-		VulkanCore::GetInstance().SetRenderPass(VulkanCore::GetConstInstance().GetDevice().createRenderPass(renderPassInfo));
 	}
 
 	void VulkanContext::CreateCommandPools() const
@@ -854,9 +793,6 @@ namespace OWC::Graphics
 	{
 		const auto& vkCore = VulkanCore::GetConstInstance();
 
-		for (const auto& frameBuffer : vkCore.GetSwapchainFramebuffers())
-			vkCore.GetDevice().destroyFramebuffer(frameBuffer);
-
 		for (const auto& imageView : vkCore.GetSwapchainImageViews())
 			vkCore.GetDevice().destroyImageView(imageView);
 
@@ -865,20 +801,12 @@ namespace OWC::Graphics
 
 	void VulkanContext::RecreateSwapchain()
 	{
-		const auto& app = Application::GetConstInstance();
-		RecreateSwapchain(app.GetWindowWidth(), app.GetWindowHeight());
-	}
-
-	void VulkanContext::RecreateSwapchain(int width, int height)
-	{
 		auto& vkCore = VulkanCore::GetInstance();
 		WaitForIdle();
 		DestroySwapchain();
 		vkCore.GetSwapchainImages().clear();
 		vkCore.GetSwapchainImageViews().clear();
-		vkCore.GetSwapchainFramebuffers().clear();
 		CreateSwapchain();
-		CreateFramebuffers(width, height);
 		m_RenderPassNeedsRecreating = true;
 	}
 
@@ -889,7 +817,6 @@ namespace OWC::Graphics
 		DestroySwapchain();
 		vkCore.GetSwapchainImages().clear();
 		vkCore.GetSwapchainImageViews().clear();
-		vkCore.GetSwapchainFramebuffers().clear();
 		m_IsMinimized = true;
 	}
 
@@ -898,10 +825,8 @@ namespace OWC::Graphics
 		if (!m_IsMinimized)
 			return;
 
-		const auto& app = Application::GetConstInstance();
 		m_IsMinimized = false;
 		CreateSwapchain();
-		CreateFramebuffers(app.GetWindowWidth(), app.GetWindowHeight());
 		m_RenderPassNeedsRecreating = true;
 	}
 }

@@ -56,7 +56,7 @@ namespace OWC
 			m_Properties.Height = height;
 		}
 		// always return false so that layers can handle the resize event if needed
-		m_GraphicsContext->resize(width, height);
+		m_GraphicsContext->resize();
 		return false;
 	}
 

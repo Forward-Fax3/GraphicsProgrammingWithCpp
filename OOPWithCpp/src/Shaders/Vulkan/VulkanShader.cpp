@@ -49,15 +49,13 @@ namespace OWC::Graphics
 
 		for (const auto& shaderData : vulkanShaderDatas)
 		{
-			vk::ShaderModuleCreateInfo shaderModuleCreateInfo{};
-			shaderModuleCreateInfo
+			const vk::ShaderModuleCreateInfo shaderModuleCreateInfo = vk::ShaderModuleCreateInfo()
 				.setCodeSize(shaderData.bytecode.size() * sizeof(uint32_t))
 				.setPCode(shaderData.bytecode.data());
 
 			m_ShaderModules.emplace_back(VulkanCore::GetInstance().GetDevice().createShaderModule(shaderModuleCreateInfo));
 
-			vk::PipelineShaderStageCreateInfo shaderStageInfo{};
-			shaderStageInfo
+			const vk::PipelineShaderStageCreateInfo shaderStageInfo = vk::PipelineShaderStageCreateInfo()
 				.setStage(shaderData.stage)
 				.setModule(m_ShaderModules.back())
 				.setPName(shaderData.entryPoint.c_str());
@@ -65,46 +63,42 @@ namespace OWC::Graphics
 			shaderStages.push_back(shaderStageInfo);
 		}
 
-		std::array<vk::DynamicState, 2> dynamicStates = {
+		constexpr std::array<vk::DynamicState, 2> dynamicStates = {
 			vk::DynamicState::eViewport,
 			vk::DynamicState::eScissor
 		};
 
-		vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
-		dynamicStateCreateInfo
+		const vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo = vk::PipelineDynamicStateCreateInfo()
 			.setDynamicStateCount(static_cast<uint32_t>(dynamicStates.size()))
 			.setPDynamicStates(dynamicStates.data());
 
-		vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
-		vk::PipelineInputAssemblyStateCreateInfo inputAssembly{};
-		inputAssembly
+		constexpr vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
+		constexpr vk::PipelineInputAssemblyStateCreateInfo inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
 			.setTopology(vk::PrimitiveTopology::eTriangleList)
 			.setPrimitiveRestartEnable(vk::False);
 
-		vk::Viewport viewport{};
-		viewport.setHeight(static_cast<float>(Application::GetConstInstance().GetWindow().GetHeight()))
+		const vk::Viewport viewport = vk::Viewport()
+			.setHeight(static_cast<float>(Application::GetConstInstance().GetWindow().GetHeight()))
 			.setWidth(static_cast<float>(Application::GetConstInstance().GetWindow().GetWidth()))
 			.setMinDepth(0.0f)
 			.setMaxDepth(1.0f)
 			.setX(0.0f)
 			.setY(0.0f);
 		
-		vk::Rect2D scissor{};
-		scissor.setOffset({ 0, 0 });
-		scissor.setExtent({
-			static_cast<uint32_t>(Application::GetConstInstance().GetWindowWidth()),
-			static_cast<uint32_t>(Application::GetConstInstance().GetWindowHeight())
+		const vk::Rect2D scissor = vk::Rect2D()
+			.setOffset({ 0, 0 })
+			.setExtent({
+				static_cast<uint32_t>(Application::GetConstInstance().GetWindowWidth()),
+				static_cast<uint32_t>(Application::GetConstInstance().GetWindowHeight())
 			});
 
-		vk::PipelineViewportStateCreateInfo viewportState{};
-		viewportState
+		const vk::PipelineViewportStateCreateInfo viewportState = vk::PipelineViewportStateCreateInfo()
 			.setViewportCount(1)
 			.setPViewports(&viewport)
 			.setScissorCount(1)
 			.setPScissors(&scissor);
 
-		vk::PipelineRasterizationStateCreateInfo rasterizer{};
-		rasterizer
+		constexpr vk::PipelineRasterizationStateCreateInfo rasterizer = vk::PipelineRasterizationStateCreateInfo()
 			.setDepthClampEnable(vk::False)
 			.setRasterizerDiscardEnable(vk::False)
 			.setPolygonMode(vk::PolygonMode::eFill)
@@ -113,13 +107,11 @@ namespace OWC::Graphics
 //			.setFrontFace(vk::FrontFace::eClockwise)
 			.setDepthBiasEnable(vk::False);
 
-		vk::PipelineMultisampleStateCreateInfo multisampling{};
-		multisampling
+		constexpr vk::PipelineMultisampleStateCreateInfo multisampling = vk::PipelineMultisampleStateCreateInfo()
 			.setSampleShadingEnable(vk::False)
 			.setRasterizationSamples(vk::SampleCountFlagBits::e1);
 
-		vk::PipelineColorBlendAttachmentState colorBlendAttachment{};
-		colorBlendAttachment
+		constexpr vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
 			.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
 				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
 			.setBlendEnable(vk::True)
@@ -128,17 +120,20 @@ namespace OWC::Graphics
 			.setColorBlendOp(vk::BlendOp::eAdd)
 			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne);
 
-		vk::PipelineColorBlendStateCreateInfo colorBlending{};
-		colorBlending
+		const vk::PipelineColorBlendStateCreateInfo colorBlending = vk::PipelineColorBlendStateCreateInfo()
 			.setLogicOpEnable(vk::False)
 			.setAttachmentCount(1)
 			.setPAttachments(&colorBlendAttachment);
 
+		const vk::PipelineRenderingCreateInfo pipelineRenderingInfo = vk::PipelineRenderingCreateInfo()
+			.setColorAttachmentCount(1)
+			.setPColorAttachmentFormats(&VulkanCore::GetConstInstance().GetSwapchainImageFormat());
+
 		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{};
 		m_PipelineLayout = VulkanCore::GetInstance().GetDevice().createPipelineLayout(pipelineLayoutInfo);
 
-		vk::GraphicsPipelineCreateInfo pipelineInfo{};
-		pipelineInfo
+		vk::GraphicsPipelineCreateInfo pipelineInfo = vk::GraphicsPipelineCreateInfo()
+			.setPNext(&pipelineRenderingInfo)
 			.setStageCount(static_cast<uint32_t>(shaderStages.size()))
 			.setPStages(shaderStages.data())
 			.setPVertexInputState(&vertexInputInfo)
@@ -149,7 +144,7 @@ namespace OWC::Graphics
 			.setPColorBlendState(&colorBlending)
 			.setPDynamicState(&dynamicStateCreateInfo)
 			.setLayout(m_PipelineLayout)
-			.setRenderPass(VulkanCore::GetInstance().GetRenderPass())
+//			.setRenderPass(VulkanCore::GetInstance().GetRenderPass())
 			.setSubpass(0);
 
 		auto result = VulkanCore::GetInstance().GetDevice().createGraphicsPipelines(

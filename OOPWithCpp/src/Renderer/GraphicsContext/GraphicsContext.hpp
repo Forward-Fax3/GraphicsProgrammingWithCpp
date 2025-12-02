@@ -38,7 +38,7 @@ namespace OWC::Graphics
 
 		virtual void Minimize() = 0;
 		virtual void Restore() = 0;
-		virtual void resize(int width, int height) = 0;
+		virtual void resize() = 0;
 
 		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle);
 
