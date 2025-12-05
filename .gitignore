@@ -431,3 +431,5 @@ OOPWithCpp/OOPWithCpp*.vcxproj.filters
 /OOPWithCpp/3rdParty/Projects/git/ProjectFiles/
 
 bin/
+
+*/imgui.ini

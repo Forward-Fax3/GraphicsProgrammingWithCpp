@@ -12,6 +12,7 @@ newoption
 -- Include directories relative to root folder (solution directory)
 IncludeDir = {}
 IncludeDir["SDL"] = "OOPWithCpp/3rdParty/Projects/git/SDL/include"
+IncludeDir["ImGui"] = "OOPWithCpp/3rdParty/Projects/git/ImGui"
 -- IncludeDir["glm"]  = "RTIAW/3rd Party/Git/glm/"
 -- IncludeDir["CTPL"] = "RTIAW/3rd Party/Git/CTPL/"
 -- IncludeDir["stb"]  = "RTIAW/3rd Party/Git/stb/"
@@ -77,7 +78,7 @@ workspace "OOPWithCpp"
 		runtime "Release"
 		defines 
 		{
-			"NDEBUG",
+--			"NDEBUG",
 			"DEBUG_O",
 			"EN_ENABLE_ASSERTS"
 		}
@@ -182,6 +183,7 @@ project "OOPWithCppSSE4_2"
 		"OOPWithCpp/src/**",
 		
 		"%{IncludeDir.SDL}",
+		"%{IncludeDir.ImGui}",
 --		"%{IncludeDir.glm}",
 --		"%{IncludeDir.CTPL}",
 --		"%{IncludeDir.stb}",
@@ -250,6 +252,7 @@ project "OOPWithCppAVX2"
 		"OOPWithCpp/src/**",
 		
 		"%{IncludeDir.SDL}",
+		"%{IncludeDir.ImGui}",
 --		"%{IncludeDir.glm}",
 --		"%{IncludeDir.CTPL}",
 --		"%{IncludeDir.stb}",
@@ -305,10 +308,9 @@ project "OOPWithCppAVX512"
 	{
 		"OOPWithCpp/src",
 		"OOPWithCpp/src/**",
-
-
 		
 		"%{IncludeDir.SDL}",
+		"%{IncludeDir.ImGui}",
 --		"%{IncludeDir.glm}",
 --		"%{IncludeDir.CTPL}",
 --		"%{IncludeDir.stb}",

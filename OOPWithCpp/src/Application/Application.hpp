@@ -7,6 +7,8 @@
 #include "LayerStack.hpp"
 #include "BaseShader.hpp"
 
+#include "ImGuiLayer.hpp"
+
 
 namespace OWC
 {
@@ -49,6 +51,7 @@ namespace OWC
 		std::unique_ptr<LayerStack> m_LayerStack = nullptr;
 		std::bitset<2>& m_RunFlags; // Bit 0: Application running, Bit 1: restart application
 		std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
+		std::shared_ptr<ImGuiLayer> m_ImGuiLayer = nullptr;
 
 		static Application* s_Instance;
 	};

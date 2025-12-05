@@ -48,7 +48,11 @@ namespace OWC::Graphics
 
 		void Minimize() override;
 		void Restore() override;
-		void resize() override { RecreateSwapchain(); }
+		void Resize() override { RecreateSwapchain(); WriteCommandBuffers(); }
+
+		void ImGuiInit() override;
+		void ImGuiShutdown() override;
+		void ImGuiNewFrame() override;
 
 	private:
 		void StartInstance();
@@ -64,6 +68,7 @@ namespace OWC::Graphics
 		void CreateLogicalDevice();
 		void CreateSwapchain();
 		void CreateCommandPools() const;
+		void WriteCommandBuffers();
 
 		void DestroySwapchain();
 
@@ -75,9 +80,10 @@ namespace OWC::Graphics
 #endif
 		QueueFamilyIndices m_QueueFamilyIndices{};
 
+		std::vector<vk::CommandBuffer> m_BeginRenderCmdBuf;
+		std::vector<vk::CommandBuffer> m_EndRenderCmdBuf;
+
 		bool m_RenderPassNeedsRecreating = false;
 		bool m_IsMinimized = false;
-
-		static std::array<const char*, 5> s_DeviceExtensions;
 	};
 }

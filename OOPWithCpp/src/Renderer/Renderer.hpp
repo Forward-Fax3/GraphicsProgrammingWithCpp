@@ -5,6 +5,9 @@
 #endif
 #include "BaseShader.hpp"
 
+#include <imgui.h>
+#include <span>
+
 
 namespace OWC::Graphics
 {
@@ -18,9 +21,8 @@ namespace OWC::Graphics
 
 	enum class RenderPassType
 	{
-		Graphics = 0,
-		Compute = 1,
-		Transfer = 2,
+		Static = 0,
+		Dynamic = 1,
 	};
 
 	class Renderer;
@@ -33,12 +35,15 @@ namespace OWC::Graphics
 		virtual ~RenderPassData() = default;
 
 	private:
+		void virtual BeginDynamicPass() = 0;
 		void virtual AddPipeline(const BaseShader& shader) = 0;
 		void virtual Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) = 0;
 		void virtual EndRenderPass() = 0;
-		void virtual submitRenderPass() = 0;
+		void virtual submitRenderPass(std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphore) = 0;
 
 		void virtual RestartRenderPass() = 0;
+
+		void virtual DrawImGui(ImDrawData* drawData) = 0;
 
 	protected:
 		explicit RenderPassData(RenderPassType type) : type(type) {}
@@ -61,13 +66,18 @@ namespace OWC::Graphics
 		static void Shutdown();
 		static void FinishRender();
 
-		static std::shared_ptr<RenderPassData> BeginPass(RenderPassType type = RenderPassType::Graphics);
+		static std::shared_ptr<RenderPassData> GetDynamicPass();
+		static void BeginDynamicPass(const std::shared_ptr<RenderPassData>& data);
+
+		static std::shared_ptr<RenderPassData> BeginPass();
 		static void PipelineBind(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader);
 		static void Draw(const std::shared_ptr<RenderPassData>& data, uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
 		static void EndPass(const std::shared_ptr<RenderPassData>& data);
-		static void SubmitRenderPass(const std::shared_ptr<RenderPassData>& data);
+		static void SubmitRenderPass(const std::shared_ptr<RenderPassData>& data, std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphoreNames);
 
 		static void RestartRenderPass(const std::shared_ptr<RenderPassData>& data);
+
+		static void DrawImGui(const std::shared_ptr<RenderPassData>& data, ImDrawData* drawData);
 
 		static inline RendererAPI GetAPI() { return s_API; }
 

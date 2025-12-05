@@ -1,42 +1,36 @@
-#include "WindowEvent.hpp"
+﻿#include "WindowEvent.hpp"
 #include "WindowCloseEvent.hpp"
 #include "WindowResize.hpp"
 #include "WindowMinimizeEvent.hpp"
 #include "WindowRestoreEvent.hpp"
 
+#include <backends/imgui_impl_sdl3.h>
+
 
 namespace OWC
 {
-	void WindowEvent::EventCall(SDL_Event& event) const 
+	void WindowEvent::EventCall(const SDL_Event& event) const 
 	{
-		// ImGui_ImplSDL3_ProcessEvent(event);
+//		if (ImGui_ImplSDL3_ProcessEvent(&event))
+//			return;
+
+		ImGui_ImplSDL3_ProcessEvent(&event);
 
 		switch (event.type)
 		{
 		case SDL_EVENT_QUIT:
+		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 		{
 			WindowCloseEvent closeEvent;
 			m_Callback(closeEvent);
 			break;
 		}
-		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-			//m_Callback();
-			break;
 		case SDL_EVENT_WINDOW_RESIZED:
 		{
 			WindowResize resizeEvent(event.window.data1, event.window.data2);
 			m_Callback(resizeEvent);
 			break;
 		}
-		case SDL_EVENT_WINDOW_MOVED:
-			//m_Callback();
-			break;
-		case SDL_EVENT_WINDOW_FOCUS_GAINED:
-			//m_Callback();
-			break;
-		case SDL_EVENT_WINDOW_FOCUS_LOST:
-			//m_Callback();
-			break;
 		case SDL_EVENT_WINDOW_MINIMIZED:
 		{
 			WindowMinimize minimizeEvent;

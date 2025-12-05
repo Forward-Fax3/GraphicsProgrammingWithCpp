@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 
 namespace OWC
@@ -8,6 +8,10 @@ namespace OWC
 	public:
 		Layer() = default;
 		virtual ~Layer() = default;
+		Layer(const Layer&) = delete;
+		Layer& operator=(const Layer&) = delete;
+		Layer(Layer&&) = delete;
+		Layer&& operator=(Layer&&) = delete;
 
 		virtual void OnUpdate() = 0;
 		virtual void ImGuiRender() = 0;

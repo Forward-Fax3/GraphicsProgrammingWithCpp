@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <functional>
 #include <memory>
 
@@ -39,6 +39,11 @@ namespace OWC
 
 		void Minimize();
 		void Restore();
+
+		void ImGuiInit() const;
+		void ImGuiShutdown() const;
+
+		void ImGuiNewFrame() const;
 
 	private:
 		void PollEvents() const;

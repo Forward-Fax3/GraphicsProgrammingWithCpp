@@ -7,6 +7,8 @@
 #include "WindowMinimizeEvent.hpp"
 #include "WindowRestoreEvent.hpp"
 
+#include <array>
+
 
 namespace OWC
 {
@@ -38,12 +40,15 @@ namespace OWC
 		if (Application::GetConstInstance().GetWindow().GetGraphicsContext().RenderPassNeedsRecreating())
 			setupRenderPass();
 
+		std::array<std::string_view, 1> waitSemaphorenames = { "ImageReady" };
+		std::array<std::string_view, 1> signalSemaphoreNames = { "TestLayer" };
+
 		Renderer::RestartRenderPass(m_renderPass);
-		Renderer::SubmitRenderPass(m_renderPass);
+		Renderer::SubmitRenderPass(m_renderPass, waitSemaphorenames, signalSemaphoreNames);
 	}
 
 	void TestLayer::ImGuiRender()
-	{ // ImGui not implemented yet
+	{ // not needed
 	}
 
 	void TestLayer::OnEvent(class BaseEvent& e)
@@ -67,7 +72,7 @@ namespace OWC
 	void TestLayer::setupRenderPass()
 	{
 		using namespace OWC::Graphics;
-		m_renderPass = Renderer::BeginPass(RenderPassType::Graphics);
+		m_renderPass = Renderer::BeginPass();
 		Renderer::PipelineBind(m_renderPass, *m_Shader);
 		Renderer::Draw(m_renderPass, 6);
 		Renderer::EndPass(m_renderPass);

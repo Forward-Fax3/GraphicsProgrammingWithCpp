@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <string>
 #include <functional>
 #include <SDL3/SDL.h>
@@ -13,8 +13,12 @@ namespace OWC
 	public:
 		WindowEvent() = default;
 		~WindowEvent() = default;
+		WindowEvent(const WindowEvent&) = delete;
+		WindowEvent& operator=(const WindowEvent&) = delete;
+		WindowEvent(WindowEvent&&) = delete;
+		WindowEvent& operator=(WindowEvent&&) = delete;
 
-		void EventCall(SDL_Event& event) const;
+		void EventCall(const SDL_Event& event) const;
 
 		inline void SetCallback(const std::function<void(BaseEvent&)>& callback) { m_Callback = callback; }
 

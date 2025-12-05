@@ -1,4 +1,5 @@
-﻿#include "SDL3/SDL.h"
+﻿#include <SDL3/SDL.h>
+#include <backends/imgui_impl_sdl3.h>
 
 #include "Window.hpp"
 
@@ -56,7 +57,7 @@ namespace OWC
 			m_Properties.Height = height;
 		}
 		// always return false so that layers can handle the resize event if needed
-		m_GraphicsContext->resize();
+		m_GraphicsContext->Resize();
 		return false;
 	}
 
@@ -70,6 +71,25 @@ namespace OWC
 	{
 		m_IsMinimized = false;
 		m_GraphicsContext->Restore();
+	}
+
+	void Window::ImGuiInit() const
+	{
+		ImGui_ImplSDL3_InitForVulkan(m_Window.get());
+		m_GraphicsContext->ImGuiInit();
+	}
+
+	void Window::ImGuiShutdown() const
+	{
+		m_GraphicsContext->WaitForIdle();
+		m_GraphicsContext->ImGuiShutdown();
+		ImGui_ImplSDL3_Shutdown();
+	}
+
+	void Window::ImGuiNewFrame() const
+	{
+		m_GraphicsContext->ImGuiNewFrame();
+		ImGui_ImplSDL3_NewFrame();
 	}
 
 	void Window::PollEvents() const

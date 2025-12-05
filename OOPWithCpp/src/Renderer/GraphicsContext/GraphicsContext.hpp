@@ -36,9 +36,13 @@ namespace OWC::Graphics
 
 		[[nodiscard]] virtual bool RenderPassNeedsRecreating() const = 0;
 
+		virtual void ImGuiInit() = 0;
+		virtual void ImGuiShutdown() = 0;
+		virtual void ImGuiNewFrame() = 0;
+
 		virtual void Minimize() = 0;
 		virtual void Restore() = 0;
-		virtual void resize() = 0;
+		virtual void Resize() = 0;
 
 		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle);
 

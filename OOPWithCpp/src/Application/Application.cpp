@@ -1,12 +1,16 @@
 ﻿#include "Application.hpp"
+#include "Renderer.hpp"
+
 #include "BaseEvent.hpp"
 #include "WindowCloseEvent.hpp"
 #include "WindowResize.hpp"
 #include "WindowMinimizeEvent.hpp"
 #include "WindowRestoreEvent.hpp"
-#include "Renderer.hpp"
+
 #include "Log.hpp"
+
 #include "TestLayer.hpp"
+#include "ImGuiLayer.hpp"
 
 
 namespace OWC
@@ -32,6 +36,8 @@ namespace OWC
 		Graphics::Renderer::Init();
 		m_LayerStack = std::make_unique<LayerStack>();
 		PushLayer(std::make_shared<TestLayer>());
+		m_ImGuiLayer = std::make_shared<ImGuiLayer>();
+		PushOverlay(m_ImGuiLayer);
 	}
 
 	Application::~Application()
@@ -39,6 +45,7 @@ namespace OWC
 		m_Shader.reset();
 		m_LayerStack->ClearLayers();
 		m_LayerStack.reset();
+		m_ImGuiLayer.reset(); // ImGuiLayer must be destroyed before Renderer shutdown
 		Graphics::Renderer::Shutdown();
 		m_Window.reset();
 	}
@@ -48,7 +55,10 @@ namespace OWC
 		while (m_RunFlags.test(0)) // While application is running
 		{
 			m_LayerStack->OnUpdate();
+
+			m_ImGuiLayer->Begin();
 			m_LayerStack->ImGuiRender();
+			m_ImGuiLayer->End();
 
 			Graphics::Renderer::FinishRender();
 			m_Window->Update();

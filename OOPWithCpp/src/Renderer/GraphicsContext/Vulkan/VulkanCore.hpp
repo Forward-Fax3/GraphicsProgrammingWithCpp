@@ -6,6 +6,8 @@
 #include <vulkan/vulkan.hpp>
 #include <mutex>
 #include <memory>
+#include <map>
+#include <ranges>
 
 
 namespace OWC::Graphics
@@ -90,9 +92,14 @@ namespace OWC::Graphics
 		void AddRenderPassData(const std::shared_ptr<RenderPassData>& data);
 		void ResetRenderPassDatas();
 
-		[[nodiscard]] vk::CommandBuffer GetGraphicsCommandBuffer() const;
-		[[nodiscard]] vk::CommandBuffer GetComputeCommandBuffer() const;
-		[[nodiscard]] vk::CommandBuffer GetTransferCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::CommandBuffer> GetGraphicsCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::CommandBuffer> GetComputeCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::CommandBuffer> GetTransferCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::CommandBuffer> GetDynamicGraphicsCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::CommandBuffer> GetDynamicComputeCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::CommandBuffer> GetDynamicTransferCommandBuffer() const;
+
+		[[nodiscard]] std::vector<vk::Semaphore> GetSemaphoresFromNames(std::span<std::string_view> semaphoreNames);
 
 		[[nodiscard]] inline const vk::Instance& GetVKInstance() const { return m_Instance; }
 		[[nodiscard]] inline const vk::SurfaceKHR& GetSurface() const { return m_Surface; }
@@ -105,12 +112,15 @@ namespace OWC::Graphics
 		[[nodiscard]] inline const vk::CommandPool& GetGraphicsCommandPool() const { return m_GraphicsCommandPool; }
 		[[nodiscard]] inline const vk::CommandPool& GetComputeCommandPool() const { return m_ComputeCommandPool; }
 		[[nodiscard]] inline const vk::CommandPool& GetTransferCommandPool() const { return m_TransferCommandPool; }
+		[[nodiscard]] inline const vk::CommandPool& GetDynamicGraphicsCommandPool() const { return m_DynamicGraphicsCommandPool; }
+		[[nodiscard]] inline const vk::CommandPool& GetDynamicComputeCommandPool() const { return m_DynamicComputeCommandPool; }
+		[[nodiscard]] inline const vk::CommandPool& GetDynamicTransferCommandPool() const { return m_DynamicTransferCommandPool; }
 		[[nodiscard]] inline const vk::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
 		[[nodiscard]] inline const vk::Format& GetSwapchainImageFormat() const { return m_SwapchainImageFormat; }
+		[[nodiscard]] inline const vk::DescriptorPool& GetImGuiDescriptorPool() const { return m_ImGuiDescriptorPool; }
 		[[nodiscard]] inline const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
 		[[nodiscard]] inline const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
 		[[nodiscard]] inline size_t GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
-		[[nodiscard]] inline const vk::Semaphore& GetImageAvailableSemaphore() const { return m_ImageAvailableSemaphore; }
 
 		[[nodiscard]] inline std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
 		[[nodiscard]] inline std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
@@ -128,49 +138,50 @@ namespace OWC::Graphics
 		inline void SetGraphicsCommandPool(const vk::CommandPool& commandPool) { m_GraphicsCommandPool = commandPool; }
 		inline void SetComputeCommandPool(const vk::CommandPool& commandPool) { m_ComputeCommandPool = commandPool; }
 		inline void SetTransferCommandPool(const vk::CommandPool& commandPool) { m_TransferCommandPool = commandPool; }
+		inline void SetDynamicGraphicsCommandPool(const vk::CommandPool& commandPool) { m_DynamicGraphicsCommandPool = commandPool; }
+		inline void SetDynamicComputeCommandPool(const vk::CommandPool& commandPool) { m_DynamicComputeCommandPool = commandPool; }
+		inline void SetDynamicTransferCommandPool(const vk::CommandPool& commandPool) { m_DynamicTransferCommandPool = commandPool; }
 		inline void SetSwapchainImageFormat(const vk::Format& format) { m_SwapchainImageFormat = format; }
+		inline void SetImGuiDescriptorPool(const vk::DescriptorPool& pool) { m_ImGuiDescriptorPool = pool;  }
 		inline void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
 		inline void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
 		inline void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
 
-		inline void CreateImageAvailableSemaphore()
+		inline void SetupSemaphores()
 		{
-			m_ImageAvailableSemaphores.reserve(m_SwapchainImageViews.size());
-			vk::SemaphoreCreateInfo semaphoreInfo{};
-			semaphoreInfo.setFlags(vk::SemaphoreCreateFlags());
-			for (size_t i = 0; i < m_SwapchainImageViews.size(); ++i)
-				m_ImageAvailableSemaphores.emplace_back(m_Device.createSemaphore(semaphoreInfo));
+			m_Semaphores.reserve(m_SwapchainImageViews.size());
+			for (size_t i = 0; i < m_SwapchainImageViews.size(); i++)
+				m_Semaphores.emplace_back(std::map<std::string, vk::Semaphore>());
 		}
 
-		[[nodiscard]] inline vk::Result IncrementCurrentFrameIndex()
+		[[nodiscard]] inline std::pair<vk::Result, vk::Semaphore> IncrementCurrentFrameIndex()
 		{
-			auto result = m_Device.acquireNextImage2KHR(
-				vk::AcquireNextImageInfoKHR()
-					.setSwapchain(m_Swapchain)
-					.setSemaphore(m_ImageAvailableSemaphore)
-					.setTimeout(16'666)
-					.setDeviceMask(1)
+			std::array<std::string_view, 1> imageAcquiredName = { "ImageAcquired" };
+			auto imageAcquired = GetSemaphoresFromNames(imageAcquiredName)[0];
+
+			auto result = m_Device.acquireNextImage2KHR(vk::AcquireNextImageInfoKHR()
+				.setSwapchain(m_Swapchain)
+				.setSemaphore(imageAcquired)
+				.setTimeout(16'666)
+				.setDeviceMask(1)
 			);
 
 			m_CurrentFrameIndex = result.value;
 
-			return result.result;
+			return { result.result, imageAcquired };
 		}
 
-		inline void SetNextImageAvailableSemaphore()
+		inline void DestroySemaphores()
 		{
-			static size_t currentIndex = 0;
-			size_t semaphoreCount = m_ImageAvailableSemaphores.size();
+			for (auto& semaphores : m_Semaphores)
+				for (auto& semaphore : std::views::values(semaphores))
+					if (semaphore)
+					{
+						m_Device.destroySemaphore(semaphore);
+						semaphore = vk::Semaphore();
+					}
 
-			m_ImageAvailableSemaphore = m_ImageAvailableSemaphores[currentIndex];
-			currentIndex = (currentIndex++) % semaphoreCount;
-		}
-
-		inline void DestroyImageAvailableSemaphores()
-		{
-			for (const auto& semaphore : m_ImageAvailableSemaphores)
-				m_Device.destroySemaphore(semaphore);
-			m_ImageAvailableSemaphores.clear();
+			m_Semaphores.clear();
 		}
 
 	private:
@@ -185,13 +196,16 @@ namespace OWC::Graphics
 		vk::CommandPool m_GraphicsCommandPool = vk::CommandPool();
 		vk::CommandPool m_ComputeCommandPool = vk::CommandPool();
 		vk::CommandPool m_TransferCommandPool = vk::CommandPool();
+		vk::CommandPool m_DynamicGraphicsCommandPool = vk::CommandPool();
+		vk::CommandPool m_DynamicComputeCommandPool = vk::CommandPool();
+		vk::CommandPool m_DynamicTransferCommandPool = vk::CommandPool();
 		vk::SwapchainKHR m_Swapchain = vk::SwapchainKHR();
 		vk::Format m_SwapchainImageFormat = vk::Format::eUndefined;
+		vk::DescriptorPool m_ImGuiDescriptorPool = vk::DescriptorPool();
 		std::vector<vk::Image> m_SwapchainImages = {};
 		std::vector<vk::ImageView> m_SwapchainImageViews = {};
 
-		vk::Semaphore m_ImageAvailableSemaphore = vk::Semaphore();
-		std::vector<vk::Semaphore> m_ImageAvailableSemaphores = {};
+		std::vector<std::map<std::string, vk::Semaphore>> m_Semaphores = {};
 		size_t m_CurrentFrameIndex = 0;
 
 		std::vector<std::shared_ptr<VulkanRenderPass>> m_RenderPassDatas = {};

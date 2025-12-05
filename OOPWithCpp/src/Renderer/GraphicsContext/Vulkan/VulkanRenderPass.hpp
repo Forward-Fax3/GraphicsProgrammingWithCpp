@@ -22,15 +22,15 @@ namespace OWC::Graphics
 		vk::Fence GetFence() const { return m_Fence; }
 
 	private:
+		void BeginDynamicPass() override;
 		void AddPipeline(const BaseShader& shader) override;
 		void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0) override;
 		void EndRenderPass() override;
-		void submitRenderPass() override;
+		void submitRenderPass(std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphore) override;
 
 		void RestartRenderPass() override;
 
-	private:
-		[[nodiscard]] vk::PipelineBindPoint GetPipelineBindPoint() const;
+		void DrawImGui(ImDrawData* drawData) override;
 
 	private:
 		std::vector<vk::CommandBuffer> m_CommandBuffers = {};
