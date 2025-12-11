@@ -11,7 +11,7 @@ namespace OWC
 	class WindowEvent
 	{
 	public:
-		WindowEvent() = default;
+		explicit inline WindowEvent(SDL_WindowID windowID) : m_WindowID(windowID) {}
 		~WindowEvent() = default;
 		WindowEvent(const WindowEvent&) = delete;
 		WindowEvent& operator=(const WindowEvent&) = delete;
@@ -23,6 +23,7 @@ namespace OWC
 		inline void SetCallback(const std::function<void(BaseEvent&)>& callback) { m_Callback = callback; }
 
 	private:
+		SDL_WindowID m_WindowID = 0;
 		std::function<void(BaseEvent&)> m_Callback = nullptr;
 	};
 } // namespace OWC

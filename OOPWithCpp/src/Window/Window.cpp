@@ -24,6 +24,7 @@ namespace OWC
 		if (m_Window == nullptr)
 			Log<LogLevel::Critical>("unable to open window: {}", SDL_GetError());
 
+		m_WindowEvent = std::make_unique<WindowEvent>(SDL_GetWindowID(m_Window.get()));
 		m_GraphicsContext = OWCG::GraphicsContext::CreateGraphicsContext(*m_Window);
 	}
 
@@ -96,7 +97,7 @@ namespace OWC
 		SDL_Event event;
 		while (SDL_PollEvent(&event))
 		{
-			m_WindowEvent.EventCall(event);
+			m_WindowEvent->EventCall(event);
 		}
 	}
 } // namespace OWC

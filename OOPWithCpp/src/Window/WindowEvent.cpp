@@ -11,10 +11,8 @@ namespace OWC
 {
 	void WindowEvent::EventCall(const SDL_Event& event) const 
 	{
-//		if (ImGui_ImplSDL3_ProcessEvent(&event))
-//			return;
-
-		ImGui_ImplSDL3_ProcessEvent(&event);
+		if (ImGui_ImplSDL3_ProcessEvent(&event) && m_WindowID != event.window.windowID)
+			return;
 
 		switch (event.type)
 		{
