@@ -78,7 +78,8 @@ namespace OWC
 
 		dispatcher.Dispatch<WindowResize>([](const WindowResize& WRE)
 			{
-				ImGui::SetNextWindowSize({ static_cast<float>(WRE.GetWidth()), static_cast<float>(WRE.GetHeight()) });
+				ImGuiIO& io = ImGui::GetIO();
+				io.DisplaySize = ImVec2(static_cast<float>(WRE.GetWidth()), static_cast<float>(WRE.GetHeight()));
 				return false;
 			});
 	}
