@@ -18,7 +18,7 @@ namespace OWC
 	RenderLayer::RenderLayer(const std::shared_ptr<InterLayerData>& ILD)
 		: m_ILD(ILD)
 	{
-		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer((sizeof(float) * 2) + sizeof(glm::vec2) + sizeof(bool32));
+		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(float));
 		m_Image = Graphics::TextureBuffer::CreateTextureBuffer(1, 1);
 		std::vector<glm::vec4> emptyImageData = { glm::vec4(0.0f) };
 		m_Image->UpdateBufferData(emptyImageData);
@@ -36,16 +36,11 @@ namespace OWC
 		struct UniformBufferObject
 		{
 			float divider = 0.0;
-			float imageScale = 0.0;
-			glm::vec2 imageOffset = glm::vec2(0.0f, 0.0f);
-			bool32 toggleUV = 0;
 		};
 
-		UniformBufferObject ubo{};
-		ubo.divider = m_Divider;
-		ubo.imageScale = m_ImageScale;
-		ubo.imageOffset = m_ImageOffset;
-		ubo.toggleUV = static_cast<bool32>(m_ToggleUV);
+		UniformBufferObject ubo{
+			.divider = 1.0f / static_cast<float>(m_ILD->numberOfSamples)
+		};
 
 		m_UniformBuffer->UpdateBufferData(std::as_bytes(std::span<const UniformBufferObject>(&ubo, 1)));
 
@@ -78,23 +73,7 @@ namespace OWC
 	}
 
 	void RenderLayer::ImGuiRender()
-	{ 
-		constexpr float min = 0.001f;
-		constexpr float max = 5.0f;
-
-		constexpr float imageOffsetMin = 0.0f;
-		constexpr float imageOffsetMax = 1.0f;
-		constexpr float iamgeOffsetStep = 0.01f;
-
-		float DividerStep = m_Divider / 100.0f;
-		float ImageScaleStep = m_ImageScale / 100.0f;
-
-		ImGui::Begin("Render Layer");
-		ImGui::DragFloat("Divider", &m_Divider, DividerStep, min, max);
-		ImGui::DragFloat("Image Scale", &m_ImageScale, ImageScaleStep, min, max);
-		ImGui::DragFloat2("Image Offset", glm::value_ptr(m_ImageOffset), iamgeOffsetStep, imageOffsetMin, imageOffsetMax);
-		ImGui::Checkbox("Toggle UV", &m_ToggleUV);
-		ImGui::End();
+	{ // not needed
 	}
 
 	void RenderLayer::OnEvent(class BaseEvent& e)
@@ -156,13 +135,13 @@ namespace OWC
 
 		std::vector<ShaderData> shaderDatas = {
 			{
-				.bytecode = LoadFileToBytecode<uint32_t>("../ShaderSrc/testImage.vert.spv"),
+				.bytecode = LoadFileToBytecode<uint32_t>("../ShaderSrc/Image.vert.spv"),
 				.type = ShaderType::Vertex,
 				.language = ShaderData::ShaderLanguage::SPIRV,
 				.descriptorType = {}
 			},
 			{
-				.bytecode = LoadFileToBytecode<uint32_t>("../ShaderSrc/testImage.frag.spv"),
+				.bytecode = LoadFileToBytecode<uint32_t>("../ShaderSrc/Image.frag.spv"),
 				.type = ShaderType::Fragment,
 				.language = ShaderData::ShaderLanguage::SPIRV,
 				.descriptorType = fragmentBindingDiscriptions

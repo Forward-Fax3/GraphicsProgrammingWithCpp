@@ -15,10 +15,7 @@ struct VertexData
 
 cbuffer image
 {
-    float numberOfSamples;
-    float scaleImage;
-    float2 imagePositionOffset;
-    bool toggleUV;
+    float invNumberOfSamples;
     Sampler2D<float4> texture;
 };
 
@@ -43,15 +40,6 @@ VertexStageOutput vertexMain(uint VetexIndex : SV_VertexID)
 float4 fragmentMain(float2 uv : UV) : SV_Target
 {
     float4 output;
-    if (toggleUV)
-    {
-        float2 scaleduv = (uv * scaleImage) + imagePositionOffset;
-        output = float4(scaleduv - floor(scaleduv), 0.0f, 1.0f) / numberOfSamples;
-    }
-    else
-    {
-        output = texture.Sample((uv * scaleImage) + imagePositionOffset);
-        output = float4(float3(output.x, output.y, output.z) / numberOfSamples, output.w);
-    }
+    output = texture.Sample(uv) * invNumberOfSamples;
     return output;
 }

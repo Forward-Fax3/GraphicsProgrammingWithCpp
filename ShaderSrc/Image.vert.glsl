@@ -3,29 +3,29 @@
 layout(row_major) uniform;
 layout(row_major) buffer;
 
-#line 35 0
+#line 32 0
 void _S1(out int  _S2[6])
 {
 
-#line 35
+#line 32
     _S2[0] = 0;
 
-#line 35
+#line 32
     _S2[1] = 1;
 
-#line 35
+#line 32
     _S2[2] = 2;
 
-#line 35
+#line 32
     _S2[3] = 1;
 
-#line 35
+#line 32
     _S2[4] = 3;
 
-#line 35
+#line 32
     _S2[5] = 2;
 
-#line 35
+#line 32
     return;
 }
 
@@ -34,7 +34,7 @@ void _S1(out int  _S2[6])
 int  indices_0[6];
 
 
-#line 35
+#line 32
 void _S3(out vec2  _S4[4])
 {
 
@@ -64,12 +64,12 @@ void _S3(out vec2  _S4[4])
 vec2  data_0[4];
 
 
-#line 25
+#line 22
 layout(location = 0)
 out vec2 entryPointParam_vertexMain_uv_0;
 
 
-#line 25
+#line 22
 struct VertexStageOutput_0
 {
     vec4 sv_position_0;
@@ -80,28 +80,28 @@ struct VertexStageOutput_0
 void main()
 {
 
-#line 32
+#line 29
     int  _S8[6];
 
-#line 32
+#line 29
     _S1(_S8);
 
-#line 32
+#line 29
     indices_0 = _S8;
 
-#line 32
+#line 29
     vec2  _S9[4];
 
-#line 32
+#line 29
     _S3(_S9);
 
-#line 32
+#line 29
     data_0 = _S9;
 
 
     vec2 vetData_0 = data_0[indices_0[uint(gl_VertexIndex - gl_BaseVertex)]];
 
-#line 34
+#line 31
     VertexStageOutput_0 output_0;
 
     output_0.sv_position_0 = vec4(data_0[indices_0[uint(gl_VertexIndex - gl_BaseVertex)]], vec2(1.0));
@@ -109,13 +109,13 @@ void main()
 
     VertexStageOutput_0 _S10 = output_0;
 
-#line 39
+#line 36
     gl_Position = output_0.sv_position_0;
 
-#line 39
+#line 36
     entryPointParam_vertexMain_uv_0 = _S10.uv_0;
 
-#line 39
+#line 36
     return;
 }
 

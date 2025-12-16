@@ -2,6 +2,7 @@
 #include "Layer.hpp"
 #include "InterLayerData.hpp"
 #include "ImageLoader.hpp"
+#include "Scene.hpp"
 
 #include <memory>
 #include <bitset>
@@ -33,5 +34,9 @@ namespace OWC
 		bool m_ImageStateUpdated = false;
 		bool m_ToggleSecondImage = false;
 		bool m_SecondImageStateUpdated = false;
+		bool m_ToggleRaytracedImage = false;
+		bool m_ShowRaytracedImage = false;
+
+		std::unique_ptr<BaseScene> m_Scene;
 	};
 }
