@@ -16,6 +16,7 @@ struct VertexData
 cbuffer image
 {
     float invNumberOfSamples;
+    float invGamma;
     Sampler2D<float4> texture;
 };
 
@@ -40,6 +41,6 @@ VertexStageOutput vertexMain(uint VetexIndex : SV_VertexID)
 float4 fragmentMain(float2 uv : UV) : SV_Target
 {
     float4 output;
-    output = texture.Sample(uv) * invNumberOfSamples;
+    output = pow(texture.Sample(uv) * invNumberOfSamples, invGamma);
     return output;
 }

@@ -104,7 +104,7 @@ namespace OWC
 	{
 		ImGui::Begin("Rand Test Scene");
 		m_UpdateImage = ImGui::Button("Randomize Framebuffer");
-		std::array<const char*, 4> renderModeNames = {
+		constexpr std::array<const char*, 4> renderModeNames = {
 			"Random Color Vec2",
 			"Black and White Noise Vec2",
 			"Random Color Vec4",

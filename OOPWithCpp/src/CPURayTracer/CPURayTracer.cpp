@@ -51,6 +51,16 @@ namespace OWC
 
 	void CPURayTracer::ImGuiRender()
 	{
+		constexpr std::array<const char*, 7> gammaCorrectionNames = {
+			"None",
+			"Gamma 1.9",
+			"Gamma 2.0",
+			"Gamma 2.2",
+			"Gamma 2.4",
+			"BT. 1886",
+			"Custom"
+		};
+
 		ImGui::Begin("CPU Ray Tracer");
 		ImGui::Text("CPU Ray Tracer Layer");
 		m_RayTracingStateUpdated = ImGui::Checkbox("Toggle RayTracing", &m_ToggleRaytracedImage);
@@ -59,8 +69,7 @@ namespace OWC
 			ImGui::Text("number of samples %s", std::format("{}", m_InterLayerData->numberOfSamples).c_str());
 
 			std::array<const char*, 2> sceneNames = { "Basic", "RandTest" };
-			static int currentSceneIndex = 0;
-			if (ImGui::Combo("Scene", &currentSceneIndex, sceneNames.data(), static_cast<int>(sceneNames.size())))
+			if (static int currentSceneIndex = 0; ImGui::Combo("Scene", &currentSceneIndex, sceneNames.data(), static_cast<int>(sceneNames.size())))
 			{
 				auto selectedScene = static_cast<Scene>(currentSceneIndex);
 				m_Scene = BaseScene::CreateScene(selectedScene, m_InterLayerData->imageData);
@@ -69,6 +78,17 @@ namespace OWC
 				for (auto& pixel : m_InterLayerData->imageData)
 					pixel = Vec4(0.0f);
 			}
+
+			static int currentGammaIndex = 3; // Default to Gamma 2.2
+			static float customGammaValue = 2.2f;
+			if (ImGui::Combo("Gamma Correction", &currentGammaIndex, gammaCorrectionNames.data(), static_cast<int>(gammaCorrectionNames.size())))
+			{
+				auto gamma = static_cast<GammaCorrection>(currentGammaIndex);
+				if (gamma != GammaCorrection::custom)
+					UpdateGammaValue(gamma);
+			}
+			if (static_cast<GammaCorrection>(currentGammaIndex) == GammaCorrection::custom && ImGui::InputFloat("Custom Gamma Value", &customGammaValue))
+				m_InterLayerData->invGammaValue = 1.0f / customGammaValue;
 		}
 		ImGui::End();
 
@@ -96,5 +116,33 @@ namespace OWC
 
 		if (m_ToggleRaytracedImage)
 			m_Scene->OnEvent(e);
+	}
+
+	void CPURayTracer::UpdateGammaValue(GammaCorrection gammaCorrection) const
+	{
+		switch (gammaCorrection)
+		{
+		case GammaCorrection::None:
+			m_InterLayerData->invGammaValue = 1.0f;
+			break;
+		case GammaCorrection::Gamma19:
+			m_InterLayerData->invGammaValue = 1.0f / 1.9f;
+			break;
+		case GammaCorrection::Gamma20:
+			m_InterLayerData->invGammaValue = 1.0f / 2.0f;
+			break;
+		case GammaCorrection::Gamma22:
+			m_InterLayerData->invGammaValue = 1.0f / 2.2f;
+			break;
+		case GammaCorrection::Gamma24:
+		case GammaCorrection::GammaBT1886:
+			m_InterLayerData->invGammaValue = 1.0f / 2.4f;
+			break;
+		case GammaCorrection::custom:
+			// Keep current value
+			break;
+		default:
+			std::unreachable();
+		}
 	}
 }

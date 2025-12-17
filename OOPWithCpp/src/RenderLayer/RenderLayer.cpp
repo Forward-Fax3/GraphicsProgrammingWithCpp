@@ -18,7 +18,7 @@ namespace OWC
 	RenderLayer::RenderLayer(const std::shared_ptr<InterLayerData>& ILD)
 		: m_ILD(ILD)
 	{
-		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(float));
+		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(float) * 2);
 		m_Image = Graphics::TextureBuffer::CreateTextureBuffer(1, 1);
 		std::vector<glm::vec4> emptyImageData = { glm::vec4(0.0f) };
 		m_Image->UpdateBufferData(emptyImageData);
@@ -36,10 +36,12 @@ namespace OWC
 		struct UniformBufferObject
 		{
 			float divider = 0.0;
+			float invGammaValue = 0.0f;
 		};
 
 		UniformBufferObject ubo{
-			.divider = 1.0f / static_cast<float>(m_ILD->numberOfSamples)
+			.divider = 1.0f / static_cast<float>(m_ILD->numberOfSamples),
+			.invGammaValue = m_ILD->invGammaValue
 		};
 
 		m_UniformBuffer->UpdateBufferData(std::as_bytes(std::span<const UniformBufferObject>(&ubo, 1)));

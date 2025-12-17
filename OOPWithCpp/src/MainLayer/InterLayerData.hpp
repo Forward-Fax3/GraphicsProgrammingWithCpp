@@ -14,5 +14,6 @@ namespace OWC
 		uint32_t imageWidth = 0;
 		uint32_t imageHeight = 0;
 		std::bitset<2> ImageUpdates; // bit 0: update image, bit 1: image resize
+		float invGammaValue = 1.0f / 2.2f;
 	};
 }
