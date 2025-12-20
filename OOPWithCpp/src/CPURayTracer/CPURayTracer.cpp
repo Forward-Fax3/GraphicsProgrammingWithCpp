@@ -69,6 +69,11 @@ namespace OWC
 			"BT. 1886",
 			"Custom"
 		};
+		constexpr std::array<const char*, 3> sceneNames = {
+			"Basic",
+			"RandTest", 
+			"DuelGraySpheres"
+		};
 
 		ImGui::Begin("CPU Ray Tracer");
 		ImGui::Text("CPU Ray Tracer Layer");
@@ -77,7 +82,6 @@ namespace OWC
 		{
 			ImGui::Text("number of samples %s", std::format("{}", m_InterLayerData->numberOfSamples).c_str());
 
-			std::array<const char*, 2> sceneNames = { "Basic", "RandTest" };
 			if (ImGui::Combo("Scene", &m_CurrentSceneIndex, sceneNames.data(), static_cast<int>(sceneNames.size())))
 			{
 				auto selectedScene = static_cast<Scene>(m_CurrentSceneIndex);

@@ -15,16 +15,16 @@ namespace OWC
 
 	struct HitData
 	{
-		Vec3 normal;
-		Vec3 point;
-		BaseMaterial* material;
-		float t;
-		bool frontFace;
-		bool hasHit;
+		Vec3 normal{};
+		Vec3 point{};
+		BaseMaterial* material = nullptr;
+		float t = 0.0;
+		bool frontFace = false;
+		bool hasHit = false;
 
 		OWC_FORCE_INLINE void SetFaceNormal(const Ray& ray, const Vec3& outwardNormal)
 		{
-			frontFace = glm::dot(ray.GetDirection(), outwardNormal) < 0.0f;
+			frontFace = glm::dot(ray.GetDirection(), outwardNormal) <= 0.0f;
 			normal = frontFace ? outwardNormal : -outwardNormal;
 		}
 	};

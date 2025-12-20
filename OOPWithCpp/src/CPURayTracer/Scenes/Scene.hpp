@@ -13,6 +13,7 @@ namespace OWC
 	{ // TODO: Add more scenes
 		Basic , // A basic scene with just a sphere
 		RandTest, // A scene that fills the framebuffer with random colors
+		DuelGraySpheres // A scene with two gray spheres
 	};
 
 	struct RenderPassReturnData

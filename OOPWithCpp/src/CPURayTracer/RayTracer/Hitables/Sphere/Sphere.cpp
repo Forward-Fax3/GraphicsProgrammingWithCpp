@@ -8,11 +8,11 @@ namespace OWC
 {
 	HitData Sphere::IsHit(const Ray& ray) const
 	{
-		HitData hitData{};
+		HitData hitData;
 
-		glm::vec3 oc = ray.GetOrigin() - m_Center;
+		glm::vec3 oc = m_Center - ray.GetOrigin();
 
-		float a = glm::length2(ray.GetDirection());
+		constexpr float a = 1.0f; // ray direction is normalized so the length squared will alway be 1
 		float h = glm::dot(oc, ray.GetDirection());
 		float c = glm::length2(oc) - m_Radius * m_Radius;
 
@@ -25,11 +25,11 @@ namespace OWC
 
 		float sqrtDiscriminant = glm::sqrt(discriminant);
 
-		float root = (-h - sqrtDiscriminant) / a;
-		if (root < 0.001f)
+		float root = (h - sqrtDiscriminant) / a;
+		if (!ray.GetHitDistanceInterval().Contains(root))
 		{
-			root = (-h + sqrtDiscriminant) / a;
-			if (root < 0.001f)
+			root = (h + sqrtDiscriminant) / a;
+			if (!ray.GetHitDistanceInterval().Contains(root))
 			{
 				hitData.hasHit = false;
 				return hitData;

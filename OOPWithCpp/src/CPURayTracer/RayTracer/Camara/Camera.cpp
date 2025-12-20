@@ -40,16 +40,16 @@ namespace OWC
 
 		Vec3 rotationInRadians = glm::radians(m_Rotation);
 		Mat4 rotationMatrix = glm::eulerAngleYXZ(rotationInRadians.y, rotationInRadians.x, rotationInRadians.z);
-		Vec3 forward = glm::normalize(glm::normalize(Vec3(m_FocalLength)) * Vec3(rotationMatrix * Vec4(0.0f, 0.0f, -1.0f, 0.0f)));
-		Vec3 right = glm::normalize(glm::cross(forward, m_Vup));
-		Vec3 up = glm::normalize(glm::cross(right, forward));
+		Vec3 forward = glm::normalize(Vec3(rotationMatrix * Vec4(0.0f, 0.0f, 1.0f, 0.0f)));
+		Vec3 right = glm::normalize(Vec3(rotationMatrix * Vec4(1.0f, 0.0, 0.0, 0.0)));
+		Vec3 up = glm::normalize(Vec3(rotationMatrix * Vec4(0.0f, -1.0, 0.0, 0.0)));
 
 		float aspectRatio = m_ScreenSize.x / m_ScreenSize.y;
 		float viewportHeight = 2.0f * m_FocalLength * glm::tan(glm::radians(m_FOV) * 0.5f);
 		float viewportWidth = aspectRatio * viewportHeight;
 
 		Point viewportU = viewportWidth * right;
-		Point viewportV = viewportHeight * up;
+		Point viewportV = viewportHeight * -up;
 
 		m_PixelDeltaU = viewportU / m_ScreenSize.x;
 		m_PixelDeltaV = viewportV / m_ScreenSize.y;
@@ -63,9 +63,9 @@ namespace OWC
 	Ray RTCamera::CreateRay(size_t i, size_t j) const
 	{
 		Vec2 randomOffset = Rand::LinearFastRandVec2(Vec2(0.0f), Vec2(1.0f)) + Vec2(j, i);
-		Vec3 rayDirection = glm::normalize(m_Pixel100Location +
+		Vec3 rayDirection = m_Pixel100Location +
 			(randomOffset.x * m_PixelDeltaU) +
-			(randomOffset.y * m_PixelDeltaV));
+			(randomOffset.y * m_PixelDeltaV);
 
 		return Ray(m_Position, rayDirection);
 	}
@@ -101,7 +101,10 @@ namespace OWC
 
 		Colour finalColour(1.0f);
 		while (i != 0)
-			finalColour *= m_BouncedColours[--i];
+		{
+			i--;
+			finalColour *= m_BouncedColours[i];
+		}
 
 		return finalColour;
 	}

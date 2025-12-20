@@ -1,6 +1,7 @@
 ﻿#include "Scene.hpp"
 #include "BasicScene.hpp"
 #include "RandTestScene.hpp"
+#include "DuelWhiteSpheres.hpp"
 
 
 namespace OWC
@@ -13,6 +14,8 @@ namespace OWC
 			return std::make_unique<BasicScene>(frameBuffer);
 		case Scene::RandTest:
 			return std::make_unique<RandTestScene>(frameBuffer);
+		case Scene::DuelGraySpheres:
+			return std::make_unique<DuelGraySpheres>(frameBuffer);
 		default:
 			// Return Basic scene as default
 			return std::make_unique<BasicScene>(frameBuffer);

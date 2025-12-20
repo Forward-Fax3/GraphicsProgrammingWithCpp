@@ -5,9 +5,9 @@
 
 namespace OWC
 {
-	bool operator<(const Vec3& lhs, float rhs)
+	static bool operator<(const Vec3& lhs, float rhs)
 	{
-		Vec3 absLHS = glm::abs(lhs);
+		Vec3 absLHS(glm::abs(lhs));
 		return absLHS.x < rhs && absLHS.y < rhs && absLHS.z < rhs;
 	}
 
@@ -26,7 +26,7 @@ namespace OWC
 		return true;
 	}
 
-	OWC::Colour Lambertian::Albedo(HitData& data) const
+	Colour Lambertian::Albedo(HitData& data) const
 	{
 		return m_Texture->Value(data.point);
 	}

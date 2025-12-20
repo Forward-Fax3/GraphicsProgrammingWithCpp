@@ -16,9 +16,15 @@ namespace OWC
 		Interval(Interval&&) = default;
 		Interval& operator=(Interval&&) = default;
 
+		OWC_FORCE_INLINE float GetMin() const { return m_MinMax.x; }
+		OWC_FORCE_INLINE float GetMax() const { return m_MinMax.y; }
+
+		OWC_FORCE_INLINE void SetMin(float min) { m_MinMax.x = min; }
+		OWC_FORCE_INLINE void SetMax(float max) { m_MinMax.y = max; }
+
 		OWC_FORCE_INLINE bool Contains(float value) const
 		{
-			return (value >= m_MinMax.x) && (value <= m_MinMax.y);
+			return m_MinMax.x <= value && value <= m_MinMax.y;
 		}
 
 	private:
