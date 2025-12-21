@@ -1,4 +1,4 @@
-﻿#include "core.hpp"
+﻿#include "Core.hpp"
 #include "Application.hpp"
 #include "CPURayTracer.hpp"
 #include "ImageLoader.hpp"

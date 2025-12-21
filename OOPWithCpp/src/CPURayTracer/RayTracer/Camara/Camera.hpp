@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "core.hpp"
+#include "Core.hpp"
 #include "Ray.hpp"
 #include "BaseHittable.hpp"
 

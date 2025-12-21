@@ -2,7 +2,7 @@
 #include <windows.h>
 #undef max // undefine max macro to avoid conflicts with std::numeric_limits
 
-#include "core.hpp"
+#include "Core.hpp"
 
 
 namespace OWC

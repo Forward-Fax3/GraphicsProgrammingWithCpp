@@ -1,6 +1,6 @@
 ﻿#pragma once
 #define BASEMATERIAL_HPP
-#include "core.hpp"
+#include "Core.hpp"
 #include "Ray.hpp"
 
 #ifndef BaseHittable_HPP

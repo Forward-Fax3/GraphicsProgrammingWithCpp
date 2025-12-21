@@ -1,4 +1,4 @@
-﻿#include "core.hpp"
+﻿#include "Core.hpp"
 #include "RenderLayer.hpp"
 #include "LoadFile.hpp"
 #include "Renderer.hpp"
