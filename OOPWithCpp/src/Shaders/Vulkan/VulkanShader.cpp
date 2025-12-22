@@ -298,13 +298,13 @@ namespace OWC::Graphics
 
 				if (it != poolSize.end())
 				{
-					it->descriptorCount += bindingDescription.descriptorCount * vkCore.GetNumberOfFramesInFlight();
+					it->descriptorCount += bindingDescription.descriptorCount * static_cast<u32>(vkCore.GetNumberOfFramesInFlight());
 				}
 				else
 				{
 					poolSize.emplace_back(
 						descriptorType,
-						bindingDescription.descriptorCount * vkCore.GetNumberOfFramesInFlight()
+						bindingDescription.descriptorCount * static_cast<u32>(vkCore.GetNumberOfFramesInFlight())
 					);
 				}
 			}
@@ -312,13 +312,13 @@ namespace OWC::Graphics
 
 		vk::DescriptorPoolCreateInfo poolInfo = vk::DescriptorPoolCreateInfo()
 			.setPoolSizes(poolSize)
-			.setMaxSets(vkCore.GetNumberOfFramesInFlight());
+			.setMaxSets(static_cast<u32>(vkCore.GetNumberOfFramesInFlight()));
 
 		m_DescriptorPool = device.createDescriptorPool(poolInfo);
 		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
 			.setDescriptorPool(m_DescriptorPool)
 			.setSetLayouts(m_DescriptorSetLayout);
-		for (u32 i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
+		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
 		{
 			m_DescriptorSet.push_back(device.allocateDescriptorSets(allocInfo).front());
 		}
