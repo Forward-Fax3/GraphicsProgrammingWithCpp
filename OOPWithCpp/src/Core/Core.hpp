@@ -20,7 +20,7 @@ namespace OWC
 	using u64 = std::uint64_t;
 
 	using uSize = std::size_t;
-	using isize = std::ptrdiff_t;
+	using iSize = std::ptrdiff_t;
 
 	using f32 = float;
 	using f64 = double;
@@ -67,6 +67,22 @@ namespace OWC
 	using Vec3u32 = glm::vec<3, u32>;
 	using Vec4u32 = glm::vec<4, u32>;
 
+	using Vec2i64 = glm::vec<2, i64>;
+	using Vec3i64 = glm::vec<3, i64>;
+	using Vec4i64 = glm::vec<4, i64>;
+
+	using Vec2u64 = glm::vec<2, u64>;
+	using Vec3u64 = glm::vec<3, u64>;
+	using Vec4u64 = glm::vec<4, u64>;
+
+	using Vec2uSize = glm::vec<2, uSize>;
+	using Vec3uSize = glm::vec<3, uSize>;
+	using Vec4uSize = glm::vec<4, uSize>;
+
+	using Vec2iSize = glm::vec<2, iSize>;
+	using Vec3iSize = glm::vec<3, iSize>;
+	using Vec4iSize = glm::vec<4, iSize>;
+
 	using Vec2i = Vec2i32;
 	using Vec3i = Vec3i32;
 	using Vec4i = Vec4i32;
@@ -78,6 +94,14 @@ namespace OWC
 	using Vec2 = Vec2f32;
 	using Vec3 = Vec3f32;
 	using Vec4 = Vec4f32;
+
+	using Vec2us = Vec2uSize;
+	using Vec3us = Vec3uSize;
+	using Vec4us = Vec4uSize;
+
+	using vec2is = Vec2iSize;
+	using vec3is = Vec3iSize;
+	using vec4is = Vec4iSize;
 
 	using Mat2 = Mat2f32;
 	using Mat3 = Mat3f32;

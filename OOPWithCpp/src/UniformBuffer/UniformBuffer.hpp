@@ -35,7 +35,7 @@ namespace OWC::Graphics
 		TextureBuffer(TextureBuffer&&) noexcept = default;
 		TextureBuffer& operator=(TextureBuffer&&) noexcept = default;
 
-		virtual void UpdateBufferData(const std::vector<glm::vec4>& data) = 0;
+		virtual void UpdateBufferData(const std::vector<Vec4>& data) = 0;
 
 		static std::shared_ptr<TextureBuffer> CreateTextureBuffer(const ImageLoader& image);
 		static std::shared_ptr<TextureBuffer> CreateTextureBuffer(u32 width, u32 height);

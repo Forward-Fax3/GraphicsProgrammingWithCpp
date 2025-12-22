@@ -89,7 +89,7 @@ namespace OWC::Graphics
 		device.freeMemory(m_TextureImageMemory);
 	}
 
-	void VulkanTextureBuffer::UpdateBufferData(const std::vector<glm::vec4>& data)
+	void VulkanTextureBuffer::UpdateBufferData(const std::vector<Vec4>& data)
 	{
 		const auto& vkCore = VulkanCore::GetInstance();
 		const auto& device = vkCore.GetDevice();
@@ -98,7 +98,7 @@ namespace OWC::Graphics
 		vk::DeviceMemory stagingBufferMemory;
 
 		// Create staging buffer
-		vk::DeviceSize imageSize = static_cast<uSize>(m_Width) * static_cast<uSize>(m_Height) * sizeof(glm::vec4);
+		vk::DeviceSize imageSize = static_cast<uSize>(m_Width) * static_cast<uSize>(m_Height) * sizeof(Vec4);
 		stagingBuffer = device.createBuffer(vk::BufferCreateInfo()
 			.setSize(imageSize)
 			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
@@ -184,10 +184,13 @@ namespace OWC::Graphics
 		);
 
 		cmdBuf.end();
+
+		// Submit command buffer and wait for completion
+		// TODO: Use a better synchronization method
 		vk::SubmitInfo submitInfo = vk::SubmitInfo().setCommandBuffers(cmdBuf);
 		vk::Fence fence = device.createFence(vk::FenceCreateInfo());
 		vkCore.GetGraphicsQueue().submit(submitInfo, fence);
-		auto result = device.waitForFences(fence, VK_TRUE, UINT64_MAX);
+		auto result = device.waitForFences(fence, vk::True, UINT64_MAX);
 		if (result != vk::Result::eSuccess)
 			Log<LogLevel::Critical>("Failed to wait for fence in VulkanTextureBuffer::UpdateBufferData");
 		device.destroyFence(fence);

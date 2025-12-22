@@ -10,7 +10,7 @@ namespace OWC
 {
 	struct InterLayerData
 	{
-		std::vector<glm::vec4> imageData{};
+		std::vector<Vec4> imageData{};
 		uSize numberOfSamples = 0;
 		u32 imageWidth = 0;
 		u32 imageHeight = 0;

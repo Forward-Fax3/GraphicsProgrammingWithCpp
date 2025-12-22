@@ -14,7 +14,7 @@
 
 namespace OWC
 {
-	RandTestScene::RandTestScene(std::vector<glm::vec4>& frameBuffer)
+	RandTestScene::RandTestScene(std::vector<Vec4>& frameBuffer)
 		: BaseScene(frameBuffer) {}
 
 	RenderPassReturnData RandTestScene::RenderNextPass()

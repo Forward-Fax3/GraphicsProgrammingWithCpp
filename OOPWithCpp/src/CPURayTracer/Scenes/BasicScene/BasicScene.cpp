@@ -17,10 +17,10 @@
 
 namespace OWC
 {
-	BasicScene::BasicScene(std::vector<glm::vec4>& frameBuffer)
+	BasicScene::BasicScene(std::vector<Vec4>& frameBuffer)
 		: BaseScene(frameBuffer)
 	{
-		m_Hittables = std::make_shared<Sphere>(glm::vec3(0.0f), 1.0f,
+		m_Hittables = std::make_shared<Sphere>(Vec3(0.0f), 1.0f,
 			std::make_shared<Lambertian>(Colour(1.0f, 0.0f, 0.0f, 1.0))
 		);
 

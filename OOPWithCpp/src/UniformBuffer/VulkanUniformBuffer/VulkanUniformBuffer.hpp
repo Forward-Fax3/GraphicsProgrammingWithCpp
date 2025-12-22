@@ -44,7 +44,7 @@ namespace OWC::Graphics
 		VulkanTextureBuffer(VulkanTextureBuffer&&) noexcept = delete;
 		VulkanTextureBuffer& operator=(VulkanTextureBuffer&&) noexcept = delete;
 
-		void UpdateBufferData(const std::vector<glm::vec4>& data) override;
+		void UpdateBufferData(const std::vector<Vec4>& data) override;
 
 		[[nodiscard]] vk::Image GetImage() const { return m_TextureImage; }
 		[[nodiscard]] vk::ImageView GetImageView() const { return m_TextureImageView; }

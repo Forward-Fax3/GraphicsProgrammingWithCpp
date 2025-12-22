@@ -11,7 +11,7 @@ namespace OWC
 	{
 	public:
 		DuelGraySpheres() = delete;
-		explicit DuelGraySpheres(std::vector<glm::vec4>& frameBuffer);
+		explicit DuelGraySpheres(std::vector<Vec4>& frameBuffer);
 		~DuelGraySpheres() override = default;
 
 		DuelGraySpheres(const DuelGraySpheres&) = delete;

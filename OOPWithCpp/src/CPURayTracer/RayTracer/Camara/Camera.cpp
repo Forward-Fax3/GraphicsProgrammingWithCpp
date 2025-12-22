@@ -23,7 +23,7 @@ namespace OWC
 		if (m_PositionNeedsUpdating)
 			CreateViewMatrix();
 
-		glm::vec<2, uSize> screenSize(m_ScreenSize);
+		Vec2us screenSize(m_ScreenSize);
 
 		for (uSize i = 0; i != screenSize.y; i++)
 			for (uSize j = 0; j != screenSize.x; j++)

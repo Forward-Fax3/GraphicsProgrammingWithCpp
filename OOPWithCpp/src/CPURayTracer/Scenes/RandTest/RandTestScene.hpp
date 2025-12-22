@@ -16,7 +16,7 @@ namespace OWC
 
     public:
 		RandTestScene() = delete;
-        explicit RandTestScene(std::vector<glm::vec4>& frameBuffer);
+        explicit RandTestScene(std::vector<Vec4>& frameBuffer);
         ~RandTestScene() override = default;
 
         RandTestScene(const RandTestScene&) = delete;

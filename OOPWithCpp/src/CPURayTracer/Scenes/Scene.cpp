@@ -7,7 +7,7 @@
 
 namespace OWC
 {
-	std::unique_ptr<BaseScene> BaseScene::CreateScene(Scene scene, std::vector<glm::vec4>& frameBuffer)
+	std::unique_ptr<BaseScene> BaseScene::CreateScene(Scene scene, std::vector<Vec4>& frameBuffer)
 	{
 		switch (scene)
 		{

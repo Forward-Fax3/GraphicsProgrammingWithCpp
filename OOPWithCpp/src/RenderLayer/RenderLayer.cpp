@@ -20,7 +20,7 @@ namespace OWC
 	{
 		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(f32) * 2);
 		m_Image = Graphics::TextureBuffer::CreateTextureBuffer(1, 1);
-		std::vector<glm::vec4> emptyImageData = { glm::vec4(0.0f) };
+		std::vector<Vec4> emptyImageData = { Vec4(0.0f) };
 		m_Image->UpdateBufferData(emptyImageData);
 		SetupPipeline();
 		SetupRenderPass();
@@ -58,7 +58,7 @@ namespace OWC
 			else if (m_ILD->imageWidth == 0 || m_ILD->imageHeight == 0) // clear image
 			{
 				m_Image = TextureBuffer::CreateTextureBuffer(1, 1);
-				std::vector<glm::vec4> emptyImageData = { glm::vec4(0.0f) };
+				std::vector<Vec4> emptyImageData = { Vec4(0.0f) };
 				m_Image->UpdateBufferData(emptyImageData);
 				SetupPipeline();
 				SetupRenderPass();

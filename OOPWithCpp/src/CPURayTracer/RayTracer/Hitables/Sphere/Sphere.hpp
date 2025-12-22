@@ -13,7 +13,7 @@ namespace OWC
 	{
 	public:
 		Sphere() = delete;
-		OWC_FORCE_INLINE Sphere(const glm::vec3& center, f32 radius, const std::shared_ptr<BaseMaterial>& mat) : m_Center(center), m_Material(mat), m_Radius(radius) {}
+		OWC_FORCE_INLINE Sphere(const Vec3& center, f32 radius, const std::shared_ptr<BaseMaterial>& mat) : m_Center(center), m_Material(mat), m_Radius(radius) {}
 		~Sphere() override = default;
 
 		Sphere(const Sphere&) = delete;
@@ -24,7 +24,7 @@ namespace OWC
 		HitData IsHit(const Ray& ray) const override;
 
 	private:
-		glm::vec3 m_Center;
+		Vec3 m_Center;
 		std::shared_ptr<BaseMaterial> m_Material;
 		f32 m_Radius;
 	};

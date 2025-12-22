@@ -10,7 +10,7 @@ namespace OWC
 	{
 		HitData hitData;
 
-		glm::vec3 oc = m_Center - ray.GetOrigin();
+		Vec3 oc = m_Center - ray.GetOrigin();
 
 		constexpr f32 a = 1.0f; // ray direction is normalized so the length squared will alway be 1
 		f32 h = glm::dot(oc, ray.GetDirection());

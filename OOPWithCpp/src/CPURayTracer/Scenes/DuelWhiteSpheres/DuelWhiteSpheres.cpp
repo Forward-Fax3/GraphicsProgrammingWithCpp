@@ -17,15 +17,15 @@
 
 namespace OWC
 {
-	DuelGraySpheres::DuelGraySpheres(std::vector<glm::vec4>& frameBuffer)
+	DuelGraySpheres::DuelGraySpheres(std::vector<Vec4>& frameBuffer)
 		: BaseScene(frameBuffer)
 	{
 		m_SceneObjects = std::make_shared<Hitables>();
 		m_SceneObjects->Reserve(2);
 
 		auto gray = std::make_shared<Lambertian>(Colour(0.5f));
-		auto smallSphere = std::make_shared<Sphere>(glm::vec3(0.0f), 1.0f, gray);
-		auto bigSphere = std::make_shared<Sphere>(glm::vec3(0.0f, 51.0f, 0.0f), 50.0f, gray);
+		auto smallSphere = std::make_shared<Sphere>(Vec3(0.0f), 1.0f, gray);
+		auto bigSphere = std::make_shared<Sphere>(Vec3(0.0f, 51.0f, 0.0f), 50.0f, gray);
 		m_SceneObjects->AddObject(smallSphere);
 		m_SceneObjects->AddObject(bigSphere);
 
