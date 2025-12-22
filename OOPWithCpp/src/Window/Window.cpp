@@ -17,8 +17,8 @@ namespace OWC
 
 		m_Window.reset(SDL_CreateWindow( // Creates the window and stores it in the unique_ptr with a custom deleter
 			ToCharPtr(properties.Title),
-			m_Properties.Width, m_Properties.Height,
-			SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY
+			static_cast<int>(m_Properties.Width), static_cast<int>(m_Properties.Height),
+			SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_VULKAN
 		));
 
 		if (m_Window == nullptr)
@@ -47,13 +47,13 @@ namespace OWC
 #endif
 	}
 
-	void Window::Resize(i32 width, i32 height)
+	void Window::Resize(u32 width, u32 height)
 	{
 		if (m_Window)
 		{
-			width = std::max(width, 210);
-			height = std::max(height, 144);
-			SDL_SetWindowSize(m_Window.get(), width, height);
+			width = glm::max(width, 210u);
+			height = glm::max(height, 144u);
+			SDL_SetWindowSize(m_Window.get(), static_cast<int>(width), static_cast<int>(height));
 			m_Properties.Width = width;
 			m_Properties.Height = height;
 		}

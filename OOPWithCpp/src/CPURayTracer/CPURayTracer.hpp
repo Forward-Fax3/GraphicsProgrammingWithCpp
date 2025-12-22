@@ -36,7 +36,7 @@ namespace OWC
 
 		void OnUpdate() override;
 		void ImGuiRender() override;
-		void OnEvent(class BaseEvent& event) override;
+		void OnEvent(BaseEvent& event) override;
 
 	private:
 		void UpdateGammaValue(GammaCorrection gammaCorrection) const;
@@ -45,6 +45,7 @@ namespace OWC
 		std::shared_ptr<InterLayerData> m_InterLayerData = nullptr;
 		bool m_RayTracingStateUpdated = false;
 		bool m_ToggleRaytracedImage = false;
+		bool m_UseWindowResolution = true;
 
 		i32	m_CurrentSceneIndex = 0;
 		i32	m_CurrentGammaIndex = 3; // Default to Gamma 2.2

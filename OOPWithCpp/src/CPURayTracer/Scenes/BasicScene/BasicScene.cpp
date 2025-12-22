@@ -51,6 +51,12 @@ namespace OWC
 		return { true, false };
 	}
 
+	void BasicScene::UpdateScreenSize(const Vec2u& newSize)
+	{
+		m_Camera->SetScreenSize(newSize);
+		m_ImageNeedsClearing = true;
+	}
+
 	void BasicScene::OnImGuiRender()
 	{
 		ImGui::Begin("Camera Settings");
@@ -75,18 +81,5 @@ namespace OWC
 			m_Camera->SetFocalLength(m_FocalLength);
 		}
 		ImGui::End();
-	}
-
-	bool BasicScene::OnEvent(BaseEvent& e)
-	{
-		EventDispatcher dispacher(e);
-
-		dispacher.Dispatch<WindowResize>([this](const WindowResize&) {
-			const auto& app = Application::GetConstInstance();
-			this->m_Camera->SetScreenSize(Vec2(app.GetWindowWidth(), app.GetWindowHeight()));
-			return false;
-			});
-
-		return false;
 	}
 }

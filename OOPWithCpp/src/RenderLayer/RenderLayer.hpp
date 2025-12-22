@@ -13,6 +13,13 @@ namespace OWC
 {
 	class RenderLayer : public Layer
 	{
+	private:
+		struct UniformBufferObject
+		{
+			f32 divider = 0.0f;
+			f32 invGammaValue = 0.0f;
+		};
+
 	public:
 		RenderLayer() = delete;
 		explicit RenderLayer(const std::shared_ptr<InterLayerData>& ILD);

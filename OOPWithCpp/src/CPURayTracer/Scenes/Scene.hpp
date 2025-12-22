@@ -35,8 +35,8 @@ namespace OWC
 
 		virtual RenderPassReturnData RenderNextPass() = 0;
 
+		virtual void UpdateScreenSize(const Vec2u& newSize) = 0;
 		virtual void OnImGuiRender() { /* default empty implementation */ }
-		virtual bool OnEvent(BaseEvent&) { return false; /* default empty implementation */ }
 
 		static std::unique_ptr<BaseScene> CreateScene(Scene scene, std::vector<Vec4>& frameBuffer);
 

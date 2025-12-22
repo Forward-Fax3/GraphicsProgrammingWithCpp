@@ -26,8 +26,8 @@ namespace OWC
 
         RenderPassReturnData RenderNextPass() override;
 
+		void UpdateScreenSize(const Vec2u&) override;
 		void OnImGuiRender() override;
-        bool OnEvent(BaseEvent& event) override;
 
     private:
 		uSize GetStepSize() const;

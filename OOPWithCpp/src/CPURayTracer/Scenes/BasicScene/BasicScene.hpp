@@ -20,8 +20,8 @@ namespace OWC
 
 		RenderPassReturnData RenderNextPass() override;
 
+		void UpdateScreenSize(const Vec2u& newSize) override;
 		void OnImGuiRender() override;
-		bool OnEvent(BaseEvent& e) override;
 
 	private:
 		std::shared_ptr<BaseHittable> m_Hittables;

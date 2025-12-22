@@ -13,8 +13,8 @@ namespace OWC
 	struct WindowProperties
 	{
 		std::u8string Title;
-		i32 Width;
-		i32 Height;
+		u32 Width;
+		u32 Height;
 	};
 
 	class Window
@@ -36,12 +36,12 @@ namespace OWC
 		Graphics::GraphicsContext& GetGraphicsContext() const { return *m_GraphicsContext; }
 		std::weak_ptr<Graphics::GraphicsContext> GetGraphicsContextPtr() const { return m_GraphicsContext; }
 
-		i32 GetWidth() const { return m_Properties.Width; }
-		i32 GetHeight() const { return m_Properties.Height; }
+		u32 GetWidth() const { return m_Properties.Width; }
+		u32 GetHeight() const { return m_Properties.Height; }
 
 		bool IsWindowMinimized() const { return m_IsMinimized; }
 
-		void Resize(i32 width, i32 height);
+		void Resize(u32 width, u32 height);
 		void Minimize();
 		void Restore();
 

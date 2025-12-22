@@ -15,10 +15,15 @@
 
 namespace OWC
 {
+	static bool operator>(const Vec2u& lhs, u32 rhs)
+	{
+		return (lhs.x > rhs) && (lhs.y > rhs);
+	}
+	
 	RenderLayer::RenderLayer(const std::shared_ptr<InterLayerData>& ILD)
 		: m_ILD(ILD)
 	{
-		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(f32) * 2);
+		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(UniformBufferObject));
 		m_Image = Graphics::DynamicTextureBuffer::CreateDynamicTextureBuffer(1, 1);
 		std::vector<Vec4> emptyImageData = { Vec4(0.0f) };
 		m_Image->UpdateBufferData(emptyImageData);
@@ -33,12 +38,6 @@ namespace OWC
 		std::array<std::string_view, 1> waitSemaphorenames = { "ImageReady" };
 		std::array<std::string_view, 1> signalSemaphoreNames = { "RenderLayer" };
 
-		struct UniformBufferObject
-		{
-			f32 divider = 0.0;
-			f32 invGammaValue = 0.0f;
-		};
-
 		UniformBufferObject ubo{
 			.divider = 1.0f / static_cast<f32>(m_ILD->numberOfSamples),
 			.invGammaValue = m_ILD->invGammaValue
@@ -48,14 +47,14 @@ namespace OWC
 
 		if (m_ILD->ImageUpdates.any())
 		{
-			if (m_ILD->ImageUpdates[1] && m_ILD->imageWidth > 0 && m_ILD->imageHeight > 0) // image resize
+			if (m_ILD->ImageUpdates[1] && m_ILD->imageScreenSize > 0u) // image resize
 			{
-				m_Image = DynamicTextureBuffer::CreateDynamicTextureBuffer(m_ILD->imageWidth, m_ILD->imageHeight);
+				m_Image = DynamicTextureBuffer::CreateDynamicTextureBuffer(m_ILD->imageScreenSize.x, m_ILD->imageScreenSize.y);
 				m_Image->UpdateBufferData(m_ILD->imageData);
 				SetupPipeline();
 				SetupRenderPass();
 			}
-			else if (m_ILD->imageWidth == 0 || m_ILD->imageHeight == 0) // clear image
+			else if (m_ILD->imageScreenSize.x == 0 || m_ILD->imageScreenSize.y == 0) // clear image
 			{
 				m_Image = DynamicTextureBuffer::CreateDynamicTextureBuffer(1, 1);
 				std::vector<Vec4> emptyImageData = { Vec4(0.0f) };

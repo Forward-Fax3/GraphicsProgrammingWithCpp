@@ -6,6 +6,8 @@
 #include "BaseEvent.hpp"
 #include "WindowResize.hpp"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include <array>
 
 
@@ -23,8 +25,7 @@ namespace OWC
 		if (!m_ToggleRaytracedImage && m_RayTracingStateUpdated)
 		{
 			m_InterLayerData->imageData.clear();
-			m_InterLayerData->imageHeight = 0;
-			m_InterLayerData->imageWidth = 0;
+			m_InterLayerData->imageScreenSize = Vec2u(0);
 			m_InterLayerData->ImageUpdates |= 0b10;
 			return;
 		}
@@ -35,9 +36,8 @@ namespace OWC
 		if (m_ToggleRaytracedImage && m_RayTracingStateUpdated)
 		{
 			m_InterLayerData->imageData.clear();
-			m_InterLayerData->imageHeight = Application::GetConstInstance().GetWindowHeight();
-			m_InterLayerData->imageWidth = Application::GetConstInstance().GetWindowWidth();
-			m_InterLayerData->imageData.resize(m_InterLayerData->imageWidth * m_InterLayerData->imageHeight);
+			m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+			m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
 			m_InterLayerData->numberOfSamples = 0;
 			m_InterLayerData->ImageUpdates |= 0b10;
 		}
@@ -103,7 +103,34 @@ namespace OWC
 			if (static_cast<GammaCorrection>(m_CurrentGammaIndex) == GammaCorrection::custom && ImGui::InputFloat("Custom Gamma Value", &m_CustomGammaValue))
 				m_InterLayerData->invGammaValue = 1.0f / m_CustomGammaValue;
 
+			bool useCustomResolutionUpdated = ImGui::Checkbox("Use Window Resolution", &m_UseWindowResolution);
 
+			if (!m_UseWindowResolution)
+			{
+				Vec2i customResolution(m_InterLayerData->imageScreenSize);
+				useCustomResolutionUpdated |= ImGui::InputInt2("Image Resolution", glm::value_ptr(customResolution));
+
+
+				if (useCustomResolutionUpdated)
+				{
+					customResolution = glm::max(customResolution, Vec2i(1));
+					m_InterLayerData->imageScreenSize = customResolution;
+					m_InterLayerData->imageData.clear();
+					m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
+					m_InterLayerData->numberOfSamples = 0;
+					m_InterLayerData->ImageUpdates |= 0b10;
+					m_Scene->UpdateScreenSize(m_InterLayerData->imageScreenSize);
+				}
+			}
+			else if (useCustomResolutionUpdated)
+			{
+				m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+				m_InterLayerData->imageData.clear();
+				m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
+				m_InterLayerData->numberOfSamples = 0;
+				m_InterLayerData->ImageUpdates |= 0b10;
+				m_Scene->UpdateScreenSize(m_InterLayerData->imageScreenSize);
+			}
 		}
 		ImGui::End();
 
@@ -111,26 +138,23 @@ namespace OWC
 			m_Scene->OnImGuiRender();
 	}
 
-	void CPURayTracer::OnEvent(class BaseEvent& e)
+	void CPURayTracer::OnEvent(BaseEvent& e)
 	{
 		EventDispatcher dispatcher(e);
 
 		dispatcher.Dispatch<WindowResize>([this](const WindowResize&) {
-			if (!this->m_ToggleRaytracedImage)
+			if (!this->m_ToggleRaytracedImage || !this->m_UseWindowResolution)
 				return false;
 
 			std::vector<Vec4>& pixelArray = this->m_InterLayerData->imageData;
 			pixelArray.clear();
-			this->m_InterLayerData->imageHeight = Application::GetConstInstance().GetWindowHeight();
-			this->m_InterLayerData->imageWidth = Application::GetConstInstance().GetWindowWidth();
-			pixelArray.resize(this->m_InterLayerData->imageWidth * this->m_InterLayerData->imageHeight);
+			this->m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+			pixelArray.resize(this->m_InterLayerData->GetNumberOfPixels<uSize>());
 			this->m_InterLayerData->numberOfSamples = 0;
 			this->m_InterLayerData->ImageUpdates |= 0b10;
+			this->m_Scene->UpdateScreenSize(this->m_InterLayerData->imageScreenSize);
 			return false;
 		});
-
-		if (m_ToggleRaytracedImage)
-			m_Scene->OnEvent(e);
 	}
 
 	void CPURayTracer::UpdateGammaValue(GammaCorrection gammaCorrection) const

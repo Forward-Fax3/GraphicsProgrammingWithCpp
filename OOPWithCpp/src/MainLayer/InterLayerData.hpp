@@ -12,9 +12,14 @@ namespace OWC
 	{
 		std::vector<Vec4> imageData{};
 		uSize numberOfSamples = 0;
-		u32 imageWidth = 0;
-		u32 imageHeight = 0;
+		Vec2u imageScreenSize{ 0, 0 };
 		std::bitset<2> ImageUpdates; // bit 0: update image, bit 1: image resize
 		f32 invGammaValue = 1.0f / 2.2f;
+
+		template<typename T>
+		OWC_FORCE_INLINE T GetNumberOfPixels() const requires (std::is_integral_v<T> || std::is_floating_point_v<T>)
+			{ return static_cast<T>(static_cast<uSize>(imageScreenSize.x) * static_cast<uSize>(imageScreenSize.y)); }
+
+		OWC_FORCE_INLINE u32 GetNumberOfPixels() const { return GetNumberOfPixels<u32>(); }
 	};
 }

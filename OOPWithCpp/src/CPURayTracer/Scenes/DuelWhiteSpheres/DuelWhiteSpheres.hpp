@@ -20,8 +20,9 @@ namespace OWC
 		DuelGraySpheres& operator=(DuelGraySpheres&&) = delete;
 
 		RenderPassReturnData RenderNextPass() override;
+
+		void UpdateScreenSize(const Vec2u& newSize) override;
 		void OnImGuiRender() override;
-		bool OnEvent(BaseEvent& event) override;
 
 	private:
 		std::shared_ptr<Hitables> m_SceneObjects = nullptr;

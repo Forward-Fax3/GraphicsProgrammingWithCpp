@@ -100,6 +100,11 @@ namespace OWC
 		return { true, false };
 	}
 
+	void RandTestScene::UpdateScreenSize(const Vec2u&)
+	{
+		m_CurrentSampleIndex = 0;
+	}
+
 	void RandTestScene::OnImGuiRender()
 	{
 		ImGui::Begin("Rand Test Scene");
@@ -114,18 +119,6 @@ namespace OWC
 		if (ImGui::Combo("Render Mode", &currentRenderModeIndex, renderModeNames.data(), static_cast<i32>(renderModeNames.size())))
 			m_RenderMode = static_cast<RenderMode>(currentRenderModeIndex);
 		ImGui::End();
-	}
-
-	bool RandTestScene::OnEvent(BaseEvent& event)
-	{
-		EventDispatcher dispatcher(event);
-
-		dispatcher.Dispatch<WindowResize>([this](const WindowResize&) {
-			this->m_CurrentSampleIndex = 0;
-			return false;
-			});
-
-		return false;
 	}
 
 	uSize RandTestScene::GetStepSize() const
