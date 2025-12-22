@@ -10,14 +10,11 @@ namespace OWC
 	{
 	public:
 		MainLayer();
-		~MainLayer() override;
+		~MainLayer() override = default;
 		MainLayer(const MainLayer&) = delete;
 		MainLayer& operator=(const MainLayer&) = delete;
 		MainLayer(MainLayer&&) = delete;
 		MainLayer&& operator=(MainLayer&&) = delete;
-		void OnUpdate() override;
-		void ImGuiRender() override;
-		void OnEvent(class BaseEvent& event) override;
 
 	private:
 		std::shared_ptr<RenderLayer> m_TestLayer;

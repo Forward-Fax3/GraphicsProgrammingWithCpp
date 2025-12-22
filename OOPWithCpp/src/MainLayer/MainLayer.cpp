@@ -18,23 +18,4 @@ namespace OWC
 		app.PushLayer(m_TestLayer);
 		app.PushLayer(m_CPURayTracerLayer);
 	}
-
-	MainLayer::~MainLayer()
-	{
-	}
-
-	void MainLayer::OnUpdate()
-	{
-	}
-
-	void MainLayer::ImGuiRender()
-	{
-		ImGui::Begin("Main Layer");
-		ImGui::Text("This is the main layer of the application.");
-		ImGui::End();
-	}
-
-	void MainLayer::OnEvent(class BaseEvent&)
-	{
-	}
 }

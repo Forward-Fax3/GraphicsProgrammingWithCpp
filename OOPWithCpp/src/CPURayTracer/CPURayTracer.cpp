@@ -102,6 +102,8 @@ namespace OWC
 			}
 			if (static_cast<GammaCorrection>(m_CurrentGammaIndex) == GammaCorrection::custom && ImGui::InputFloat("Custom Gamma Value", &m_CustomGammaValue))
 				m_InterLayerData->invGammaValue = 1.0f / m_CustomGammaValue;
+
+
 		}
 		ImGui::End();
 

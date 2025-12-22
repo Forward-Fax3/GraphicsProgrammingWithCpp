@@ -13,9 +13,9 @@ namespace OWC
 		Layer(Layer&&) = delete;
 		Layer&& operator=(Layer&&) = delete;
 
-		virtual void OnUpdate() = 0;
-		virtual void ImGuiRender() = 0;
-		virtual void OnEvent(class BaseEvent& event) = 0;
+		virtual void OnUpdate() { /* default empty implementation */ };
+		virtual void ImGuiRender() { /* default empty implementation */ };
+		virtual void OnEvent(class BaseEvent&) { /* default empty implementation */ };
 
 		[[nodiscard]] bool IsActive() const { return m_Active; }
 		void SetActive(bool active) { m_Active = active; }

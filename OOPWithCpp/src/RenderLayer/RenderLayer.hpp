@@ -23,7 +23,6 @@ namespace OWC
 		RenderLayer& operator=(RenderLayer&&) = delete;
 
 		void OnUpdate() override;
-		void ImGuiRender() override;
 		void OnEvent(class BaseEvent& event) override;
 
 	private:

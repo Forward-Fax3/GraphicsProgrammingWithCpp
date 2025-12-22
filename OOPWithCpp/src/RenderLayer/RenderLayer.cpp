@@ -74,10 +74,6 @@ namespace OWC
 		Renderer::SubmitRenderPass(m_renderPass, waitSemaphorenames, signalSemaphoreNames);
 	}
 
-	void RenderLayer::ImGuiRender()
-	{ // not needed
-	}
-
 	void RenderLayer::OnEvent(class BaseEvent& e)
 	{
 		EventDispatcher dispatcher(e);
