@@ -36,20 +36,20 @@ namespace OWC
 			AddObject(newHittables->m_Hitables[i]);
 	}
 
-	HitData Hitables::IsHit(const Ray& ray) const
+	HitData __vectorcall Hitables::IsHit(const Ray& ray, const Interval& range) const
 	{
-		Ray rayCopy(ray);
+		Interval rayRange = range;
 		HitData closestHitData;
 		closestHitData.t = std::numeric_limits<f32>::max();
 		closestHitData.hasHit = false;
 
 		for (const auto& hittable : m_Hitables)
 		{
-			HitData hitData = hittable->IsHit(rayCopy);
+			HitData hitData = hittable->IsHit(ray, rayRange);
 			if (hitData.hasHit && hitData.t < closestHitData.t)
 			{
 				closestHitData = hitData;
-				rayCopy.SetMaxHitDistance(closestHitData.t);
+				rayRange.SetMax(hitData.t);
 			}
 		}
 		return closestHitData;

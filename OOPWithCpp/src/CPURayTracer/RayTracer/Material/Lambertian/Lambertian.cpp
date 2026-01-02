@@ -5,7 +5,7 @@
 
 namespace OWC
 {
-	static bool operator<(const Vec3& lhs, f32 rhs)
+	OWC_FORCE_INLINE static bool operator<(const Vec3& lhs, f32 rhs)
 	{
 		Vec3 absLHS(glm::abs(lhs));
 		return absLHS.x < rhs && absLHS.y < rhs && absLHS.z < rhs;
@@ -19,10 +19,12 @@ namespace OWC
 	{
 		Vec3 scatterDirection = hitData.normal + Rand::FastUnitVecctor();
 
+		ray.SetOrigin(hitData.point);
 		if (scatterDirection < 1e-8f)
-			scatterDirection = hitData.normal;
+			ray.SetNormalizedDirection(hitData.normal); // hitdata normal is normalized
+		else 
+			ray.SetDirection(scatterDirection); // hitdata normal is normalized so we can scale by 0.5 to keep it normalized
 
-		ray = Ray(hitData.point, scatterDirection);
 		return true;
 	}
 

@@ -21,7 +21,7 @@ namespace OWC
 		Sphere(Sphere&&) = delete;
 		Sphere& operator=(Sphere&&) = delete;
 
-		HitData IsHit(const Ray& ray) const override;
+		HitData __vectorcall IsHit(const Ray& ray, const Interval& range) const override;
 
 	private:
 		Vec3 m_Center;

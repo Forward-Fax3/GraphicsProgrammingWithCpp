@@ -67,7 +67,8 @@ namespace OWC
 
 		for (; i != m_Settings.MaxBounces; i++)
 		{
-			HitData hitData = hittables->IsHit(ray);
+			Interval tRange(0.001f, std::numeric_limits<f32>::max());
+			HitData hitData = m_Hittables->IsHit(ray, tRange);
 			if (!hitData.hasHit)
 			{
 				f32 t = 0.5f * (ray.GetDirection().y + 1.0f);

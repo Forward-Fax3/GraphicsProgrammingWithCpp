@@ -70,4 +70,9 @@ namespace OWC::Rand
 	{
 		return glm::normalize(LinearFastRandVec3(Vec3(-1.0), Vec3(1.0)));
 	}
+
+	OWC_FORCE_INLINE Vec4 FastUnitVecctor4()
+	{
+		return glm::normalize(LinearFastRandVec4(Vec4(-1.0), Vec4(1.0)));
+	}
 }

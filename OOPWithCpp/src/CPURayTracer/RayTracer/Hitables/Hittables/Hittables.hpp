@@ -21,7 +21,7 @@ namespace OWC
 		OWC_FORCE_INLINE uSize GetNumberOfObjects() const { return m_Hitables.size(); }
 		OWC_FORCE_INLINE void ClearObjects() { m_Hitables.clear(); }
 
-		HitData IsHit(const Ray& ray) const override;
+		HitData __vectorcall IsHit(const Ray& ray, const Interval& range) const override;
 
 	private:
 		std::vector<std::shared_ptr<BaseHittable>> m_Hitables;

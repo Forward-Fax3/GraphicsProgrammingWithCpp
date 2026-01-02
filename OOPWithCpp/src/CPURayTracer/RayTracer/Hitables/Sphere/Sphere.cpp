@@ -6,7 +6,7 @@
 
 namespace OWC
 {
-	HitData Sphere::IsHit(const Ray& ray) const
+	HitData __vectorcall Sphere::IsHit(const Ray& ray, const Interval& range) const
 	{
 		HitData hitData;
 
@@ -26,10 +26,10 @@ namespace OWC
 		f32 sqrtDiscriminant = glm::sqrt(discriminant);
 
 		f32 root = (h - sqrtDiscriminant) / a;
-		if (!ray.GetHitDistanceInterval().Contains(root))
+		if (!range.Contains(root))
 		{
 			root = (h + sqrtDiscriminant) / a;
-			if (!ray.GetHitDistanceInterval().Contains(root))
+			if (!range.Contains(root))
 			{
 				hitData.hasHit = false;
 				return hitData;
