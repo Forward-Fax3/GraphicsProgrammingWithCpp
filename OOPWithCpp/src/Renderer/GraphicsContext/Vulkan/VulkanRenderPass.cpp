@@ -256,4 +256,9 @@ namespace OWC::Graphics
 					{}
 				);
 	}
+
+	uSize VulkanRenderPass::GetNumberOfFramesInFlight() const
+	{
+		return VulkanCore::GetConstInstance().GetNumberOfFramesInFlight();
+	}
 }

@@ -35,6 +35,8 @@ namespace OWC::Graphics
 
 		void DrawImGui(ImDrawData* drawData) override;
 
+		uSize GetNumberOfFramesInFlight() const override;
+
 	private:
 		std::vector<vk::CommandBuffer> m_CommandBuffers = {};
 		vk::Fence m_Fence = vk::Fence();

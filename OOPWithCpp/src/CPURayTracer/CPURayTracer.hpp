@@ -43,6 +43,7 @@ namespace OWC
 		void UpdateGammaValue(GammaCorrection gammaCorrection) const;
 
 	private:
+		std::chrono::time_point<std::chrono::high_resolution_clock> m_LastTimePoint{};
 		std::shared_ptr<InterLayerData> m_InterLayerData = nullptr;
 		bool m_RayTracingStateUpdated = false;
 		bool m_ToggleRaytracedImage = false;
@@ -52,6 +53,7 @@ namespace OWC
 		i32	m_CurrentSceneIndex = 0;
 		i32	m_CurrentGammaIndex = 3; // Default to Gamma 2.2
 		f32 m_CustomGammaValue = 2.2f;
+		f32 m_LastFrameTime = 0.0f;
 
 		std::unique_ptr<BaseScene> m_Scene = nullptr;
 		std::unique_ptr<RTCamera> m_Camera = nullptr;

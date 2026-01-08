@@ -64,9 +64,18 @@ namespace OWC
 			}
 			else if (m_ILD->ImageUpdates[0]) // update image
 			{
+				framesUpdated = 0;
+
 				m_Image->UpdateBufferData(m_ILD->imageData);
+				framesUpdated++;
 			}
+
 			m_ILD->ImageUpdates.reset();
+		}
+		else if (framesUpdated != Renderer::GetNumberOfFramesInFlight(m_renderPass) && !m_ILD->imageData.empty()) // keep updating image for all frames in flight 
+		{
+			m_Image->UpdateBufferData(m_ILD->imageData);
+			framesUpdated++;
 		}
 
 		Renderer::RestartRenderPass(m_renderPass);

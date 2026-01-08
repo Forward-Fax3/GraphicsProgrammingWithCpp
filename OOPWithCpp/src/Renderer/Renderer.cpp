@@ -97,4 +97,9 @@ namespace OWC::Graphics
 	{
 		data->BindDynamicTexture(shader, binding, textureID);
 	}
+
+	OWC::uSize Renderer::GetNumberOfFramesInFlight(const std::shared_ptr<RenderPassData>& data)
+	{
+		return data->GetNumberOfFramesInFlight();
+	}
 };

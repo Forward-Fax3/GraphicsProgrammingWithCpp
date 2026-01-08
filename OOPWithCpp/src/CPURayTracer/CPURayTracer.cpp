@@ -61,6 +61,8 @@ namespace OWC
 
 		if (m_Camera->SingleThreadedRenderPass(m_Scene->GetHitable()))
 		{
+			m_LastFrameTime = std::chrono::duration<f32, std::milli>(std::chrono::high_resolution_clock::now() - m_LastTimePoint).count();
+			m_LastTimePoint = std::chrono::high_resolution_clock::now();
 			m_InterLayerData->numberOfSamples++;
 			m_InterLayerData->ImageUpdates |= 0b01;
 		}
@@ -88,7 +90,12 @@ namespace OWC
 		m_RayTracingStateUpdated = ImGui::Checkbox("Toggle RayTracing", &m_ToggleRaytracedImage);
 		if (m_ToggleRaytracedImage)
 		{
-			ImGui::Text("number of samples %s", std::format("{}", m_InterLayerData->numberOfSamples).c_str());
+			ImGui::Text(
+				"RayTracing time %.3f ms/frame (%.1f FPS)\nnumber of samples %s",
+				m_LastFrameTime,
+				1000.0f / m_LastFrameTime,
+				std::format("{}", m_InterLayerData->numberOfSamples).c_str()
+			);
 
 			if (ImGui::Combo("Scene", &m_CurrentSceneIndex, sceneNames.data(), static_cast<i32>(sceneNames.size())))
 			{
@@ -163,6 +170,7 @@ namespace OWC
 		m_CameraSettingsUpdated |= ImGui::DragFloat3("Rotation", glm::value_ptr(cameraSettings.Rotation), 0.1f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat("FOV", &cameraSettings.FOV, 0.1f, 1.0f, 89.0f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat("Focal Length", &cameraSettings.FocalLength, 0.1f, 0.1f, 100.0f);
+		m_CameraSettingsUpdated |= ImGui::DragInt("Max Bounces", &cameraSettings.MaxBounces, 1, 64);
 		ImGui::End();
 	}
 

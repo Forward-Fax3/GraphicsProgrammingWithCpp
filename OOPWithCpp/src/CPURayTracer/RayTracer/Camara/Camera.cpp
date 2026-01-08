@@ -7,28 +7,68 @@
 #include <glm/gtx/euler_angles.hpp>
 
 #include <ranges>
+#include <algorithm>
 
 
 namespace OWC
 {
+	RTCamera::~RTCamera()
+	{
+		m_EndThreads = true;
+
+		for (const ThreadData& renderThreadData : m_RenderThreadsData)
+			while (!renderThreadData.IsFinished)
+				std::this_thread::yield();
+	}
+
 	RenderPassReturnData RTCamera::SingleThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables)
 	{
-		Vec2us screenSize(m_Settings.ScreenSize);
-
-		for (uSize i = 0; i != screenSize.y; i++)
-			for (uSize j = 0; j != screenSize.x; j++)
-				for (uSize k = 0; k != m_Settings.NumberOfSamplesPerPass; k++)
+		if (static bool firstRun = true; firstRun == true)
+		{
+			firstRun = false;
+			UpdateCameraSettings();
+			m_RenderThreadsData.clear();
+			m_RenderThreads.clear();
+			m_RenderThreadsData.resize(1);
+			m_RenderThreads.reserve(1);
+			ThreadData& renderThreadData = m_RenderThreadsData[0];
+			m_RenderThreads.emplace_back(
+				[this](ThreadData& data)
 				{
-					Ray ray = CreateRay(i, j);
-					m_Pixels[(i * screenSize.x) + j] += RayColour(ray, hittables);
-				}
+					ThreadedRenderPass(data);
+				},
+				std::ref(m_RenderThreadsData[0])
+			);
+			renderThreadData.StartIndex = 0;
+			renderThreadData.Step = 1;
+			renderThreadData.Hittables = hittables;
+			m_RenderThreads[0].detach();
+		}
+		// guaranteed to be only be one thread data in single threaded mode
+		else if (m_RenderThreadsData[0].IsFinished)
+		{
+			std::ranges::move(m_SampleAccumulationBuffer, m_Pixels.begin());
+			m_RenderThreadsData[0].Hittables = hittables;
+			m_RenderThreadsData[0].IsFinished = false;
+			return true;
+		}
 
-		return true;
+		return false;
 	}
 
 	void RTCamera::UpdateCameraSettings()
 	{
-		m_BouncedColours.resize(m_Settings.MaxBounces + 1); // +1 for lost ray colour
+		m_HoldAllThreads = true;
+		for (const ThreadData& data : m_RenderThreadsData)
+			while (!data.IsFinished)
+				std::this_thread::yield();
+
+		m_SampleAccumulationBuffer.resize(m_Pixels.size());
+		for (Colour& pixel : m_SampleAccumulationBuffer)
+			pixel = Colour(0.0f);
+
+		m_ActiveMaxBounces = m_Settings.MaxBounces;
+		m_BouncedColours.resize(m_ActiveMaxBounces + 1); // +1 for lost ray colour
 
 		Vec3 rotationInRadians = glm::radians(m_Settings.Rotation);
 		Mat4 rotationMatrix = glm::eulerAngleYXZ(rotationInRadians.y, rotationInRadians.x, rotationInRadians.z);
@@ -48,6 +88,8 @@ namespace OWC
 
 		Point viewportUpperLeft = m_Settings.Position - (m_Settings.FocalLength * forward) - 0.5f * (viewportU + viewportV);
 		m_Pixel100Location = viewportUpperLeft + 0.5f * (m_PixelDeltaU + m_PixelDeltaV);
+
+		m_HoldAllThreads = false;
 	}
 
 	Ray RTCamera::CreateRay(uSize i, uSize j) const
@@ -63,14 +105,14 @@ namespace OWC
 	Colour RTCamera::RayColour(Ray ray, const std::shared_ptr<BaseHittable>& hittables)
 	{
 		bool missed = false;
-		uSize i = 0;
+		i32 i = 0;
 
-		for (; i != m_Settings.MaxBounces; i++)
+		for (; i != m_ActiveMaxBounces; i++)
 		{
 			Interval tRange(0.001f, std::numeric_limits<f32>::max());
 			HitData hitData = hittables->IsHit(ray, tRange);
 			if (!hitData.hasHit)
-			{
+			{ // TODO: chage background to std::function for customisable backgrounds
 				f32 t = 0.5f * (ray.GetDirection().y + 1.0f);
 				m_BouncedColours[i] = (1.0f - t) + t * Colour(0.5f, 0.7f, 1.0f, 1.0f);
 				missed = true;
@@ -81,9 +123,9 @@ namespace OWC
 			hitData.material->Scatter(ray, hitData);
 		}
 
-		if (i == m_Settings.MaxBounces)
+		if (i == m_ActiveMaxBounces)
 		{
-			m_BouncedColours[m_Settings.MaxBounces] = Colour(0.0f);
+			m_BouncedColours[m_ActiveMaxBounces] = Colour(0.0f);
 			missed = true;
 		}
 
@@ -98,5 +140,27 @@ namespace OWC
 		}
 
 		return finalColour;
+	}
+
+	void RTCamera::ThreadedRenderPass(ThreadData& data)
+	{
+		while (true)
+		{
+			while ((data.IsFinished || m_HoldAllThreads) && !m_EndThreads)
+				std::this_thread::yield();
+
+			if (m_EndThreads)
+				break;
+
+			Vec2us screenSize(m_Settings.ScreenSize);
+
+			for (uSize pixel = data.StartIndex; pixel != screenSize.x * screenSize.y; pixel += data.Step)
+				for (i32 sample = 0; sample != m_Settings.NumberOfSamplesPerPass; sample++)
+				{
+					Ray ray = CreateRay(pixel / screenSize.x, pixel % screenSize.x);
+					m_SampleAccumulationBuffer[pixel] += RayColour(ray, data.Hittables);
+				}
+			data.IsFinished = true;
+		}
 	}
 }

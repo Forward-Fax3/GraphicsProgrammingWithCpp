@@ -42,5 +42,6 @@ namespace OWC
 		std::shared_ptr<Graphics::UniformBuffer> m_UniformBuffer = nullptr;
 		std::shared_ptr<Graphics::DynamicTextureBuffer> m_Image = nullptr;
 		std::shared_ptr<InterLayerData> m_ILD = nullptr;
+		uSize framesUpdated = 0;
 	};
 }

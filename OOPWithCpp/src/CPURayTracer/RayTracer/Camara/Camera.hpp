@@ -3,6 +3,8 @@
 #include "Ray.hpp"
 #include "BaseHittable.hpp"
 
+#include <vector>
+#include <thread>
 #include <memory>
 
 
@@ -21,15 +23,30 @@ namespace OWC
 		f32 FocalLength = 5.0f;
 		Vec3 Vup{ 0.0f, 1.0f, 0.0f };
 
-		uSize NumberOfSamplesPerPass = 1;
-		uSize MaxBounces = 5;
+		i32 NumberOfSamplesPerPass = 1;
+		i32 MaxBounces = 5;
 	};
 
 	class RTCamera
 	{
+	private:
+		struct ThreadData
+		{
+			uSize StartIndex = 0;
+			uSize Step = 0;
+			std::shared_ptr<BaseHittable> Hittables = nullptr;
+			bool IsFinished = false;
+		};
+
 	public:
 		RTCamera() = delete;
 		explicit RTCamera(std::vector<Colour>& pixels) : m_Pixels(pixels) {}
+		~RTCamera();
+
+		RTCamera(const RTCamera&) = delete;
+		RTCamera& operator=(const RTCamera&) = delete;
+		RTCamera(RTCamera&&) = delete;
+		RTCamera& operator=(RTCamera&&) = delete;
 
 		OWC_FORCE_INLINE CameraRenderSettings& GetSettings() { return m_Settings; }
 
@@ -43,6 +60,8 @@ namespace OWC
 
 		Colour RayColour(Ray ray, const std::shared_ptr<BaseHittable>& hittables);
 
+		void ThreadedRenderPass(ThreadData& data);
+
 	private:
 		CameraRenderSettings m_Settings;
 
@@ -50,7 +69,14 @@ namespace OWC
 		Vec3 m_PixelDeltaU = Vec3(0.0f);
 		Vec3 m_PixelDeltaV = Vec3(0.0f);
 
+		std::vector<ThreadData> m_RenderThreadsData;
+		std::vector<std::jthread> m_RenderThreads;
+
 		std::vector<Colour>& m_Pixels;
+		std::vector<Colour> m_SampleAccumulationBuffer;
 		std::vector<Colour> m_BouncedColours;
+		i32 m_ActiveMaxBounces = 0;
+		bool m_EndThreads = false;
+		bool m_HoldAllThreads = false;
 	};
 }

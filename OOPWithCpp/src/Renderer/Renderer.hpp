@@ -49,6 +49,8 @@ namespace OWC::Graphics
 
 		void virtual DrawImGui(ImDrawData* drawData) = 0;
 
+		uSize virtual GetNumberOfFramesInFlight() const = 0;
+
 	protected:
 		explicit RenderPassData(RenderPassType type) : type(type) {}
 		// delete copy/move constructor and copy/move assignment operator
@@ -85,6 +87,8 @@ namespace OWC::Graphics
 		static void RestartRenderPass(const std::shared_ptr<RenderPassData>& data);
 
 		static void DrawImGui(const std::shared_ptr<RenderPassData>& data, ImDrawData* drawData);
+
+		static uSize GetNumberOfFramesInFlight(const std::shared_ptr<RenderPassData>& data);
 
 		static inline RendererAPI GetAPI() { return s_API; }
 
