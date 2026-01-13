@@ -170,10 +170,10 @@ namespace OWC
 		m_CameraSettingsUpdated |= ImGui::DragFloat3("Rotation", glm::value_ptr(cameraSettings.Rotation), 0.1f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat("FOV", &cameraSettings.FOV, 0.1f, 1.0f, 89.0f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat("Focal Length", &cameraSettings.FocalLength, 0.1f, 0.1f, 100.0f);
-		m_CameraSettingsUpdated |= ImGui::DragInt("Max Bounces", &cameraSettings.MaxBounces, 1.0f, 1, 8192);
+		m_CameraSettingsUpdated |= ImGui::DragInt("Max Bounces", &cameraSettings.MaxBounces, 1.0f, 0, 8192);
 		ImGui::End();
 
-//		cameraSettings.MaxBounces = glm::clamp(cameraSettings.MaxBounces, 1, 8192);
+		cameraSettings.MaxBounces = glm::clamp(cameraSettings.MaxBounces, 0, 8192);
 	}
 
 	void CPURayTracer::OnEvent(BaseEvent& e)

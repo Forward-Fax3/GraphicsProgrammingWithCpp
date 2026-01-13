@@ -68,7 +68,7 @@ namespace OWC
 			pixel = Colour(0.0f);
 
 		m_ActiveMaxBounces = m_Settings.MaxBounces;
-		m_BouncedColours.resize(m_ActiveMaxBounces + 1); // +1 for lost ray colour
+		m_BouncedColours.resize(m_ActiveMaxBounces + 2); // +1 for lost ray colour and +1 for low bounce count working correctly
 
 		Vec3 rotationInRadians = glm::radians(m_Settings.Rotation);
 		Mat4 rotationMatrix = glm::eulerAngleYXZ(rotationInRadians.y, rotationInRadians.x, rotationInRadians.z);
@@ -107,7 +107,7 @@ namespace OWC
 		bool missed = false;
 		i32 i = 0;
 
-		for (; i != m_ActiveMaxBounces; i++)
+		for (; i != m_ActiveMaxBounces + 1; i++)
 		{
 			Interval tRange(0.001f, std::numeric_limits<f32>::max());
 			HitData hitData = hittables->IsHit(ray, tRange);
@@ -123,9 +123,9 @@ namespace OWC
 			hitData.material->Scatter(ray, hitData);
 		}
 
-		if (i == m_ActiveMaxBounces)
+		if (i == m_ActiveMaxBounces + 1)
 		{
-			m_BouncedColours[m_ActiveMaxBounces] = Colour(0.0f);
+			m_BouncedColours[m_ActiveMaxBounces + 1] = Colour(0.0f);
 			missed = true;
 		}
 
