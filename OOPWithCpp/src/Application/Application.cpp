@@ -6,6 +6,9 @@
 #include "WindowResize.hpp"
 #include "WindowMinimizeEvent.hpp"
 #include "WindowRestoreEvent.hpp"
+#include "KeyEvent.hpp"
+
+#include <SDL3/SDL_keycode.h>
 
 #include "Log.hpp"
 
@@ -48,6 +51,7 @@ namespace OWC
 		m_ImGuiLayer.reset(); // ImGuiLayer must be destroyed before Renderer shutdown
 		Graphics::Renderer::Shutdown();
 		m_Window.reset();
+		s_Instance = nullptr;
 	}
 
 	void Application::Run() const
@@ -86,6 +90,38 @@ namespace OWC
 
 		dispacher.Dispatch<WindowRestore>([](const WindowRestore&) {
 			s_Instance->m_Window->Restore();
+			return false;
+			});
+
+		dispacher.Dispatch<KeyPressedEvent>([](const KeyPressedEvent& e) {
+			if (!s_Instance->m_KeyStates[e.GetKeycode()])
+			{
+				s_Instance->m_KeyStates[e.GetKeycode()] = true;
+			}
+			else return true; // key repeat, event handled
+
+			// close application on pressing ESC key
+			if (e.GetKeycode() == SDLK_ESCAPE)
+			{
+				s_Instance->Stop();
+				return true;
+			}
+			// broken at the moment
+//			if (e.GetKeycode() == SDLK_F5) 
+//			{
+//				s_Instance->Restart();
+//				return true;
+//			}
+			if (e.GetKeycode() == SDLK_F11)
+			{
+				s_Instance->m_Window->ToggleFullScreen();
+				return true;
+			}
+			return false;
+			});
+
+		dispacher.Dispatch<KeyReleased>([](const KeyReleased& e) {
+			s_Instance->m_KeyStates[e.GetKeycode()] = false;
 			return false;
 			});
 

@@ -54,6 +54,8 @@ namespace OWC
 		std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
 		std::shared_ptr<ImGuiLayer> m_ImGuiLayer = nullptr;
 
+		std::unordered_map<u32, bool> m_KeyStates;
+
 		static Application* s_Instance;
 	};
 }

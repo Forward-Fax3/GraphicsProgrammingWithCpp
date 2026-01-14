@@ -44,6 +44,7 @@ namespace OWC
 		void Resize(u32 width, u32 height);
 		void Minimize();
 		void Restore();
+		void ToggleFullScreen();
 
 		void ImGuiInit() const;
 		void ImGuiShutdown() const;

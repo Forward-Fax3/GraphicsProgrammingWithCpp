@@ -73,6 +73,15 @@ namespace OWC
 		m_GraphicsContext->Restore();
 	}
 
+	void Window::ToggleFullScreen()
+	{
+		if (m_Window)
+		{
+			bool currentFullScreen = (SDL_GetWindowFlags(m_Window.get()) & SDL_WINDOW_FULLSCREEN) == SDL_WINDOW_FULLSCREEN;
+			SDL_SetWindowFullscreen(m_Window.get(), !currentFullScreen);
+		}
+	}
+
 	void Window::ImGuiInit() const
 	{
 		ImGui_ImplSDL3_InitForVulkan(m_Window.get());

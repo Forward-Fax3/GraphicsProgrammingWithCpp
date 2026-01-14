@@ -3,6 +3,7 @@
 #include "WindowResize.hpp"
 #include "WindowMinimizeEvent.hpp"
 #include "WindowRestoreEvent.hpp"
+#include "KeyEvent.hpp"
 
 #include <backends/imgui_impl_sdl3.h>
 
@@ -39,6 +40,20 @@ namespace OWC
 		{
 			WindowRestore restoreEvent;
 			m_Callback(restoreEvent);
+			break;
+		}
+		case SDL_EVENT_KEY_DOWN:
+		{
+			u32 keycode = event.key.key;
+			KeyPressedEvent keyPressedEvent(keycode);
+			m_Callback(keyPressedEvent);
+			break;
+		}
+		case SDL_EVENT_KEY_UP:
+		{
+			u32 keycode = event.key.key;
+			KeyReleased keyReleasedEvent(keycode);
+			m_Callback(keyReleasedEvent);
 			break;
 		}
 		case SDL_EVENT_USER:
