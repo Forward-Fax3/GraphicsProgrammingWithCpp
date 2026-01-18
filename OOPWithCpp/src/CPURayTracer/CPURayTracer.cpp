@@ -59,7 +59,7 @@ namespace OWC
 			m_CameraSettingsUpdated = false;
 		}
 
-		if (m_Camera->SingleThreadedRenderPass(m_Scene->GetHitable()))
+		if (RenderFrame())
 		{
 			m_LastFrameTime = std::chrono::duration<f32, std::milli>(std::chrono::high_resolution_clock::now() - m_LastTimePoint).count();
 			m_LastTimePoint = std::chrono::high_resolution_clock::now();
@@ -137,27 +137,36 @@ namespace OWC
 
 				if (useCustomResolutionUpdated)
 				{
+					// scope ordered to reduce number of instructions
 					customResolution = glm::max(customResolution, Vec2i(1));
 					customResolution = glm::min(customResolution, Vec2i(8192)); // Arbitrary max resolution to avoid OOM
+
 					m_InterLayerData->imageScreenSize = customResolution;
-					m_InterLayerData->imageData.clear();
-					m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
+					m_Camera->GetSettings().ScreenSize = Vec2(customResolution);
+
 					m_InterLayerData->numberOfSamples = 0;
 					m_InterLayerData->ImageUpdates |= 0b10;
-					m_Camera->GetSettings().ScreenSize = Vec2(customResolution);
+
 					m_CameraSettingsUpdated = true;
+
+					m_InterLayerData->imageData.clear();
+					m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
 				}
 			}
 			else if (useCustomResolutionUpdated)
 			{
+				// scope ordered to reduce number of instructions
 				m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
-				m_InterLayerData->imageData.clear();
-				m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
+				m_Camera->GetSettings().ScreenSize = Vec2(m_InterLayerData->imageScreenSize);
+
 				m_InterLayerData->numberOfSamples = 0;
 				m_InterLayerData->ImageUpdates |= 0b10;
-				m_Camera->GetSettings().ScreenSize = Vec2(m_InterLayerData->imageScreenSize);
 				m_CameraSettingsUpdated = true;
+
+				m_InterLayerData->imageData.clear();
+				m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
 			}
+			ImGui::Checkbox("Multi-Threaded Rendering", &IsMultiThreaded);
 		}
 		ImGui::End();
 
@@ -165,15 +174,25 @@ namespace OWC
 
 		CameraRenderSettings& cameraSettings = m_Camera->GetSettings();
 
+		i32 minBouncesBeforeClamp = 0;
+		i32 maxBouncesBeforeClamp = 8192;
+
 		ImGui::Begin("Camera Settings");
 		m_CameraSettingsUpdated |= ImGui::DragFloat3("Position", glm::value_ptr(cameraSettings.Position), 0.1f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat3("Rotation", glm::value_ptr(cameraSettings.Rotation), 0.1f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat("FOV", &cameraSettings.FOV, 0.1f, 1.0f, 89.0f);
 		m_CameraSettingsUpdated |= ImGui::DragFloat("Focal Length", &cameraSettings.FocalLength, 0.1f, 0.1f, 100.0f);
-		m_CameraSettingsUpdated |= ImGui::DragInt("Max Bounces", &cameraSettings.MaxBounces, 1.0f, 0, 8192);
+		m_CameraSettingsUpdated |= ImGui::DragInt("Max Bounces", &cameraSettings.MaxBounces, 1.0f, minBouncesBeforeClamp, maxBouncesBeforeClamp);
 		ImGui::End();
 
-		cameraSettings.MaxBounces = glm::clamp(cameraSettings.MaxBounces, 0, 8192);
+		cameraSettings.MaxBounces = _mm_cvtsi128_si32(_mm_max_epi32(
+			_mm_min_epi32(
+				_mm_set1_epi32(cameraSettings.MaxBounces),
+				_mm_set1_epi32(maxBouncesBeforeClamp)
+			),
+			_mm_set1_epi32(minBouncesBeforeClamp)
+		));
+		
 	}
 
 	void CPURayTracer::OnEvent(BaseEvent& e)
@@ -181,19 +200,27 @@ namespace OWC
 		EventDispatcher dispatcher(e);
 
 		dispatcher.Dispatch<WindowResize>([this](const WindowResize&) {
-			if (!this->m_ToggleRaytracedImage || !this->m_UseWindowResolution)
+			if (!m_ToggleRaytracedImage || !m_UseWindowResolution)
 				return false;
 
-			std::vector<Vec4>& pixelArray = this->m_InterLayerData->imageData;
+			std::vector<Vec4>& pixelArray = m_InterLayerData->imageData;
 			pixelArray.clear();
-			this->m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
-			pixelArray.resize(this->m_InterLayerData->GetNumberOfPixels<uSize>());
-			this->m_InterLayerData->numberOfSamples = 0;
-			this->m_InterLayerData->ImageUpdates |= 0b10;
-			this->m_Camera->GetSettings().ScreenSize = Vec2(this->m_InterLayerData->imageScreenSize);
-			this->m_CameraSettingsUpdated = true;
+			m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+			pixelArray.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
+			m_InterLayerData->numberOfSamples = 0;
+			m_InterLayerData->ImageUpdates |= 0b10;
+			m_Camera->GetSettings().ScreenSize = Vec2(m_InterLayerData->imageScreenSize);
+			m_CameraSettingsUpdated = true;
 			return false;
 		});
+	}
+
+	OWC::RenderPassReturnData CPURayTracer::RenderFrame()
+	{
+		if (IsMultiThreaded)
+			return m_Camera->MultiThreadedRenderPass(m_Scene->GetHitable());
+		else
+			return m_Camera->SingleThreadedRenderPass(m_Scene->GetHitable());
 	}
 
 	void CPURayTracer::UpdateGammaValue(GammaCorrection gammaCorrection) const

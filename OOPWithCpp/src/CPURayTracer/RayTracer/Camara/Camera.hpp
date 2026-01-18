@@ -51,14 +51,14 @@ namespace OWC
 		OWC_FORCE_INLINE CameraRenderSettings& GetSettings() { return m_Settings; }
 
 		RenderPassReturnData SingleThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables);
-//		RenderPassReturnData MultiThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables);
+		RenderPassReturnData MultiThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables);
 
 		void UpdateCameraSettings();
 
 	private:
 		Ray CreateRay(uSize i, uSize j) const;
 
-		Colour RayColour(Ray ray, const std::shared_ptr<BaseHittable>& hittables);
+		Colour RayColour(Ray ray, size_t bouncedColoursOffset, const std::shared_ptr<BaseHittable>& hittables);
 
 		void ThreadedRenderPass(ThreadData& data);
 
@@ -78,5 +78,7 @@ namespace OWC
 		i32 m_ActiveMaxBounces = 0;
 		bool m_EndThreads = false;
 		bool m_HoldAllThreads = false;
+		bool m_SingleThreadedModeNeedsSetup = true;
+		bool m_MultiThreadedModeNeedsSetup = true;
 	};
 }
