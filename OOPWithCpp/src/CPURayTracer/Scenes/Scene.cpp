@@ -3,6 +3,7 @@
 #include "BasicScene.hpp"
 #include "RandTestScene.hpp"
 #include "DuelWhiteSpheres.hpp"
+#include "DielectricTest.hpp"
 
 
 namespace OWC
@@ -17,6 +18,8 @@ namespace OWC
 //			return std::make_unique<RandTestScene>();
 		case Scene::DuelGraySpheres:
 			return std::make_unique<DuelGraySpheres>();
+		case Scene::dielectricTest:
+			return std::make_unique<DielectricTest>();
 		default:
 			// Return Basic scene as default
 			return std::make_unique<BasicScene>();

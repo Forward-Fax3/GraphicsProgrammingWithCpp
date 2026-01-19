@@ -25,6 +25,5 @@ namespace OWC
 	private:
 		std::shared_ptr<Hitables> m_SceneObjects = nullptr;
 		std::shared_ptr<BaseHittable> m_SceneObject = nullptr;
-		std::unique_ptr<RTCamera> m_Camera = nullptr;
 	};
 }
