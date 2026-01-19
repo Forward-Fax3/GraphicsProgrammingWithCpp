@@ -194,7 +194,6 @@ namespace OWC
 			),
 			_mm_set1_epi32(minBouncesBeforeClamp)
 		));
-		
 	}
 
 	void CPURayTracer::OnEvent(BaseEvent& e)

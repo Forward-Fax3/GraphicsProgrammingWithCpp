@@ -109,6 +109,7 @@ namespace OWC
 
 	using Point = Vec3;
 	using Colour = Vec4;
+	using ColourX2 = glm::mat<2, 4, f32>;
 
     [[nodiscard]] consteval bool IsDebugMode() noexcept
     {

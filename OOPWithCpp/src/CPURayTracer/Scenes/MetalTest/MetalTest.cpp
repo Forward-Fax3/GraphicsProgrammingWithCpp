@@ -3,16 +3,16 @@
 #include "Sphere.hpp"
 #include "Lambertian.hpp"
 #include "Metal.hpp"
+#include "DefusedLight.hpp"
 
 
 namespace OWC
 {
-
 	MetalTest::MetalTest()
 	{
 		m_SceneObjects = std::make_shared<Hitables>();
 		m_Hittable = m_SceneObjects;
-		m_SceneObjects->Reserve(7);
+		m_SceneObjects->Reserve(8);
 		const Colour metalColour(0.8f, 0.2f, 0.1f, 1.0f);
 
 		// Ground
@@ -21,7 +21,14 @@ namespace OWC
 			auto groundSphere = std::make_shared<Sphere>(Point(0.0f, 100.5f, 0.0f), 100.0f, groundMaterial);
 			m_SceneObjects->AddObject(groundSphere);
 		}
+		// the sun
+		{
+			auto sunMaterial = std::make_shared<DefusedLight>(Colour(1.0f, 1.0f, 1.0f, 1.0f), 5.0f);
+			auto sunSphere = std::make_shared<Sphere>(Point(50.0f, -50.0f, -50.0f), 10.0f, sunMaterial);
+			m_SceneObjects->AddObject(sunSphere);
+		}
 
+		// Metal spheres
 		for (size_t i = 0; i < 6; i++)
 		{
 			auto if32 = static_cast<f32>(i);

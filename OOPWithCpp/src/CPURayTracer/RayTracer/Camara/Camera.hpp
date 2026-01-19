@@ -74,7 +74,7 @@ namespace OWC
 
 		std::vector<Colour>& m_Pixels;
 		std::vector<Colour> m_SampleAccumulationBuffer;
-		std::vector<Colour> m_BouncedColours;
+		std::vector<ColourX2> m_BouncedColours;
 		i32 m_ActiveMaxBounces = 0;
 		bool m_EndThreads = false;
 		bool m_HoldAllThreads = false;

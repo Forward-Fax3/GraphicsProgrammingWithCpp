@@ -4,6 +4,7 @@
 
 #include "Lambertian.hpp"
 #include "Dielectric.hpp"
+#include "DefusedLight.hpp"
 
 
 namespace OWC
@@ -12,13 +13,19 @@ namespace OWC
 	{
 		m_SceneObjects = std::make_shared<Hitables>();
 		m_Hittable = m_SceneObjects;
-		m_SceneObjects->Reserve(7);
+		m_SceneObjects->Reserve(8);
 
 		// Ground
 		{
 			auto groundMaterial = std::make_shared<Lambertian>(Colour(0.8f, 0.8f, 0.0f, 1.0f));
 			auto groundSphere = std::make_shared<Sphere>(Point(0.0f, 101.0f, 0.0f), 100.0f, groundMaterial);
 			m_SceneObjects->AddObject(groundSphere);
+		}
+		// the sun
+		{
+			auto sunMaterial = std::make_shared<DefusedLight>(Colour(1.0f, 1.0f, 1.0f, 1.0f), 5.0f);
+			auto sunSphere = std::make_shared<Sphere>(Point(50.0f, -50.0f, -50.0f), 10.0f, sunMaterial);
+			m_SceneObjects->AddObject(sunSphere);
 		}
 		// Center outer sphere
 		{
@@ -40,7 +47,7 @@ namespace OWC
 		}
 		// Right sphere
 		{
-			auto rightMaterial = std::make_shared<Dielectric>(1.5f);
+			auto rightMaterial = std::make_shared<Dielectric>(1.0f / 1.5f);
 			auto rightSphere = std::make_shared<Sphere>(Point(4.0f, -1.0f, 0.0f), 1.0f, rightMaterial);
 			m_SceneObjects->AddObject(rightSphere);
 		}

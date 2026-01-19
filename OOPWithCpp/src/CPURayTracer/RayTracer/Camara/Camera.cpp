@@ -174,38 +174,42 @@ namespace OWC
 	Colour RTCamera::RayColour(Ray ray, size_t bouncedColoursOffset, const std::shared_ptr<BaseHittable>& hittables)
 	{
 		bool missed = false;
+		bool scattered = true;
 		i32 i = 0;
 
-		for (; i != m_ActiveMaxBounces + 1; i++)
+		for (; i != m_ActiveMaxBounces + 1 && scattered; i++)
 		{
 			Interval tRange(0.001f, std::numeric_limits<f32>::max());
 			HitData hitData = hittables->IsHit(ray, tRange);
 			if (!hitData.hasHit)
 			{ // TODO: chage background to std::function for customisable backgrounds
 				f32 t = 0.5f * (ray.GetDirection().y + 1.0f);
-				m_BouncedColours[bouncedColoursOffset + i] = (1.0f - t) + t * Colour(0.5f, 0.7f, 1.0f, 1.0f);
+				m_BouncedColours[bouncedColoursOffset + i][0] = Colour(0.0f);
+				m_BouncedColours[bouncedColoursOffset + i][1] = (1.0f - t) + t * Colour(0.5f, 0.7f, 1.0f, 1.0f) * 0.5f;
 				missed = true;
 				break;
 			}
 
-			m_BouncedColours[bouncedColoursOffset + i] = hitData.material->Albedo(hitData);
-			hitData.material->Scatter(ray, hitData);
+			m_BouncedColours[bouncedColoursOffset + i][0] = hitData.material->Albedo(hitData);
+			m_BouncedColours[bouncedColoursOffset + i][1] = hitData.material->Emitted(ray, hitData);
+			scattered = hitData.material->Scatter(ray, hitData);
 		}
 
 		if (i == m_ActiveMaxBounces + 1)
 		{
-			m_BouncedColours[bouncedColoursOffset + m_ActiveMaxBounces + 1] = Colour(0.0f);
+			m_BouncedColours[bouncedColoursOffset + m_ActiveMaxBounces + 1] = ColourX2(0.0f);
 			missed = true;
 		}
 
 		if (missed)
 			i++;
 
-		Colour finalColour(1.0f);
+		Colour finalColour(0.0f);
 		while (i != 0)
 		{
 			i--;
-			finalColour *= m_BouncedColours[bouncedColoursOffset + i];
+			finalColour *= m_BouncedColours[bouncedColoursOffset + i][0];
+			finalColour += m_BouncedColours[bouncedColoursOffset + i][1];
 		}
 
 		return finalColour;
