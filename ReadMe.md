@@ -1,7 +1,7 @@
 # OOPWithCpp
 
-C++ sandbox / learning project focused on OOP-style architecture with a Vulkan renderer and an SDL3 + Dear ImGui application layer. Then a CPU Ray Tracer implementation is added as a secondary rendering backend which sends renderd Images to the vulkan renderer for display.
-The project uses Premake to generate Visual Studio solutions with multiple SIMD builds (SSE4.2, AVX2, AVX512). All SIMD Builds must be built as the StartProj will link against them based on CPU detection at runtime.
+C++ sandbox/learning project focused on OOP-style architecture with a Vulkan renderer and an SDL3 + Dear ImGui application layer. Then a CPU Ray Tracer implementation is added as a secondary rendering backend which sends renderd Images to the Vulkan renderer for display.
+The project uses Premake to generate Visual Studio solutions with multiple SIMD builds (SSE4.2, AVX2, AVX512). All SIMD builds must be built as the StartProj will link against them based on CPU detection at runtime.
 
 ## Features
 - Vulkan rendering backend (uses `VULKAN_SDK`)
@@ -12,15 +12,16 @@ The project uses Premake to generate Visual Studio solutions with multiple SIMD 
 - Premake workspace with multiple SIMD builds (`SSE4.2`, `AVX2`, `AVX512`)
 - Visual Studio generator support (`vs2022`, `vs2026`)
 - CPU Ray Tracer rendering backend
-- MSVC and Clang support (though I recommend Clang for better optimizations)
+- MSVC and Clang support (though I recommend Clang for better optimisations)
 
 ## CPU Ray Tracer Features
 - spheres at the moment
-- basic materials (diffuse)
+- basic materials (diffuse, dielectric)
 - single and multi-threaded rendering
 - scenes
 	- single red sphere
-	- 2 gray spheres
+	- 2 grey spheres
+	- Dielectric Test
 
 ## Repository Layout
 - `OOPWithCpp/` — main library/source
@@ -52,8 +53,8 @@ The project uses Premake to generate Visual Studio solutions with multiple SIMD 
    - `GenerateVS2026.bat`
 
 ## Problems
-- you may need to run both `premake5 vs2022` and `premake5 vs2026` so that both the sln and slnx files are generated. For some reason Premake does not want to generate the sln file when using the vs2026 action alone.
-- If you resize the window before the you have enabled the ray tracer it will not update the ray tracers resolution. Therefor making the image look distorted this can be fixed by moving the camera or resizing the window again after enabling the ray tracer.
+- You may need to run both `premake5 vs2022` and `premake5 vs2026` so that both the sln and slnx files are generated. For some reason, Premake does not want to generate the sln file when using the vs2026 action alone.
+- If you resize the window before you have enabled the ray tracer, it will not update the ray tracer's resolution. Therefor making the image look distorted, this can be fixed by moving the camera or resizing the window again after enabling the ray tracer.
 
 ## Notes
 - This File has been created with the assistance of AI. Though I have reviewed and edited it.
