@@ -21,6 +21,7 @@ namespace OWC
 		Vec3 normal{};
 		Vec3 point{};
 		BaseMaterial* material = nullptr;
+		Vec2 uv{};
 		f32 t = 0.0;
 		bool frontFace = false;
 		bool hasHit = false;
@@ -99,7 +100,7 @@ namespace OWC
 
 			__m256i zero = _mm256_setzero_si256();
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), zero);
-			_mm256_store_si256(std::_Bit_cast<__m256i*>(std::_Bit_cast<u8*>(this) + 32), zero);
+			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), zero);
 		}
 
 		~HitData() noexcept
@@ -109,7 +110,7 @@ namespace OWC
 
 			__m256i zero = _mm256_setzero_si256();
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), zero);
-			_mm256_store_si256(std::_Bit_cast<__m256i*>(std::_Bit_cast<u8*>(this) + 32), zero);
+			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), zero);
 		}
 
 		HitData(const HitData& other) noexcept
@@ -120,8 +121,8 @@ namespace OWC
 			__m256i data1 = _mm256_load_si256(std::bit_cast<__m256i*>(&other));
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), data1);
 
-			__m256i data2 = _mm256_load_si256(std::_Bit_cast<const __m256i*>(std::_Bit_cast<const u8*>(&other) + 32));
-			_mm256_store_si256(std::_Bit_cast<__m256i*>(std::_Bit_cast<u8*>(this) + 32), data2);
+			__m256i data2 = _mm256_load_si256(std::bit_cast<const __m256i*>(std::bit_cast<const u8*>(&other) + 32));
+			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), data2);
 		}
 
 		HitData(const HitData&& old) noexcept
@@ -132,8 +133,8 @@ namespace OWC
 			__m256i data1 = _mm256_load_si256(std::bit_cast<__m256i*>(&old));
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), data1);
 
-			__m256i data2 = _mm256_load_si256(std::_Bit_cast<const __m256i*>(std::_Bit_cast<const u8*>(&old) + 32));
-			_mm256_store_si256(std::_Bit_cast<__m256i*>(std::_Bit_cast<u8*>(this) + 32), data2);
+			__m256i data2 = _mm256_load_si256(std::bit_cast<const __m256i*>(std::bit_cast<const u8*>(&old) + 32));
+			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), data2);
 		}
 
 		HitData& operator=(const HitData& other) noexcept
@@ -145,8 +146,8 @@ namespace OWC
 			__m256i data1 = _mm256_load_si256(std::bit_cast<__m256i*>(&other));
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), data1);
 
-			__m256i data2 = _mm256_load_si256(std::_Bit_cast<const __m256i*>(std::_Bit_cast<const u8*>(&other) + 32));
-			_mm256_store_si256(std::_Bit_cast<__m256i*>(std::_Bit_cast<u8*>(this) + 32), data2);
+			__m256i data2 = _mm256_load_si256(std::bit_cast<const __m256i*>(std::bit_cast<const u8*>(&other) + 32));
+			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), data2);
 
 			return *this;
 		}
@@ -160,8 +161,8 @@ namespace OWC
 			__m256i data1 = _mm256_load_si256(std::bit_cast<__m256i*>(&old));
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), data1);
 
-			__m256i data2 = _mm256_load_si256(std::_Bit_cast<const __m256i*>(std::_Bit_cast<const u8*>(&old) + 32));
-			_mm256_store_si256(std::_Bit_cast<__m256i*>(std::_Bit_cast<u8*>(this) + 32), data2);
+			__m256i data2 = _mm256_load_si256(std::bit_cast<const __m256i*>(std::bit_cast<const u8*>(&old) + 32));
+			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), data2);
 
 			return *this;
 		}
@@ -173,9 +174,9 @@ namespace OWC
 
 			__m128i zero = _mm_setzero_si128();
 			_mm_store_si128(std::bit_cast<__m128i*>(this), zero);
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 16), zero);
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 32), zero);
-			// last 16 bytes are empty/padding, no need to clear
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 16), zero);
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 32), zero);
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 48), zero);
 		}
 
 		~HitData() noexcept
@@ -185,9 +186,9 @@ namespace OWC
 
 			__m128i zero = _mm_setzero_si128();
 			_mm_store_si128(std::bit_cast<__m128i*>(this), zero);
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 16), zero);
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 32), zero);
-			// last 16 bytes are empty/padding, no need to clear
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 16), zero);
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 32), zero);
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 48), zero);
 		}
 
 		HitData(const HitData& other) noexcept
@@ -197,11 +198,12 @@ namespace OWC
 
 			__m128i data1 = _mm_load_si128(std::bit_cast<const __m128i*>(&other));
 			_mm_store_si128(std::bit_cast<__m128i*>(this), data1);
-			__m128i data2 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&other) + 16));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 16), data2);
-			__m128i data3 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&other) + 32));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 32), data3);
-			// last 16 bytes are empty/padding, no need to clear
+			__m128i data2 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&other) + 16));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 16), data2);
+			__m128i data3 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&other) + 32));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 32), data3);
+			__m128i data4 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&other) + 48));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 48), data4);
 		}
 
 		HitData(const HitData&& old) noexcept
@@ -211,11 +213,12 @@ namespace OWC
 
 			__m128i data1 = _mm_load_si128(std::bit_cast<const __m128i*>(&old));
 			_mm_store_si128(std::bit_cast<__m128i*>(this), data1);
-			__m128i data2 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&old) + 16));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 16), data2);
-			__m128i data3 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&old) + 32));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 32), data3);
-			// last 16 bytes are empty/padding, no need to clear
+			__m128i data2 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&old) + 16));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 16), data2);
+			__m128i data3 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&old) + 32));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 32), data3);
+			__m128i data4 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&old) + 48));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 48), data4);
 		}
 
 		HitData& operator=(const HitData& other) noexcept
@@ -226,11 +229,12 @@ namespace OWC
 
 			__m128i data1 = _mm_load_si128(std::bit_cast<const __m128i*>(&other));
 			_mm_store_si128(std::bit_cast<__m128i*>(this), data1);
-			__m128i data2 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&other) + 16));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 16), data2);
-			__m128i data3 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&other) + 32));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 32), data3);
-			// last 16 bytes are empty/padding, no need to clear
+			__m128i data2 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&other) + 16));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 16), data2);
+			__m128i data3 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&other) + 32));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 32), data3);
+			__m128i data4 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&other) + 48));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 48), data4);
 			return *this;
 		}
 
@@ -242,11 +246,12 @@ namespace OWC
 
 			__m128i data1 = _mm_load_si128(std::bit_cast<const __m128i*>(&old));
 			_mm_store_si128(std::bit_cast<__m128i*>(this), data1);
-			__m128i data2 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&old) + 16));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 16), data2);
-			__m128i data3 = _mm_load_si128(std::_Bit_cast<const __m128i*>(std::_Bit_cast<const u8*>(&old) + 32));
-			_mm_store_si128(std::_Bit_cast<__m128i*>(std::_Bit_cast<u8*>(this) + 32), data3);
-			// last 16 bytes are empty/padding, no need to clear
+			__m128i data2 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&old) + 16));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 16), data2);
+			__m128i data3 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&old) + 32));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 32), data3);
+			__m128i data4 = _mm_load_si128(std::bit_cast<const __m128i*>(std::bit_cast<const u8*>(&old) + 48));
+			_mm_store_si128(std::bit_cast<__m128i*>(std::bit_cast<u8*>(this) + 48), data4);
 			return *this;
 		}
 #endif // AVX512, AVX2, SSE4.2

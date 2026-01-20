@@ -14,6 +14,7 @@ namespace OWC
 		DuelGraySpheres, // A scene with two gray spheres
 		DielectricTest,
 		MetalTest,
+		EarthScene,
 	};
 
 	class BaseScene

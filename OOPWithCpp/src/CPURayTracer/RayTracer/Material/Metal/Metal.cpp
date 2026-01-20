@@ -4,8 +4,6 @@
 
 #include "OWCRand.hpp"
 
-#include "glm/gtc/random.hpp"
-
 
 namespace OWC
 {
@@ -24,12 +22,11 @@ namespace OWC
 		newDirection = glm::normalize(newDirection) + (Rand::FastUnitVector() * m_Roughness);
 
 		ray = Ray(hitData.point, newDirection);
-			
 		return true;
 	}
 
 	Colour Metal::Albedo(HitData& data) const
 	{
-		return m_Texture->Value(data.point);
+		return m_Texture->Value(data);
 	}
 }

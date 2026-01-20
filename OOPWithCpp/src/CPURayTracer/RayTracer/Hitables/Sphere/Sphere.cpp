@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <glm/gtc/constants.hpp>
 
 
 namespace OWC
@@ -43,7 +44,17 @@ namespace OWC
 
 		Vec3 normal = (hitData.point - m_Center) / m_Radius;
 		hitData.SetFaceNormal(ray, normal);
+		hitData.uv = GetSphereUV(hitData.normal);
 
 		return hitData;
+	}
+
+	Vec2 Sphere::GetSphereUV(const Vec3& normal)
+	{
+		f32 phi = glm::atan(-normal.z, normal.x) + glm::pi<f32>();
+		f32 u = phi * glm::one_over_two_pi<f32>();
+		f32 theta = glm::acos(-normal.y);
+		f32 v = theta * glm::one_over_pi<f32>();
+		return { u, v };
 	}
 }

@@ -21,7 +21,7 @@ namespace OWC
 		Dielectric& operator=(Dielectric&&) = delete;
 
 		bool Scatter(Ray& ray, const HitData& hitData) const override;
-		Colour Albedo(HitData& data) const override { return m_Texture->Value(data.point); }
+		Colour Albedo(HitData& data) const override { return m_Texture->Value(data); }
 
 	private:
 		Point Refract(const Vec3& rayDirection, const Vec3& normal, f32 cosTheta, f32 ri) const;

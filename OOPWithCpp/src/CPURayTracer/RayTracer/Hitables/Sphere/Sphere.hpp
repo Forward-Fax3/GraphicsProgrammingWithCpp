@@ -24,6 +24,9 @@ namespace OWC
 		HitData __vectorcall IsHit(const Ray& ray, const Interval& range) const override;
 
 	private:
+		static Vec2 GetSphereUV(const Vec3& point);
+
+	private:
 		Vec3 m_Center;
 		std::shared_ptr<BaseMaterial> m_Material;
 		f32 m_Radius;

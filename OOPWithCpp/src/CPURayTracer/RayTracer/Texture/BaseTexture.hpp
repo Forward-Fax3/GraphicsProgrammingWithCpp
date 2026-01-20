@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Core.hpp"
+#include "BaseHittable.hpp"
 
 
 namespace OWC
@@ -9,6 +10,6 @@ namespace OWC
 	public:
 		BaseTexture() = default;
 		virtual ~BaseTexture() = default;
-		virtual Colour Value(const Point& p) const = 0;
+		virtual Colour Value(const HitData& p) const = 0;
 	};
 }

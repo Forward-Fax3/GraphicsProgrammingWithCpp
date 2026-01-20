@@ -30,6 +30,6 @@ namespace OWC
 
 	Colour Lambertian::Albedo(HitData& data) const
 	{
-		return m_Texture->Value(data.point);
+		return m_Texture->Value(data);
 	}
 }
