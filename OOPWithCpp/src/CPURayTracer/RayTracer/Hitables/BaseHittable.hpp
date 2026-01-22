@@ -1,6 +1,9 @@
 ﻿#pragma once
 #define BaseHittable_HPP
+#include "Core.hpp"
 #include "Ray.hpp"
+#include "Interval.hpp"
+#include "AABB.hpp"
 
 #include "glm/glm.hpp"
 
@@ -22,9 +25,7 @@ namespace OWC
 		Vec3 point{};
 		BaseMaterial* material = nullptr;
 		Vec2 uv{};
-		f32 t = 0.0;
 		bool frontFace = false;
-		bool hasHit = false;
 
 		OWC_FORCE_INLINE void SetFaceNormal(const Ray& ray, const Vec3& outwardNormal)
 		{
@@ -257,23 +258,47 @@ namespace OWC
 #endif // AVX512, AVX2, SSE4.2
 	};
 
-	class BaseHittable
+	class BaseHitable
 	{
 	public:
-		BaseHittable() = default;
-		virtual ~BaseHittable() = default;
+		BaseHitable() = default;
+		virtual ~BaseHitable() = default;
 
-		BaseHittable(const BaseHittable&) = delete;
-		BaseHittable& operator=(const BaseHittable&) = delete;
-		BaseHittable(BaseHittable&&) = delete;
-		BaseHittable& operator=(BaseHittable&&) = delete;
+		BaseHitable(const BaseHitable&) = delete;
+		BaseHitable& operator=(const BaseHitable&) = delete;
+		BaseHitable(BaseHitable&&) = delete;
+		BaseHitable& operator=(BaseHitable&&) = delete;
 
-		virtual HitData __vectorcall IsHit(const Ray& ray, const Interval& range) const = 0;
+		virtual bool __vectorcall IsHit(const Ray& ray, Interval& range, HitData& hitData) const = 0;
+
+		virtual AABB GetAABB() const = 0;
 
 		virtual Colour BackgroundColour(const Ray& ray) const
 		{
 			f32 t = 0.5f * (ray.GetDirection().y + 1.0f);
 			return (1.0f - t) + t * Colour(0.5f, 0.7f, 1.0f, 1.0f);
+		}
+	};
+
+	class NoHit : public BaseHitable
+	{
+	public:
+		NoHit() = default;
+		~NoHit() override = default;
+
+		NoHit(const NoHit&) = delete;
+		NoHit& operator=(const NoHit&) = delete;
+		NoHit(NoHit&&) = delete;
+		NoHit& operator=(NoHit&&) = delete;
+
+		bool __vectorcall IsHit(const Ray&, Interval&, HitData&) const override
+		{
+			return false;
+		}
+
+		AABB GetAABB() const override
+		{
+			return AABB::Empty;
 		}
 	};
 }

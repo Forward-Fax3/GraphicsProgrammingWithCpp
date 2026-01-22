@@ -1,19 +1,21 @@
 ﻿#pragma once
 #include "BaseHittable.hpp"
 #include "Ray.hpp"
-
-#include <glm/vec3.hpp>
+#include "AABB.hpp"
 
 #include <memory>
+
+#pragma warning(push)
+#pragma warning(disable: 4324) // structure was padded due to alignment specifier
 
 
 namespace OWC
 {
-	class Sphere : public BaseHittable
+	class alignas(64) Sphere : public BaseHitable
 	{
 	public:
 		Sphere() = delete;
-		OWC_FORCE_INLINE Sphere(const Vec3& center, f32 radius, const std::shared_ptr<BaseMaterial>& mat) : m_Center(center), m_Material(mat), m_Radius(radius) {}
+		OWC_FORCE_INLINE Sphere(const Vec3& center, f32 radius, const std::shared_ptr<BaseMaterial>& mat) : m_Center(center), m_Material(mat), m_Radius(radius), m_InvRadius(1.0f / radius) {}
 		~Sphere() override = default;
 
 		Sphere(const Sphere&) = delete;
@@ -21,7 +23,9 @@ namespace OWC
 		Sphere(Sphere&&) = delete;
 		Sphere& operator=(Sphere&&) = delete;
 
-		HitData __vectorcall IsHit(const Ray& ray, const Interval& range) const override;
+		bool __vectorcall IsHit(const Ray& ray, Interval& range, HitData& hitData) const override;
+
+		AABB GetAABB() const override;
 
 	private:
 		static Vec2 GetSphereUV(const Vec3& point);
@@ -30,5 +34,8 @@ namespace OWC
 		Vec3 m_Center;
 		std::shared_ptr<BaseMaterial> m_Material;
 		f32 m_Radius;
+		f32 m_InvRadius;
 	};
 }
+
+#pragma warning(pop)

@@ -34,7 +34,7 @@ namespace OWC
 		{
 			uSize StartIndex = 0;
 			uSize Step = 0;
-			std::shared_ptr<BaseHittable> Hittables = nullptr;
+			std::shared_ptr<BaseHitable> Hittables = nullptr;
 			bool IsFinished = false;
 		};
 
@@ -50,15 +50,15 @@ namespace OWC
 
 		OWC_FORCE_INLINE CameraRenderSettings& GetSettings() { return m_Settings; }
 
-		RenderPassReturnData SingleThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables);
-		RenderPassReturnData MultiThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables);
+		RenderPassReturnData SingleThreadedRenderPass(const std::shared_ptr<BaseHitable>& hittables);
+		RenderPassReturnData MultiThreadedRenderPass(const std::shared_ptr<BaseHitable>& hittables);
 
 		void UpdateCameraSettings();
 
 	private:
 		Ray CreateRay(uSize i, uSize j) const;
 
-		Colour RayColour(Ray ray, size_t bouncedColoursOffset, const std::shared_ptr<BaseHittable>& hittables);
+		Colour RayColour(Ray& ray, size_t bouncedColoursOffset, const std::shared_ptr<BaseHitable>& hittables);
 
 		void ThreadedRenderPass(ThreadData& data);
 

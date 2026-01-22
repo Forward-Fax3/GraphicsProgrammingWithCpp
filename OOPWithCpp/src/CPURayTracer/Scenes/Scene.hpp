@@ -30,7 +30,7 @@ namespace OWC
 
 		virtual void SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const = 0;
 
-		virtual const std::shared_ptr<BaseHittable>& GetHitable() = 0;
+		virtual const std::shared_ptr<BaseHitable>& GetHitable() = 0;
 
 		virtual void OnImGuiRender() { /* default empty implementation */ }
 

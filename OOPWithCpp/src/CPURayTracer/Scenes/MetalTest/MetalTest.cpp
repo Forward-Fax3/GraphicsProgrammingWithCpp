@@ -1,6 +1,8 @@
 ﻿#include "MetalTest.hpp"
 
 #include "Sphere.hpp"
+#include "SplitBVH.hpp"
+
 #include "Lambertian.hpp"
 #include "Metal.hpp"
 #include "DefusedLight.hpp"
@@ -19,7 +21,6 @@ namespace OWC
 				return (1.0f - t) + t * Colour(0.5f, 0.7f, 1.0f, 1.0f) * scale;
 			});
 
-		m_Hittable = m_SceneObjects;
 		const Colour metalColour(0.8f, 0.2f, 0.1f, 1.0f);
 
 		// Ground
@@ -43,6 +44,9 @@ namespace OWC
 			auto sphere = std::make_shared<Sphere>(Point(-2.5 + if32, 0.0, 0.0), 0.5f, metalMaterial);
 			m_SceneObjects->AddObject(sphere);
 		}
+
+//		m_Hittable = std::make_shared<SplitBVH>(m_SceneObjects);
+		m_Hittable = m_SceneObjects;
 	}
 
 	void MetalTest::SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const

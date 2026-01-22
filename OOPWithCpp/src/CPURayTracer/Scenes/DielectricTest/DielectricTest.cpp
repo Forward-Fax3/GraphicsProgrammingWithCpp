@@ -1,6 +1,7 @@
 ﻿#include "DielectricTest.hpp"
 
 #include "Sphere.hpp"
+#include "SplitBVH.hpp"
 
 #include "Lambertian.hpp"
 #include "Dielectric.hpp"
@@ -16,10 +17,8 @@ namespace OWC
 		m_SceneObjects->SetBackgroundFunction([this](const Ray& ray)
 			{
 				constexpr f32 tScale = 3.0f / 4.0f;
-				return this->m_SceneObjects->BaseHittable::BackgroundColour(ray) * tScale;
+				return this->m_SceneObjects->BaseHitable::BackgroundColour(ray) * tScale;
 			});
-
-		m_Hittable = m_SceneObjects;
 
 		// Ground
 		{
@@ -69,6 +68,9 @@ namespace OWC
 			auto backLowerSphere = std::make_shared<Sphere>(Point(0.0f, 0.0f, 4.0f), 1.0f, backLowerMaterial);
 			m_SceneObjects->AddObject(backLowerSphere);
 		}
+
+		m_Hittable = std::make_shared<SplitBVH>(m_SceneObjects);
+//		m_Hittable = m_SceneObjects;
 	}
 
 	void DielectricTest::SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const

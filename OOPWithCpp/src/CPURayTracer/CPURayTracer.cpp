@@ -19,7 +19,7 @@ namespace OWC
 		m_Camera = std::make_unique<RTCamera>(m_InterLayerData->imageData);
 		m_Camera->GetSettings().ScreenSize = Vec2(Application::GetConstInstance().GetWindowSize());
 		m_CameraSettingsUpdated = true;
-		m_Scene = BaseScene::CreateScene(Scene::Basic);
+		m_Scene = BaseScene::CreateScene(Scene::DielectricTest);
 		m_InterLayerData->numberOfSamples = 1; // Start at 1 to avoid division by zero
 	}
 

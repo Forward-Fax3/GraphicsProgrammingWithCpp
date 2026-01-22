@@ -21,7 +21,7 @@ namespace OWC
 				std::this_thread::yield();
 	}
 
-	RenderPassReturnData RTCamera::SingleThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables)
+	RenderPassReturnData RTCamera::SingleThreadedRenderPass(const std::shared_ptr<BaseHitable>& hittables)
 	{
 		if (m_SingleThreadedModeNeedsSetup)
 		{
@@ -66,7 +66,7 @@ namespace OWC
 		return false;
 	}
 
-	OWC::RenderPassReturnData RTCamera::MultiThreadedRenderPass(const std::shared_ptr<BaseHittable>& hittables)
+	OWC::RenderPassReturnData RTCamera::MultiThreadedRenderPass(const std::shared_ptr<BaseHitable>& hittables)
 	{
 		if (m_MultiThreadedModeNeedsSetup)
 		{
@@ -168,10 +168,10 @@ namespace OWC
 			(randomOffset.x * m_PixelDeltaU) +
 			(randomOffset.y * m_PixelDeltaV);
 
-		return Ray(m_Settings.Position, rayDirection);
+		return Ray{ m_Settings.Position, rayDirection };
 	}
 
-	Colour RTCamera::RayColour(Ray ray, size_t bouncedColoursOffset, const std::shared_ptr<BaseHittable>& hittables)
+	Colour RTCamera::RayColour(Ray& ray, size_t bouncedColoursOffset, const std::shared_ptr<BaseHitable>& hittables)
 	{
 		bool missed = false;
 		bool scattered = true;
@@ -179,9 +179,10 @@ namespace OWC
 
 		for (; i != m_ActiveMaxBounces + 1 && scattered; i++)
 		{
+			HitData hitData;
 			Interval tRange(0.001f, std::numeric_limits<f32>::max());
-			HitData hitData = hittables->IsHit(ray, tRange);
-			if (!hitData.hasHit)
+			bool hasHit = hittables->IsHit(ray, tRange, hitData);
+			if (!hasHit)
 			{
 				m_BouncedColours[bouncedColoursOffset + i][0] = Colour(0.0f);
 				m_BouncedColours[bouncedColoursOffset + i][1] = hittables->BackgroundColour(ray);
@@ -232,6 +233,11 @@ namespace OWC
 				for (i32 sample = 0; sample != m_Settings.NumberOfSamplesPerPass && !m_HoldAllThreads && !m_EndThreads; sample++)
 				{
 					Ray ray = CreateRay(pixel / screenSize.x, pixel % screenSize.x);
+
+					// break when ray is in the center of the screen
+//					if (pixel / screenSize.x == screenSize.y / 2 && pixel % screenSize.x == screenSize.x / 2)
+//						__debugbreak();
+
 					m_SampleAccumulationBuffer[pixel] += RayColour(ray, bouncedColoursOffset, data.Hittables);
 				}
 		}

@@ -3,10 +3,10 @@
 #include "DuelWhiteSpheres.hpp"
 
 #include "Hittables.hpp"
-
+#include "SplitBVH.hpp"
 #include "Sphere.hpp"
-#include "Lambertian.hpp"
 
+#include "Lambertian.hpp"
 #include "DefusedLight.hpp"
 
 #include "BaseEvent.hpp"
@@ -30,8 +30,6 @@ namespace OWC
 				return (1.0f - t) + t * Colour(0.5f, 0.7f, 1.0f, 1.0f) * scale;
 			});
 
-		m_SceneObject = m_SceneObjects;
-
 		auto gray = std::make_shared<Lambertian>(Colour(0.5f));
 
 		// small sphere
@@ -50,13 +48,16 @@ namespace OWC
 			auto sunSphere = std::make_shared<Sphere>(Point(50.0f, -50.0f, -50.0f), 10.0f, sunMaterial);
 			m_SceneObjects->AddObject(sunSphere);
 		}
+
+//		m_SceneObject = std::make_shared<SplitBVH>(m_SceneObjects);
+		m_SceneObject = m_SceneObjects;
 	}
 
 	void DuelGraySpheres::SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const
 	{
 		cameraSettings.Position = Point(0.0f, 0.0f, -5.0f);
 		cameraSettings.Rotation = Vec3(0.0f);
-		cameraSettings.FOV = 45.0f;
-		cameraSettings.FocalLength = 45.0f;
+		cameraSettings.FOV = 50.0f;
+		cameraSettings.FocalLength = 600.0f;
 	}
 }

@@ -20,10 +20,10 @@ namespace OWC
 
 		void SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const override;
 
-		const std::shared_ptr<BaseHittable>& GetHitable() override { return m_SceneObject; }
+		const std::shared_ptr<BaseHitable>& GetHitable() override { return m_SceneObject; }
 
 	private:
 		std::shared_ptr<Hitables> m_SceneObjects = nullptr;
-		std::shared_ptr<BaseHittable> m_SceneObject = nullptr;
+		std::shared_ptr<BaseHitable> m_SceneObject = nullptr;
 	};
 }

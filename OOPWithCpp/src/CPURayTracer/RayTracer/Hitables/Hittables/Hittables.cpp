@@ -4,17 +4,18 @@
 
 namespace OWC
 {
-	void Hitables::AddObject(const std::shared_ptr<BaseHittable>& newHittable)
+	void Hitables::AddObject(const std::shared_ptr<BaseHitable>& newHittable)
 	{
 		if (const auto hittables = std::dynamic_pointer_cast<Hitables>(newHittable))
-		{
 			AddObjects(hittables);
-			return;
+		else
+		{
+			m_Hitables.emplace_back(newHittable);
+			m_AABB.Expand(newHittable->GetAABB());
 		}
-		m_Hitables.emplace_back(newHittable);
 	}
 
-	void Hitables::AddObjects(const std::vector<std::shared_ptr<BaseHittable>>& newHittables)
+	void Hitables::AddObjects(const std::vector<std::shared_ptr<BaseHitable>>& newHittables)
 	{
 		uSize newSize = m_Hitables.size() + newHittables.size();
 
@@ -22,11 +23,16 @@ namespace OWC
 			m_Hitables.reserve(newSize);
 
 		for (const auto& hittable : newHittables)
+		{
 			AddObject(hittable);
+			m_AABB.Expand(hittable->GetAABB());
+		}
 	}
 
 	void Hitables::AddObjects(const std::shared_ptr<Hitables>& newHittables)
 	{
+		m_AABB.Expand(newHittables->GetAABB());
+
 		uSize newSize = m_Hitables.size() + newHittables->GetNumberOfObjects();
 
 		if (m_Hitables.capacity() < newSize)
@@ -36,22 +42,13 @@ namespace OWC
 			AddObject(newHittables->m_Hitables[i]);
 	}
 
-	HitData __vectorcall Hitables::IsHit(const Ray& ray, const Interval& range) const
+	bool __vectorcall Hitables::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
 	{
-		Interval rayRange = range;
-		HitData closestHitData;
-		closestHitData.t = std::numeric_limits<f32>::max();
-		closestHitData.hasHit = false;
-
+		bool hasAnyHit = false;
+		
 		for (const auto& hittable : m_Hitables)
-		{
-			HitData hitData = hittable->IsHit(ray, rayRange);
-			if (hitData.hasHit && hitData.t < closestHitData.t)
-			{
-				closestHitData = hitData;
-				rayRange.SetMax(hitData.t);
-			}
-		}
-		return closestHitData;
+			hasAnyHit |= hittable->IsHit(ray, range, hitData);
+
+		return hasAnyHit;
 	}
 }

@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <windows.h>
-#undef max // undefine max macro to avoid conflicts with std::numeric_limits
+#undef min // undefine min macro to avoid conflicts with std::numeric_limits and glm
+#undef max // undefine max macro to avoid conflicts with std::numeric_limits and glm
 
 #include "Core.hpp"
 

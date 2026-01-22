@@ -16,10 +16,10 @@ namespace OWC
 		DielectricTest& operator=(DielectricTest&&) = delete;
 
 		void SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const override;
-		const std::shared_ptr<BaseHittable>& GetHitable() override { return m_Hittable; }
+		const std::shared_ptr<BaseHitable>& GetHitable() override { return m_Hittable; }
 
 	private:
 		std::shared_ptr<Hitables> m_SceneObjects;
-		std::shared_ptr<BaseHittable> m_Hittable;
+		std::shared_ptr<BaseHitable> m_Hittable;
 	};
 }

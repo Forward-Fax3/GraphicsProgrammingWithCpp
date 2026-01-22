@@ -1,16 +1,13 @@
 ﻿#include "Sphere.hpp"
 
-#include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
 #include <glm/gtc/constants.hpp>
 
 
 namespace OWC
 {
-	HitData __vectorcall Sphere::IsHit(const Ray& ray, const Interval& range) const
+	bool __vectorcall Sphere::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
 	{
-		HitData hitData;
-
 		Vec3 oc = m_Center - ray.GetOrigin();
 
 		constexpr f32 a = 1.0f; // ray direction is normalized so the length squared will alway be 1
@@ -19,10 +16,7 @@ namespace OWC
 
 		f32 discriminant = h * h - a * c;
 		if (discriminant <= 0.0f)
-		{
-			hitData.hasHit = false;
-			return hitData;
-		}
+			return false;
 
 		f32 sqrtDiscriminant = glm::sqrt(discriminant);
 
@@ -31,22 +25,24 @@ namespace OWC
 		{
 			root = (h + sqrtDiscriminant) / a;
 			if (!range.Contains(root))
-			{
-				hitData.hasHit = false;
-				return hitData;
-			}
+				return false;
 		}
 
-		hitData.hasHit = true;
-		hitData.t = root;
-		hitData.point = ray.GetPointAtDistance(hitData.t);
-		hitData.material = m_Material.get();
+		range.SetMax(root);
+		hitData.point = ray.GetPointAtDistance(root);
 
-		Vec3 normal = (hitData.point - m_Center) / m_Radius;
+		Vec3 normal = (hitData.point - m_Center) * m_InvRadius;
 		hitData.SetFaceNormal(ray, normal);
 		hitData.uv = GetSphereUV(hitData.normal);
 
-		return hitData;
+		hitData.material = m_Material.get();
+
+		return true;
+	}
+
+	AABB Sphere::GetAABB() const
+	{
+		return AABB{ Interval(m_Center.x - m_Radius, m_Center.x + m_Radius), Interval(m_Center.y - m_Radius, m_Center.y + m_Radius), Interval(m_Center.z - m_Radius, m_Center.z + m_Radius) };
 	}
 
 	Vec2 Sphere::GetSphereUV(const Vec3& normal)
