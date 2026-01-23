@@ -19,7 +19,7 @@ namespace OWC
 		m_Camera = std::make_unique<RTCamera>(m_InterLayerData->imageData);
 		m_Camera->GetSettings().ScreenSize = Vec2(Application::GetConstInstance().GetWindowSize());
 		m_CameraSettingsUpdated = true;
-		m_Scene = BaseScene::CreateScene(Scene::DielectricTest);
+		m_Scene = BaseScene::CreateScene(Scene::Basic);
 		m_InterLayerData->numberOfSamples = 1; // Start at 1 to avoid division by zero
 	}
 
@@ -81,7 +81,7 @@ namespace OWC
 		};
 		constexpr std::array<const char*, 5> sceneNames = {
 			"Basic",
-//			"RandTest", 
+//			"RandTest",
 			"DuelGraySpheres",
 			"DielectricTest",
 			"MetalTest",
@@ -169,7 +169,10 @@ namespace OWC
 				m_InterLayerData->imageData.clear();
 				m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
 			}
-			ImGui::Checkbox("Multi-Threaded Rendering", &IsMultiThreaded);
+
+			bool isMultiThreadedUpdated = ImGui::Checkbox("Multi-Threaded Rendering", &m_IsMultiThreaded);
+			if (isMultiThreadedUpdated)
+				m_CameraSettingsUpdated = true;
 		}
 		ImGui::End();
 
@@ -219,7 +222,7 @@ namespace OWC
 
 	OWC::RenderPassReturnData CPURayTracer::RenderFrame()
 	{
-		if (IsMultiThreaded)
+		if (m_IsMultiThreaded)
 			return m_Camera->MultiThreadedRenderPass(m_Scene->GetHitable());
 		else
 			return m_Camera->SingleThreadedRenderPass(m_Scene->GetHitable());

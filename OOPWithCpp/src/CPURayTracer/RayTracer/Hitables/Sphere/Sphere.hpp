@@ -15,7 +15,7 @@ namespace OWC
 	{
 	public:
 		Sphere() = delete;
-		OWC_FORCE_INLINE Sphere(const Vec3& center, f32 radius, const std::shared_ptr<BaseMaterial>& mat) : m_Center(center), m_Material(mat), m_Radius(radius), m_InvRadius(1.0f / radius) {}
+		OWC_FORCE_INLINE Sphere(const Vec3& center, f32 radius, const std::shared_ptr<BaseMaterial>& mat) : m_Radius(radius), m_InvRadius(1.0f / radius), m_Center(center), m_Material(mat) {}
 		~Sphere() override = default;
 
 		Sphere(const Sphere&) = delete;
@@ -31,10 +31,10 @@ namespace OWC
 		static Vec2 GetSphereUV(const Vec3& point);
 
 	private:
-		Vec3 m_Center;
-		std::shared_ptr<BaseMaterial> m_Material;
 		f32 m_Radius;
 		f32 m_InvRadius;
+		Vec3 m_Center;
+		std::shared_ptr<BaseMaterial> m_Material;
 	};
 }
 

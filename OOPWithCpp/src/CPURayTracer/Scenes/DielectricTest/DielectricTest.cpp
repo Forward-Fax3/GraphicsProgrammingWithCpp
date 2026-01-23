@@ -77,7 +77,7 @@ namespace OWC
 	{
 		cameraSettings.Position = Point(0.0f, 0.0f, -5.0f);
 		cameraSettings.Rotation = Vec3(0.0f);
-		cameraSettings.FOV = 45.0f;
-		cameraSettings.FocalLength = 45.0f;
+		cameraSettings.FOV = 50.0f;
+		cameraSettings.FocalLength = 600.0f;
 	}
 }

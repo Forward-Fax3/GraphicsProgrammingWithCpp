@@ -24,7 +24,7 @@ namespace OWC
 		Vec3 Vup{ 0.0f, 1.0f, 0.0f };
 
 		i32 NumberOfSamplesPerPass = 1;
-		i32 MaxBounces = 5;
+		i32 MaxBounces = 16;
 	};
 
 	class RTCamera

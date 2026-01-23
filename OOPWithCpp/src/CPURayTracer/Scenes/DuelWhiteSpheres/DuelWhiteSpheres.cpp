@@ -49,8 +49,8 @@ namespace OWC
 			m_SceneObjects->AddObject(sunSphere);
 		}
 
-//		m_SceneObject = std::make_shared<SplitBVH>(m_SceneObjects);
-		m_SceneObject = m_SceneObjects;
+		m_SceneObject = std::make_shared<SplitBVH>(m_SceneObjects);
+//		m_SceneObject = m_SceneObjects;
 	}
 
 	void DuelGraySpheres::SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const

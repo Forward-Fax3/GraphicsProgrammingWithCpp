@@ -17,40 +17,34 @@ namespace OWC
 			m_AABB = AABB::Empty;
 			return;
 		}
+
+		auto objects = hitables->GetObjects();
+		m_AABB = hitables->GetAABB();
+
 		if (numberOfHitables == 1)
 		{
-			auto objects = hitables->GetObjects();
 			m_Left = objects[0];
 			m_Right = std::make_shared<NoHit>();
-			m_AABB = m_Left->GetAABB();
 			return;
 		}
 		if (numberOfHitables == 2)
 		{
-			auto objects = hitables->GetObjects();
 			m_Left = objects[0];
 			m_Right = objects[1];
-			m_AABB = AABB(m_Left->GetAABB(), m_Right->GetAABB());
 			return;
 		}
-		if (numberOfHitables == 3)
-		{
-			auto objects = hitables->GetObjects();
-			m_Left = std::make_shared<SplitBVH>(objects, 0, 2, PRIVATE());
-			m_Right = objects[2];
-			m_AABB = AABB(m_Left->GetAABB(), m_Right->GetAABB());
-			return;
-		}
-
-		m_AABB = hitables->GetAABB();
 
 		AABB::Axis splitAxis = m_AABB.LongestAxis();
-
-		auto objects = hitables->GetObjects();
-
 		std::ranges::sort(objects, [splitAxis](const std::shared_ptr<BaseHitable>& a, const std::shared_ptr<BaseHitable>& b) {
-				return BoxComparison(a, b, splitAxis);
+			return BoxComparison(a, b, splitAxis);
 			});
+
+		if (numberOfHitables == 3)
+		{
+			m_Left = std::make_shared<SplitBVH>(objects, 0, 2, PRIVATE());
+			m_Right = objects[2];
+			return;
+		}
 
 		iSize midPoint = numberOfHitables / 2;
 		m_Left = std::make_shared<SplitBVH>(objects, 0, midPoint, PRIVATE());
@@ -61,7 +55,7 @@ namespace OWC
 	{
 		iSize range = end - start;
 
-		if (range == 1)
+		[[unlikely]] if (range == 1) // should not happen normally but just in case
 		{
 			m_Left = objects[start];
 			m_Right = std::make_shared<NoHit>();
@@ -75,23 +69,23 @@ namespace OWC
 			m_AABB = AABB(m_Left->GetAABB(), m_Right->GetAABB());
 			return;
 		}
-		if (range == 3)
-		{
-			m_Left = std::make_shared<SplitBVH>(objects, start, start + 2, PRIVATE());
-			m_Right = objects[start + 2];
-			m_AABB = AABB(m_Left->GetAABB(), m_Right->GetAABB());
-			return;
-		}
+
 
 		m_AABB = AABB::Empty;
 		for (iSize i = start; i < end; i++)
 			m_AABB.Expand(objects[i]->GetAABB());
 
 		AABB::Axis splitAxis = m_AABB.LongestAxis();
-
 		std::sort(objects.begin() + start, objects.begin() + end, [splitAxis](const std::shared_ptr<BaseHitable>& a, const std::shared_ptr<BaseHitable>& b) {
-				return BoxComparison(a, b, splitAxis);
+			return BoxComparison(a, b, splitAxis);
 			});
+
+		if (range == 3)
+		{
+			m_Left = std::make_shared<SplitBVH>(objects, start, start + 2, PRIVATE());
+			m_Right = objects[start + 2];
+			return;
+		}
 
 		iSize midPoint = range / 2;
 		m_Left = std::make_shared<SplitBVH>(objects, start, start + midPoint, PRIVATE());
@@ -103,25 +97,8 @@ namespace OWC
 		if (!m_AABB.IsHit(ray, range))
 			return false;
 
-//		bool AABBHit = m_AABB.IsHit(ray, range);
-
 		bool hasHit = m_Left->IsHit(ray, range, hitData);
 		hasHit |= m_Right->IsHit(ray, range, hitData);
-
-//		if (hasHit && !AABBHit)
-//		{
-//			// This should never happen, but just in case...
-//			Log<LogLevel::Debug>("SplitBVH::IsHit: Hit detected but AABB test failed.\n"
-//				"AABB Min: ({}, {}, {}), Max: ({}, {}, {})\n"
-//				"Ray Origin: ({}, {}, {}), Direction: ({}, {}, {})\n"
-//				"t: {}",
-//				m_AABB.GetAxisInterval(AABB::Axis::x).GetMin(), m_AABB.GetAxisInterval(AABB::Axis::y).GetMin(), m_AABB.GetAxisInterval(AABB::Axis::z).GetMin(),
-//				m_AABB.GetAxisInterval(AABB::Axis::x).GetMax(), m_AABB.GetAxisInterval(AABB::Axis::y).GetMax(), m_AABB.GetAxisInterval(AABB::Axis::z).GetMax(),
-//				ray.GetOrigin().x, ray.GetOrigin().y, ray.GetOrigin().z,
-//				ray.GetDirection().x, ray.GetDirection().y, ray.GetDirection().z,
-//				hitData.t
-//			);
-//		}
 
 		return hasHit;
 	}
@@ -131,14 +108,14 @@ namespace OWC
 		Interval BoxAAxisInterval = a->GetAABB().GetAxisInterval(axis);
 		Interval BoxBAxisInterval = b->GetAABB().GetAxisInterval(axis);
 
-		double BoxAAxisIntervalMin = BoxAAxisInterval.GetMin();
-		double BoxBAxisIntervalMin = BoxBAxisInterval.GetMin();
+		f32 BoxAAxisIntervalMin = BoxAAxisInterval.GetMin();
+		f32 BoxBAxisIntervalMin = BoxBAxisInterval.GetMin();
 
 		if (!Interval(-1e-4f, 1e-4f).Contains(BoxAAxisIntervalMin - BoxBAxisIntervalMin))
 			return BoxAAxisIntervalMin < BoxBAxisIntervalMin;
 
-		double BoxAAxisIntervalMax = BoxAAxisInterval.GetMax();
-		double BoxBAxisIntervalMax = BoxBAxisInterval.GetMax();
+		f32 BoxAAxisIntervalMax = BoxAAxisInterval.GetMax();
+		f32 BoxBAxisIntervalMax = BoxBAxisInterval.GetMax();
 
 		return BoxAAxisIntervalMax < BoxBAxisIntervalMax;
 	}

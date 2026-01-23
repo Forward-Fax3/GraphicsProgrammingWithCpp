@@ -1,6 +1,7 @@
 ﻿#include "EarthScene.hpp"
 
 #include "Sphere.hpp"
+#include "SplitBVH.hpp"
 
 #include "ImageTexture.hpp"
 
@@ -19,8 +20,6 @@ namespace OWC
 			return Colour(0.0f); // black background
 		});
 
-		m_Hittable = m_SceneObjects;
-
 		// Load Earth sphere
 		{
 			auto earthTexture = std::make_shared<ImageTexture>("../Images/EarthMap.jpg");
@@ -33,6 +32,9 @@ namespace OWC
 			auto sunSphere = std::make_shared<Sphere>(Point(50.0f, -50.0f, -50.0f), 10.0f, sunMaterial);
 			m_SceneObjects->AddObject(sunSphere);
 		}
+
+		m_Hittable = std::make_shared<SplitBVH>(m_SceneObjects);
+//		m_Hittable = m_SceneObjects;
 	}
 
 	void EarthScene::SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const
