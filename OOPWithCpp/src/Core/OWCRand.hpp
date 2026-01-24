@@ -11,7 +11,7 @@ namespace OWC::Rand
 
 	OWC_FORCE_INLINE Vec2 LinearFastRandVec2(const Vec2& min, const Vec2& max)
 	{
-		static thread_local std::uniform_real_distribution<f32> dist;
+		std::uniform_real_distribution<f32> dist;
 		Vec2 randFloats(
 			dist(globalMtEngine),
 			dist(globalMtEngine)
@@ -21,7 +21,7 @@ namespace OWC::Rand
 
 	OWC_FORCE_INLINE Vec4 LinearFastRandVec4(const Vec4& min, const Vec4& max)
 	{
-		static thread_local std::uniform_real_distribution<f32> dist;
+		std::uniform_real_distribution<f32> dist;
 
 		Vec4 randFloats(
 			dist(globalMtEngine),
@@ -30,6 +30,22 @@ namespace OWC::Rand
 			dist(globalMtEngine)
 		);
 		return min + (max - min) * randFloats;
+	}
+	template<typename T>
+	OWC_FORCE_INLINE T LinearFastRandValue(const T min, const T max)
+	{
+		static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>, "T must be an integral or floating point type");
+
+		if constexpr (std::is_integral_v<T>)
+		{
+			std::uniform_int_distribution<T> dist(min, max - 1);
+			return dist(globalMtEngine);
+		}
+		else // floating point
+		{
+			std::uniform_real_distribution<T> dist(min, max);
+			return dist(globalMtEngine);
+		}
 	}
 
 	OWC_FORCE_INLINE Vec3 LinearFastRandVec3(const Vec3& min, const Vec3& max)

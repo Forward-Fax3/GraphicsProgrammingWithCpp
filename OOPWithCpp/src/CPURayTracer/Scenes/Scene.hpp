@@ -15,6 +15,7 @@ namespace OWC
 		DielectricTest,
 		MetalTest,
 		EarthScene,
+		Book1FinalRender
 	};
 
 	class BaseScene

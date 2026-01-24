@@ -79,13 +79,14 @@ namespace OWC
 			"BT. 1886",
 			"Custom"
 		};
-		constexpr std::array<const char*, 5> sceneNames = {
+		constexpr std::array<const char*, 6> sceneNames = {
 			"Basic",
 //			"RandTest",
 			"DuelGraySpheres",
 			"DielectricTest",
 			"MetalTest",
-			"EarthScene"
+			"EarthScene",
+			"Book1FinalRender"
 		};
 
 		ImGui::Begin("CPU Ray Tracer");

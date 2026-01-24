@@ -6,6 +6,7 @@
 #include "DielectricTest.hpp"
 #include "MetalTest.hpp"
 #include "EarthScene.hpp"
+#include "Book1FinalRender.hpp"
 
 
 namespace OWC
@@ -26,6 +27,8 @@ namespace OWC
 			return std::make_unique<MetalTest>();
 		case Scene::EarthScene:
 			return std::make_unique<EarthScene>();
+		case Scene::Book1FinalRender:
+			return std::make_unique<Book1FinalRender>();
 		default:
 			// Return Basic scene as default
 			return std::make_unique<BasicScene>();

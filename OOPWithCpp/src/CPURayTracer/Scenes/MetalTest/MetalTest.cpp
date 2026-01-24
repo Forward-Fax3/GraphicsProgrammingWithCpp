@@ -45,8 +45,8 @@ namespace OWC
 			m_SceneObjects->AddObject(sphere);
 		}
 
-//		m_Hittable = std::make_shared<SplitBVH>(m_SceneObjects);
-		m_Hittable = m_SceneObjects;
+		m_Hittable = std::make_shared<SplitBVH>(m_SceneObjects);
+//		m_Hittable = m_SceneObjects;
 	}
 
 	void MetalTest::SetBaseCameraSettings(CameraRenderSettings& cameraSettings) const
