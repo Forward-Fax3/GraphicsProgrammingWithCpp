@@ -1,4 +1,6 @@
-﻿# OOPWithCpp
+﻿# GraphicsProgrammingWithCpp
+
+This project is a continued evolution of my previous [OOPWithCpp](https://github.com/Forward-Fax3/OOP-with-Cpp) repository, now named `GraphicsProgrammingWithCpp` to better reflect its focus to now become a GPU Ray Tracer learning project for a different module of my second year university course.
 
 C++ sandbox/learning project focused on OOP-style architecture with a Vulkan renderer and an SDL3 + Dear ImGui application layer. Then a CPU Ray Tracer implementation as a the main rendering backend which sends renderd Images to the Vulkan renderer for display.
 The project uses Premake to generate Visual Studio solutions with multiple SIMD builds (SSE4.2, AVX2, AVX512). All SIMD builds must be built as the StartProj will link against them based on CPU detection at runtime.
