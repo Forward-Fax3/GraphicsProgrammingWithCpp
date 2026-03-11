@@ -22,12 +22,12 @@ namespace OWC
 		void ImGuiRender() override;
 		void OnEvent(class BaseEvent& event) override;
 
-		void Begin() const;
+		static void Begin();
 		void End() const;
 
 	private:
 		std::shared_ptr<Graphics::RenderPassData> m_RenderPassData = nullptr;
-		std::chrono::steady_clock::time_point m_LastTime;
+		std::chrono::high_resolution_clock::time_point m_LastTime;
 		f32 m_DeltaTime = 0.0f;
 		bool m_IsMinimized = false;
 	};

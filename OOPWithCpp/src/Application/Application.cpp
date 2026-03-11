@@ -30,8 +30,8 @@ namespace OWC
 
 		WindowProperties props {
 			.Title = u8"OOP With Cpp",
-			.Width = 1920,
-			.Height = 1080
+			.Width = 1280,
+			.Height = 720
 		};
 
 		m_Window = std::make_unique<Window>(props);
@@ -47,7 +47,6 @@ namespace OWC
 	{
 		m_Shader.reset();
 		m_LayerStack->ClearLayers();
-		m_LayerStack.reset();
 		m_ImGuiLayer.reset(); // ImGuiLayer must be destroyed before Renderer shutdown
 		Graphics::Renderer::Shutdown();
 		m_Window.reset();
@@ -71,29 +70,29 @@ namespace OWC
 
 	void Application::OnEvent(BaseEvent& event) const
 	{
-		EventDispatcher dispacher(event);
+		EventDispatcher dispatcher(event);
 
-		dispacher.Dispatch<WindowCloseEvent>([](const WindowCloseEvent&) {
+		dispatcher.Dispatch<WindowCloseEvent>([](const WindowCloseEvent&) {
 			s_Instance->Stop();
 			return true;
 			});
 
-		dispacher.Dispatch<WindowResize>([](const WindowResize& e) {
+		dispatcher.Dispatch<WindowResize>([](const WindowResize& e) {
 			s_Instance->m_Window->Resize(e.GetWidth(), e.GetHeight());
 			return false;
 			});
 
-		dispacher.Dispatch<WindowMinimize>([](const WindowMinimize&) {
+		dispatcher.Dispatch<WindowMinimize>([](const WindowMinimize&) {
 			s_Instance->m_Window->Minimize();
 			return false;
 			});
 
-		dispacher.Dispatch<WindowRestore>([](const WindowRestore&) {
+		dispatcher.Dispatch<WindowRestore>([](const WindowRestore&) {
 			s_Instance->m_Window->Restore();
 			return false;
 			});
 
-		dispacher.Dispatch<KeyPressedEvent>([](const KeyPressedEvent& e) {
+		dispatcher.Dispatch<KeyPressedEvent>([](const KeyPressedEvent& e) {
 			if (!s_Instance->m_KeyStates[e.GetKeycode()])
 			{
 				s_Instance->m_KeyStates[e.GetKeycode()] = true;
@@ -120,7 +119,7 @@ namespace OWC
 			return false;
 			});
 
-		dispacher.Dispatch<KeyReleased>([](const KeyReleased& e) {
+		dispatcher.Dispatch<KeyReleased>([](const KeyReleased& e) {
 			s_Instance->m_KeyStates[e.GetKeycode()] = false;
 			return false;
 			});

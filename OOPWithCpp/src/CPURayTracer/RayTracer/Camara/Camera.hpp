@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "immintrin.h"
 #include "Core.hpp"
 #include "Ray.hpp"
 #include "BaseHittable.hpp"

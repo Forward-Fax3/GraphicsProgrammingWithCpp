@@ -1,5 +1,4 @@
-﻿#include "Application.hpp"
-#include "Camera.hpp"
+﻿#include "Camera.hpp"
 #include "Ray.hpp"
 #include "OWCRand.hpp"
 
@@ -220,8 +219,8 @@ namespace OWC
 		while (true)
 		{
 			data.IsFinished = true;
-			while ((data.IsFinished || m_HoldAllThreads) && !m_EndThreads)
-				std::this_thread::yield();
+			while ((data.IsFinished || m_HoldAllThreads) && !m_EndThreads) { OWC_NO_OP; }
+				//std::this_thread::yield();
 
 			if (m_EndThreads)
 				break;

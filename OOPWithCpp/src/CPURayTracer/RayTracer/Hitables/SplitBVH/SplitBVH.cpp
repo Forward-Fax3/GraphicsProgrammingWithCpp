@@ -92,7 +92,7 @@ namespace OWC
 		m_Right = std::make_shared<SplitBVH>(objects, start + midPoint, end, PRIVATE());
 	}
 
-	bool __vectorcall SplitBVH::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
+	bool VECTORCALL SplitBVH::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
 	{
 		if (!m_AABB.IsHit(ray, range))
 			return false;

@@ -6,6 +6,44 @@
 
 #define OWC_FORCE_INLINE GLM_INLINE
 
+#if defined(_MSC_VER)
+	#include <intrin.h>
+	#define OWC_NO_OP __nop()
+#elif defined(__clang__) || defined(__GNUC__)
+	#define OWC_NO_OP __asm__ __volatile__("nop\n\t")
+#else
+	#error "OWC_NO_OP is not defined for this compiler!"
+#endif
+
+#if defined(_WIN32) || defined(_WIN64)
+	namespace OWC
+	{
+		OWC_FORCE_INLINE void OWCDebugBreak()
+		{
+			__debugbreak();
+		}
+	}
+#elif defined(__linux__)
+	#include <csignal>
+	namespace OWC
+	{
+		OWC_FORCE_INLINE void OWCDebugBreak()
+		{
+//			raise(SIGTRAP);
+			__builtin_trap();
+		}
+	}
+#else
+	#error "DebugBreak is not implemented for this platform!"
+#endif
+
+#if defined(_WIN32) || defined(_WIN64)
+#define VECTORCALL __vectorcall
+#else
+// disable vectorcall on non-Windows platforms, as it is not supported by GCC or Clang
+// #define VECTORCALL __attribute__((vectorcall))
+#define VECTORCALL
+#endif
 
 namespace OWC
 {

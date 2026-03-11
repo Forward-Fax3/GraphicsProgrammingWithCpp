@@ -119,8 +119,8 @@ namespace OWC::Graphics
 		const auto& cmdBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
 		cmdBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
-			.setImageMemoryBarriers(vk::ImageMemoryBarrier2()
+		const std::array<vk::ImageMemoryBarrier2, 1> imageMemoryBarrierBegin = {
+			vk::ImageMemoryBarrier2()
 				.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
 				.setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
 				.setSrcAccessMask(vk::AccessFlagBits2::eNone)
@@ -137,7 +137,11 @@ namespace OWC::Graphics
 					.setBaseArrayLayer(0)
 					.setLayerCount(1)
 				)
-			)
+		};
+
+		cmdBuf.pipelineBarrier2(
+			vk::DependencyInfo()
+				.setImageMemoryBarriers(imageMemoryBarrierBegin)
 		);
 
 		cmdBuf.copyBufferToImage(
@@ -162,8 +166,8 @@ namespace OWC::Graphics
 			)
 		);
 
-		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
-			.setImageMemoryBarriers(vk::ImageMemoryBarrier2()
+		std::array<vk::ImageMemoryBarrier2, 1> imageMemoryBarrierEnd = {
+			vk::ImageMemoryBarrier2()
 				.setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
 				.setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eBottomOfPipe)
 				.setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
@@ -180,7 +184,10 @@ namespace OWC::Graphics
 					.setBaseArrayLayer(0)
 					.setLayerCount(1)
 				)
-			)
+		};
+
+		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
+			.setImageMemoryBarriers(imageMemoryBarrierEnd)
 		);
 
 		cmdBuf.end();
@@ -316,8 +323,9 @@ namespace OWC::Graphics
 		// Copy staging buffer to texture image and transition image layout
 		const auto& cmdBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
 		cmdBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
-			.setImageMemoryBarriers(vk::ImageMemoryBarrier2()
+
+		const std::array<vk::ImageMemoryBarrier2, 1> imageMemoryBarrierBegin = {
+			vk::ImageMemoryBarrier2()
 				.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
 				.setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
 				.setSrcAccessMask(vk::AccessFlagBits2::eNone)
@@ -334,7 +342,10 @@ namespace OWC::Graphics
 					.setBaseArrayLayer(0)
 					.setLayerCount(1)
 				)
-			)
+		};
+
+		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
+			.setImageMemoryBarriers(imageMemoryBarrierBegin)
 		);
 
 		cmdBuf.copyBufferToImage(
@@ -359,8 +370,8 @@ namespace OWC::Graphics
 			)
 		);
 
-		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
-			.setImageMemoryBarriers(vk::ImageMemoryBarrier2()
+		const std::array<vk::ImageMemoryBarrier2, 1> imageMemoryBarrierEnd = {
+			vk::ImageMemoryBarrier2()
 				.setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
 				.setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eBottomOfPipe)
 				.setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
@@ -377,7 +388,10 @@ namespace OWC::Graphics
 					.setBaseArrayLayer(0)
 					.setLayerCount(1)
 				)
-			)
+		};
+
+		cmdBuf.pipelineBarrier2(vk::DependencyInfo()
+			.setImageMemoryBarriers(imageMemoryBarrierEnd)
 		);
 
 		cmdBuf.end();

@@ -27,6 +27,9 @@ namespace OWC
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
+		const Vec2f32 windowPixelSize(Application::GetInstance().GetPixelSize());
+		io.DisplaySize = ImVec2(windowPixelSize.x, windowPixelSize.y);
+
 		ImGuiStyle& style = ImGui::GetStyle();
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
@@ -46,7 +49,7 @@ namespace OWC
 
 	void ImGuiLayer::OnUpdate()
 	{
-		auto now = std::chrono::high_resolution_clock::now();
+		const auto now = std::chrono::high_resolution_clock::now();
 		m_DeltaTime = std::chrono::duration<f32, std::milli>(now - m_LastTime).count();
 		m_LastTime = now;
 	}
@@ -59,7 +62,7 @@ namespace OWC
 		ImGui::End();
 	}
 	
-	void ImGuiLayer::OnEvent(class BaseEvent& e)
+	void ImGuiLayer::OnEvent(BaseEvent& e)
 	{
 		EventDispatcher dispatcher(e);
 
@@ -78,15 +81,16 @@ namespace OWC
 				return false;
 			});
 
-		dispatcher.Dispatch<WindowResize>([](const WindowResize& WRE)
+		dispatcher.Dispatch<WindowResize>([](const WindowResize&)
 			{
 				ImGuiIO& io = ImGui::GetIO();
-				io.DisplaySize = ImVec2(static_cast<f32>(WRE.GetWidth()), static_cast<f32>(WRE.GetHeight()));
+				const Vec2f32 f32WindowPixelSized(Application::GetInstance().GetPixelSize());
+				io.DisplaySize = ImVec2(f32WindowPixelSized.x, f32WindowPixelSized.y);
 				return false;
 			});
 	}
 	
-	void ImGuiLayer::Begin() const
+	void ImGuiLayer::Begin()
 	{
 		Application::GetInstance().GetWindow().ImGuiNewFrame();
 		ImGui::NewFrame();
@@ -98,8 +102,8 @@ namespace OWC
 		ImGui::Render();
 		ImDrawData* drawData = ImGui::GetDrawData();
 
-		std::array<std::string_view, 1> waitSemaphorenames = { "RenderLayer" };
-		std::array<std::string_view, 1> signalSemaphoreNames = { "ImGuiLayer" };
+		//std::array<std::string_view, 1> waitSemaphorenames = { "ImageReady" };
+		//std::array<std::string_view, 1> signalSemaphoreNames = { "ImGuiLayer" };
 
 		static bool firstFrame = true;
 
@@ -111,7 +115,7 @@ namespace OWC
 			Renderer::BeginDynamicPass(m_RenderPassData);
 			Renderer::DrawImGui(m_RenderPassData, drawData);
 			Renderer::EndPass(m_RenderPassData);
-			Renderer::SubmitRenderPass(m_RenderPassData, waitSemaphorenames, signalSemaphoreNames);
+			Renderer::SubmitRenderPass(m_RenderPassData, {}, {});
 		}
 
 		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

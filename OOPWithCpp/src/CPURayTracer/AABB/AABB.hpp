@@ -4,12 +4,12 @@
 #include "Ray.hpp"
 #include "Interval.hpp"
 
-#include <array>
-
 #define SIMD 1
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(push)
 #pragma warning(disable: 4324) // structure was padded due to alignment specifier
+#endif
 
 
 namespace OWC
@@ -30,13 +30,13 @@ namespace OWC
 
 		OWC_FORCE_INLINE const Interval& GetAxisInterval(const Axis& axis) const;
 
-		OWC_FORCE_INLINE bool __vectorcall IsHit(const Ray& ray, Interval rayT) const;
+		OWC_FORCE_INLINE bool VECTORCALL IsHit(const Ray& ray, Interval rayT) const;
 
 		void Expand(const AABB& newAABB);
 
-		inline double GetSurfaceArea() const { return 2.0 * (m_XInterval.Size() * m_YInterval.Size() + m_XInterval.Size() * m_ZInterval.Size() + m_YInterval.Size() * m_ZInterval.Size()); }
+		[[nodiscard]] inline double GetSurfaceArea() const { return 2.0 * (m_XInterval.Size() * m_YInterval.Size() + m_XInterval.Size() * m_ZInterval.Size() + m_YInterval.Size() * m_ZInterval.Size()); }
 
-		OWC_FORCE_INLINE AABB::Axis LongestAxis() const { return m_LongestAxis; }
+		[[nodiscard]] OWC_FORCE_INLINE AABB::Axis LongestAxis() const { return m_LongestAxis; }
 
 		static const AABB Empty;
 		static const AABB Univers;
@@ -98,7 +98,7 @@ namespace OWC
 
 	// Ray - AABB intersection test using the "slab" method with SIMD and AVX2 optimizations
 	// taken from one of my previous project but modified to work with 32 bit floats and AVX2 instead of 64 bit floats and AVX512
-	OWC_FORCE_INLINE bool __vectorcall AABB::IsHit(const Ray& ray, Interval rayT) const
+	OWC_FORCE_INLINE bool VECTORCALL AABB::IsHit(const Ray& ray, Interval rayT) const
 	{
 #if (AVX2 & SIMD) == 1
 		const __m256i AVX2i32_FloatLoadPermutationIndex = _mm256_set_epi32(3, 3, 2, 2, 1, 1, 0, 0);
@@ -217,4 +217,6 @@ namespace OWC
 
 #undef SIMD
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(pop)
+#endif

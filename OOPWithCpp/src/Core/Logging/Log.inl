@@ -1,5 +1,9 @@
-﻿#include <iostream>
+﻿#pragma once
+#include <iostream>
+#include <utility>
+#if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
+#endif
 #undef min // undefine min macro to avoid conflicts with std::numeric_limits and glm
 #undef max // undefine max macro to avoid conflicts with std::numeric_limits and glm
 
@@ -24,46 +28,68 @@ namespace OWC
 		using enum LogLevel;
 		if constexpr (level == Trace)
 		{
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);
+#endif
 			std::cout << "[Trace]: " << std::format(str, std::forward<Args>(args)...) << '\n';
 		}
 		else if constexpr (level == Debug)
 		{
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 232);
+#endif
 			std::cout << "[Debug]: " << std::format(str, std::forward<Args>(args)...);
 
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);
+#endif
 			std::cout << '\n';
 		}
 		else if constexpr (level == Warn)
 		{
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 14);
+#endif
 			std::cout << "[Warning]: " << std::format(str, std::forward<Args>(args)...);
 
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);
+#endif
 			std::cout << '\n';
 		}
 		else if constexpr (level == Error)
 		{
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 13);
+#endif
 			std::cout << "[Error]: " << std::format(str, std::forward<Args>(args)...);
 
+#if defined(_WIN32) || defined(_WIN64)
 			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);
+#endif
 			std::cout << '\n';
 		}
 		else if constexpr (level == Critical)
 		{
 			if constexpr (!IsDistributionMode())
 			{
+#if defined(_WIN32) || defined(_WIN64)
 				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 192);
+#endif
 				std::cout << "[Critical]: " << std::format(str, std::forward<Args>(args)...);
 
+#if defined(_WIN32) || defined(_WIN64)
 				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 8);
+#endif
 				std::cout << '\n';
-				__debugbreak();
+#ifndef DIST
+				OWCDebugBreak();
+#endif
 			}
+#if defined(_WIN32) || defined(_WIN64)
 			else
 				MessageBoxA(nullptr, std::format(str, std::forward<Args>(args)...).c_str(), "Critical Error", MB_OK | MB_ICONERROR);
+#endif
 			
 			exit(EXIT_FAILURE);
 		}

@@ -1,3 +1,6 @@
+--require "cmake"
+require "clion"
+
 newoption
 {
 	trigger = "cleanType",
@@ -102,10 +105,10 @@ workspace "OOPWithCpp"
 		
 	filter {}
 
-	intrinsics "On"
 	startproject "StartProj"
+	intrinsics "On"
 	language "C++"
-	cppdialect "C++latest"
+	cppdialect "C++23"
 	cdialect "c17"
 	characterset "Unicode"
 
@@ -131,6 +134,9 @@ project "StartProj"
 	staticruntime "on"
 	warnings "Extra"
 	fatalwarnings "ALL"
+	language "C++"
+	cppdialect "C++23"
+	cdialect "c17"
 
 	targetdir ("Bin/" .. output .. "/%{prj.name}")
 	objdir ("Bin/intermediate/" .. output .. "/%{prj.name}")
@@ -156,6 +162,7 @@ project "StartProj"
 
 	filter { "system:windows" }
 		systemversion "latest"
+	filter {}
 
 project "OOPWithCppSSE4_2"
 	location "OOPWithCpp"
@@ -164,9 +171,9 @@ project "OOPWithCppSSE4_2"
 	warnings "Extra"
 	fatalwarnings "ALL"
 	vectorextensions "SSE4.2"
-
-	targetdir ("Bin/" .. output .. "/OOPWithCpp")
-	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
+	language "C++"
+	cppdialect "C++23"	targetdir ("Bin/" .. output .. "/OOPWithCpp")
+	cdialect "c17"	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
 
 	files
 	{
@@ -194,17 +201,8 @@ project "OOPWithCppSSE4_2"
 	links
 	{
 		"SDL3_SSE4_2",
-		"ImGui_SSE4_2",
-
-		"Cfgmgr32.lib",
-		"Winmm.lib",
-		"SetupAPI.lib",
-		"Imm32.lib",
-		"Version.lib",
-
-		"%VULKAN_SDK%/Lib/vulkan-1.lib"
+		"ImGui_SSE4_2"
 	}
-
 
 	defines
 	{
@@ -213,7 +211,7 @@ project "OOPWithCppSSE4_2"
 		"SSE4_2",
 	}
 
-	filter { "platforms:clang" }
+	filter { "platforms:clang or system:linux" }
 		buildoptions
 		{
 			"-msse4.2"
@@ -226,6 +224,20 @@ project "OOPWithCppSSE4_2"
 
 	filter { "system:windows" }
 		systemversion "latest"
+		links {
+			"Cfgmgr32.lib",
+			"Winmm.lib",
+			"SetupAPI.lib",
+			"Imm32.lib",
+			"Version.lib",
+
+			"%VULKAN_SDK%/Lib/vulkan-1.lib"
+		}
+		filter { "system:linux" }
+		links {
+			"/usr/lib/libvulkan.so.1"
+		}
+	filter {}
 
 project "OOPWithCppAVX2"
 	location "OOPWithCpp"
@@ -234,9 +246,9 @@ project "OOPWithCppAVX2"
 	warnings "Extra"
 	fatalwarnings "ALL"
 	vectorextensions "AVX2"
-
-	targetdir ("Bin/" .. output .. "/OOPWithCpp")
-	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
+	language "C++"
+	cppdialect "C++23"	targetdir ("Bin/" .. output .. "/OOPWithCpp")
+	cdialect "c17"	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
 
 	files
 	{
@@ -265,14 +277,6 @@ project "OOPWithCppAVX2"
 	{
 		"SDL3_AVX2",
 		"ImGui_AVX2",
-		
-		"Cfgmgr32.lib",
-		"Winmm.lib",
-		"SetupAPI.lib",
-		"Imm32.lib",
-		"Version.lib",
-
-		"%VULKAN_SDK%/Lib/vulkan-1.lib"
 	}
 
 	defines
@@ -285,70 +289,90 @@ project "OOPWithCppAVX2"
 
 	filter { "system:windows" }
 		systemversion "latest"
+		links {
+			"Cfgmgr32.lib",
+			"Winmm.lib",
+			"SetupAPI.lib",
+			"Imm32.lib",
+			"Version.lib",
 
-project "OOPWithCppAVX512"
-	location "OOPWithCpp"
-	kind "sharedlib"
-	staticruntime "on"
-	warnings "Extra"
-	fatalwarnings "ALL"
-	vectorextensions "AVX512"
-
-	targetdir ("Bin/" .. output .. "/OOPWithCpp")
-	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
-
-	files
-	{
-		"OOPWithCpp/src/**.cpp",
-
-		"OOPWithCpp/src/**.hpp",
-
-		"OOPWithCpp/src/**.inl",
-	}
-
-	includedirs
-	{
-		"OOPWithCpp/src",
-		"OOPWithCpp/src/**",
-		
-		"%{IncludeDir.SDL}",
-		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.stb}",
-		"%{IncludeDir.glm}",
---		"%{IncludeDir.CTPL}",
-
-		"%VULKAN_SDK%/Include"
-	}
-
-	links
-	{
-		"SDL3_AVX512",
-		"ImGui_AVX512",
-		
-		"Cfgmgr32.lib",
-		"Winmm.lib",
-		"SetupAPI.lib",
-		"Imm32.lib",
-		"Version.lib",
-
-		"%VULKAN_SDK%/Lib/vulkan-1.lib"
-	}
-
-	defines
-	{
-		"GLM_FORCE_AVX2", -- GLM doesnt support AVX512 anymore so we use AVX2 instead though the compiler will still apply AVX512 optimizations
-		"GLM_FORCE_FMA",
-		"GLM_FORCE_SIZE_T_LENGTH",
-		"AVX2",
-		"AVX512"
-	}
-
-	filter { "platforms:clang" }
-		buildoptions
-		{
-			"-mavx512vbmi",
-			"-mavx512vbmi2"
+			"%VULKAN_SDK%/Lib/vulkan-1.lib"
 		}
+	filter { "system:linux" }
+		links {
+			"/usr/lib/libvulkan.so.1"
+		}
+		buildoptions {
+			"-mavx2",
+			"-mfma",
+			"-fno-permissive"
+		}
+	filter {}
 
-	filter { "system:windows" }
-		systemversion "latest"
+--project "OOPWithCppAVX512"
+--	location "OOPWithCpp"
+--	kind "sharedlib"
+--	staticruntime "on"
+--	warnings "Extra"
+--	fatalwarnings "ALL"
+--	vectorextensions "AVX512"
+--
+--	targetdir ("Bin/" .. output .. "/OOPWithCpp")
+--	objdir ("Bin/intermediate/" .. output .. "/OOPWithCpp")
+--
+--	files
+--	{
+--		"OOPWithCpp/src/**.cpp",
+--
+--		"OOPWithCpp/src/**.hpp",
+--
+--		"OOPWithCpp/src/**.inl",
+--	}
+--
+--	includedirs
+--	{
+--		"OOPWithCpp/src",
+--		"OOPWithCpp/src/**",
+--
+--		"%{IncludeDir.SDL}",
+--		"%{IncludeDir.ImGui}",
+--		"%{IncludeDir.stb}",
+--		"%{IncludeDir.glm}",
+----		"%{IncludeDir.CTPL}",
+--
+--		"%VULKAN_SDK%/Include"
+--	}
+--
+--	links
+--	{
+--		"SDL3_AVX512",
+--		"ImGui_AVX512",
+--
+--		"Cfgmgr32.lib",
+--		"Winmm.lib",
+--		"SetupAPI.lib",
+--		"Imm32.lib",
+--		"Version.lib",
+--
+--		"%VULKAN_SDK%/Lib/vulkan-1.lib"
+--	}
+--
+--	defines
+--	{
+--		"GLM_FORCE_AVX2", -- GLM doesnt support AVX512 anymore so we use AVX2 instead though the compiler will still apply AVX512 optimizations
+--		"GLM_FORCE_FMA",
+--		"GLM_FORCE_SIZE_T_LENGTH",
+--		"AVX2",
+--		"AVX512"
+--	}
+--
+--	filter { "platforms:clang" }
+--		buildoptions
+--		{
+--			"-mavx512vbmi",
+--			"-mavx512vbmi2"
+--		}
+--
+--	filter { "system:windows" }
+--		systemversion "latest"
+--

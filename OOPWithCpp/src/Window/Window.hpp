@@ -1,12 +1,21 @@
 ﻿#pragma once
+#define WINDOW_HPP
 #include "Core.hpp"
 #include <functional>
 #include <memory>
 
 #include "BaseEvent.hpp"
 #include "WindowEvent.hpp"
-#include "GraphicsContext.hpp"
 
+#ifndef GRAPHICSCONTEXT_HPP
+#include "GraphicsContext.hpp"
+#endif
+
+
+namespace OWC::Graphics
+{
+	class GraphicsContext;
+}
 
 namespace OWC
 {
@@ -15,6 +24,8 @@ namespace OWC
 		std::u8string Title;
 		u32 Width;
 		u32 Height;
+		u32 PixelWidth = NULL;
+		u32 PixelHeight = NULL;
 	};
 
 	class Window
@@ -31,15 +42,20 @@ namespace OWC
 
 		void Update() const;
 
-		inline void SetEventCallback(const std::function<void(BaseEvent&)>& callback) { m_WindowEvent->SetCallback(callback); }
+		inline void SetEventCallback(const std::function<void(BaseEvent&)>& callback) const { m_WindowEvent->SetCallback(callback); }
 
-		Graphics::GraphicsContext& GetGraphicsContext() const { return *m_GraphicsContext; }
-		std::weak_ptr<Graphics::GraphicsContext> GetGraphicsContextPtr() const { return m_GraphicsContext; }
+		[[nodiscard]] OWC_FORCE_INLINE Graphics::GraphicsContext& GetGraphicsContext() const { return *m_GraphicsContext; }
+		[[nodiscard]] OWC_FORCE_INLINE std::weak_ptr<Graphics::GraphicsContext> GetGraphicsContextPtr() const { return m_GraphicsContext; }
 
-		u32 GetWidth() const { return m_Properties.Width; }
-		u32 GetHeight() const { return m_Properties.Height; }
+		[[nodiscard]] OWC_FORCE_INLINE u32 GetWidth() const { return m_Properties.Width; }
+		[[nodiscard]] OWC_FORCE_INLINE u32 GetHeight() const { return m_Properties.Height; }
+		[[nodiscard]] OWC_FORCE_INLINE Vec2u GetWindowSize() const { return { GetWidth(), GetHeight() }; }
 
-		bool IsWindowMinimized() const { return m_IsMinimized; }
+		[[nodiscard]] OWC_FORCE_INLINE u32 GetPixelWidth() const { return m_Properties.PixelWidth; }
+		[[nodiscard]] OWC_FORCE_INLINE u32 GetPixelHeight() const { return m_Properties.PixelHeight; }
+		[[nodiscard]] OWC_FORCE_INLINE Vec2u GetPixelSize() const { return { GetPixelWidth(), GetPixelHeight() }; }
+
+		[[nodiscard]] OWC_FORCE_INLINE bool IsWindowMinimized() const { return m_IsMinimized; }
 
 		void Resize(u32 width, u32 height);
 		void Minimize();
@@ -53,6 +69,7 @@ namespace OWC
 
 	private:
 		void PollEvents() const;
+		void SetPixelSize();
 
 	private:
 		std::unique_ptr<WindowEvent> m_WindowEvent;

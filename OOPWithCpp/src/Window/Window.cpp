@@ -1,4 +1,5 @@
 ﻿#include <SDL3/SDL.h>
+#include <SDL3/SDL_version.h>
 #include <backends/imgui_impl_sdl3.h>
 
 #include "Window.hpp"
@@ -13,6 +14,12 @@ namespace OWC
 	Window::Window(const WindowProperties& properties)
 		: m_Properties(properties)
 	{
+		// print SDL version for debugging purposes
+		Log<LogLevel::Debug>("SDL Version: {}", SDL_GetVersion());
+
+		// convert from window size to pixel size for high DPI displays, and store it in properties
+		
+
 		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
 		m_Window.reset(SDL_CreateWindow( // Creates the window and stores it in the unique_ptr with a custom deleter
@@ -24,14 +31,18 @@ namespace OWC
 		if (m_Window == nullptr)
 			Log<LogLevel::Critical>("unable to open window: {}", SDL_GetError());
 
+		SDL_SyncWindow(m_Window.get());
+		SetPixelSize();
+
 		m_WindowEvent = std::make_unique<WindowEvent>(SDL_GetWindowID(m_Window.get()));
-		m_GraphicsContext = OWCG::GraphicsContext::CreateGraphicsContext(*m_Window);
+		m_GraphicsContext = OWCG::GraphicsContext::CreateGraphicsContext(*m_Window, m_Properties);
 	}
 
 	Window::~Window()
 	{
 		m_GraphicsContext.reset();
 		m_Window.reset();
+		SDL_Delay(100);
 		SDL_Quit();
 	}
 
@@ -56,6 +67,8 @@ namespace OWC
 			SDL_SetWindowSize(m_Window.get(), static_cast<int>(width), static_cast<int>(height));
 			m_Properties.Width = width;
 			m_Properties.Height = height;
+			SDL_SyncWindow(m_Window.get());
+			SetPixelSize();
 		}
 		// always return false so that layers can handle the resize event if needed
 		m_GraphicsContext->Resize();
@@ -108,5 +121,14 @@ namespace OWC
 		{
 			m_WindowEvent->EventCall(event);
 		}
+	}
+
+	void Window::SetPixelSize()
+	{
+		i32 x;
+		i32 y;
+		SDL_GetWindowSizeInPixels(m_Window.get(), &x, &y);
+		m_Properties.PixelWidth = static_cast<u32>(x);
+		m_Properties.PixelHeight = static_cast<u32>(y);
 	}
 } // namespace OWC

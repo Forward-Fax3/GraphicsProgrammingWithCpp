@@ -8,6 +8,15 @@
 
 #include <SDL3/SDL_video.h>
 
+#ifndef WINDOW_HPP
+#include "Window.hpp"
+#endif
+
+
+namespace OWC
+{
+	struct WindowProperties;
+}
 
 namespace OWC::Graphics
 {
@@ -44,7 +53,7 @@ namespace OWC::Graphics
 		virtual void Restore() = 0;
 		virtual void Resize() = 0;
 
-		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle);
+		static std::unique_ptr<GraphicsContext> CreateGraphicsContext(SDL_Window& windowHandle, const WindowProperties& properties);
 
 	protected:
 		GraphicsContext() = default; // protected constructor to prevent direct instantiation

@@ -6,8 +6,10 @@
 
 #include "AABB.hpp"
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(push)
 #pragma warning(disable: 4324) // structure was padded due to alignment specifier
+#endif
 
 
 namespace OWC
@@ -28,7 +30,7 @@ namespace OWC
         SplitBVH(SplitBVH&&) = delete;
         SplitBVH& operator=(SplitBVH&&) = delete;
 
-		bool __vectorcall IsHit(const Ray& ray, Interval& range, HitData& hitData) const override;
+		bool VECTORCALL IsHit(const Ray& ray, Interval& range, HitData& hitData) const override;
 
 		AABB GetAABB() const override { return m_AABB; }
 
@@ -55,4 +57,6 @@ namespace OWC
     };
 }
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(pop)
+#endif

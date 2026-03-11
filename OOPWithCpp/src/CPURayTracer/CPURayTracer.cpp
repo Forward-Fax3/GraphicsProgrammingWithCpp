@@ -9,6 +9,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <array>
+#include <utility>
 
 
 namespace OWC
@@ -17,7 +18,7 @@ namespace OWC
 		: m_InterLayerData(interLayerData)
 	{
 		m_Camera = std::make_unique<RTCamera>(m_InterLayerData->imageData);
-		m_Camera->GetSettings().ScreenSize = Vec2(Application::GetConstInstance().GetWindowSize());
+		m_Camera->GetSettings().ScreenSize = Vec2(Application::GetConstInstance().GetPixelSize());
 		m_CameraSettingsUpdated = true;
 		m_Scene = BaseScene::CreateScene(Scene::Basic);
 		m_InterLayerData->numberOfSamples = 1; // Start at 1 to avoid division by zero
@@ -36,13 +37,13 @@ namespace OWC
 		if (!m_ToggleRaytracedImage)
 			return;
 
-		if (m_ToggleRaytracedImage && m_RayTracingStateUpdated)
+		if (m_RayTracingStateUpdated)
 		{
 			m_Scene->SetBaseCameraSettings(m_Camera->GetSettings());
 			m_CameraSettingsUpdated = true;
 
 			m_InterLayerData->imageData.clear();
-			m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+			m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetPixelSize();
 			m_InterLayerData->imageData.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
 			m_InterLayerData->numberOfSamples = 0;
 			m_InterLayerData->ImageUpdates |= 0b10;
@@ -160,7 +161,7 @@ namespace OWC
 			else if (useCustomResolutionUpdated)
 			{
 				// scope ordered to reduce number of instructions
-				m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+				m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetPixelSize();
 				m_Camera->GetSettings().ScreenSize = Vec2(m_InterLayerData->imageScreenSize);
 
 				m_InterLayerData->numberOfSamples = 0;
@@ -211,7 +212,7 @@ namespace OWC
 
 			std::vector<Vec4>& pixelArray = m_InterLayerData->imageData;
 			pixelArray.clear();
-			m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetWindowSize();
+			m_InterLayerData->imageScreenSize = Application::GetConstInstance().GetPixelSize();
 			pixelArray.resize(m_InterLayerData->GetNumberOfPixels<uSize>());
 			m_InterLayerData->numberOfSamples = 0;
 			m_InterLayerData->ImageUpdates |= 0b10;

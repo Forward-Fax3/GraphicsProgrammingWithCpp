@@ -1,8 +1,10 @@
 ﻿#pragma once
 #include "Core.hpp"
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(push)
 #pragma warning(disable: 4324) // structure was padded due to alignment specifier
+#endif
 
 
 namespace OWC
@@ -21,7 +23,7 @@ namespace OWC
 		OWC_FORCE_INLINE void SetDirection(const Vec3& direction) { m_Direction = glm::normalize(direction); m_InvDirection = 1.0f / m_Direction; }
 		OWC_FORCE_INLINE void SetNormalizedDirection(const Vec3& nDirection) { m_Direction = nDirection; m_InvDirection = 1.0f / m_Direction; }
 
-		Vec3 GetPointAtDistance(f32 t) const { return glm::fma(Vec3(t), m_Direction, m_Origin); }
+		Vec3 GetPointAtDistance(f32 t) const { return ::glm::fma(Vec3(t), m_Direction, m_Origin); }
 
 	private:
 		Point m_Origin = Point(0.0);
@@ -30,4 +32,6 @@ namespace OWC
 	};
 }
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(pop)
+#endif

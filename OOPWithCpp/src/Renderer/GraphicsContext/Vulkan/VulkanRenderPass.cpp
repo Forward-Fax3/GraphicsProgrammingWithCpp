@@ -18,8 +18,8 @@ namespace OWC::Graphics
 		vk::Rect2D rect(
 			vk::Offset2D(0, 0),
 			{
-				static_cast<u32>(Application::GetConstInstance().GetWindowWidth()),
-				static_cast<u32>(Application::GetConstInstance().GetWindowHeight())
+				Application::GetConstInstance().GetPixelWidth(),
+				Application::GetConstInstance().GetPixelHeight()
 			});
 
 		if (type == RenderPassType::Static)
@@ -30,21 +30,23 @@ namespace OWC::Graphics
 				vk::CommandBuffer cmdbuf = m_CommandBuffers[i];
 				cmdbuf.begin(vk::CommandBufferBeginInfo());
 
+				const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = { vk::RenderingAttachmentInfo()
+					.setImageView(vkCore.GetSwapchainImageViews()[i])
+					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+					.setLoadOp(vk::AttachmentLoadOp::eLoad)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+				};
+
 				cmdbuf.beginRendering(vk::RenderingInfo()
 					.setRenderArea(rect)
 					.setLayerCount(1)
 					.setColorAttachmentCount(1)
-					.setPColorAttachments(&vk::RenderingAttachmentInfo()
-						.setImageView(vkCore.GetSwapchainImageViews()[i])
-						.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-						.setLoadOp(vk::AttachmentLoadOp::eLoad)
-						.setStoreOp(vk::AttachmentStoreOp::eStore)
-					)
+					.setColorAttachments(renderingAttachmentInfo)
 				);
 
 				cmdbuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
-					static_cast<f32>(Application::GetConstInstance().GetWindowWidth()),
-					static_cast<f32>(Application::GetConstInstance().GetWindowHeight()),
+					static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
+					static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
 					0.0f, 1.0f));
 				cmdbuf.setScissor(0, rect);
 			}
@@ -79,25 +81,31 @@ namespace OWC::Graphics
 		vk::Rect2D rect(
 			vk::Offset2D(0, 0),
 			{
-				static_cast<u32>(Application::GetConstInstance().GetWindowWidth()),
-				static_cast<u32>(Application::GetConstInstance().GetWindowHeight())
+				Application::GetConstInstance().GetPixelWidth(),
+				Application::GetConstInstance().GetPixelHeight()
 			});
 
 		cmdbuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+		const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = {
+			vk::RenderingAttachmentInfo()
+				.setImageView(vkCore.GetSwapchainImageViews()[frameIndex])
+				.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+				.setLoadOp(vk::AttachmentLoadOp::eLoad)
+				.setStoreOp(vk::AttachmentStoreOp::eStore)
+		};
 
 		cmdbuf.beginRendering(vk::RenderingInfo()
 			.setRenderArea(rect)
 			.setLayerCount(1)
 			.setColorAttachmentCount(1)
-			.setColorAttachments(vk::RenderingAttachmentInfo()
-				.setImageView(vkCore.GetSwapchainImageViews()[frameIndex])
-				.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-				.setLoadOp(vk::AttachmentLoadOp::eLoad)
-				.setStoreOp(vk::AttachmentStoreOp::eStore)
-			)
+			.setColorAttachments(renderingAttachmentInfo)
 		);
 
-		cmdbuf.setViewport(0, vk::Viewport(0.0f, 0.0f, static_cast<f32>(Application::GetConstInstance().GetWindowWidth()), static_cast<f32>(Application::GetConstInstance().GetWindowHeight()), 0.0f, 1.0f));
+		cmdbuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
+			static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
+			static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
+			0.0f, 1.0f));
 		cmdbuf.setScissor(0, rect);
 	}
 
@@ -210,11 +218,19 @@ namespace OWC::Graphics
 
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setWaitSemaphores(waitSemaphores)
-			.setSignalSemaphores(signalSemaphores)
 			.setWaitDstStageMask(waitDestinationStageMask)
 			.setCommandBuffers(m_CommandBuffers[vkCore.GetCurrentFrameIndex()])
 			.setCommandBufferCount(1);
+
+		if (!waitSemaphores.empty())
+			submitInfo.setWaitSemaphores(waitSemaphores);
+		else
+			submitInfo.setWaitSemaphores(VK_NULL_HANDLE);
+
+		if (!signalSemaphores.empty())
+			submitInfo.setSignalSemaphores(signalSemaphores);
+		else
+			submitInfo.setSignalSemaphores(VK_NULL_HANDLE);
 
 		vkCore.GetGraphicsQueue().submit(submitInfo, m_Fence);
 	}

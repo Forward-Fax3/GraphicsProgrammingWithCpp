@@ -16,7 +16,27 @@ namespace OWC
 		std::unique_ptr<f32[], decltype([](f32 ptr[]) { STBI_FREE(ptr); })> imageDataPtr(stbi_loadf(path.data(), &tempWidth, &tempHeight, nullptr, 4));
 
 		if (!imageDataPtr)
-			Log<LogLevel::Error>("Failed to load image from path: {}", path);
+		{
+			std::string pathCopy(path);
+
+			for (char& c : pathCopy)
+				if (c == '\\')
+					c = '/';
+
+			imageDataPtr.reset(stbi_loadf(pathCopy.data(), &tempWidth, &tempHeight, nullptr, 4));
+
+			if (!imageDataPtr)
+				for (uSize i = 0; i < 16; i++)
+				{
+					pathCopy = "../" + pathCopy;
+					imageDataPtr.reset(stbi_loadf(pathCopy.data(), &tempWidth, &tempHeight, nullptr, 4));
+					if (imageDataPtr)
+						break;
+				}
+
+			if (!imageDataPtr)
+				Log<LogLevel::Error>("Failed to load image from path: {}", path);
+		}
 
 		m_Width = static_cast<uSize>(tempWidth);
 		m_Height = static_cast<uSize>(tempHeight);

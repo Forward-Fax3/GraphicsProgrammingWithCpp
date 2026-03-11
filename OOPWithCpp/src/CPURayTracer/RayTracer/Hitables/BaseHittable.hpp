@@ -11,8 +11,10 @@
 #include "BaseMaterial.hpp"
 #endif // !BASEMATERIAL_HPP
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(push)
 #pragma warning(disable: 4324) // structure was padded due to alignment specifier
+#endif
 
 
 namespace OWC
@@ -269,7 +271,7 @@ namespace OWC
 		BaseHitable(BaseHitable&&) = delete;
 		BaseHitable& operator=(BaseHitable&&) = delete;
 
-		virtual bool __vectorcall IsHit(const Ray& ray, Interval& range, HitData& hitData) const = 0;
+		virtual bool VECTORCALL IsHit(const Ray& ray, Interval& range, HitData& hitData) const = 0;
 
 		virtual AABB GetAABB() const = 0;
 
@@ -291,7 +293,7 @@ namespace OWC
 		NoHit(NoHit&&) = delete;
 		NoHit& operator=(NoHit&&) = delete;
 
-		bool __vectorcall IsHit(const Ray&, Interval&, HitData&) const override
+		bool VECTORCALL IsHit(const Ray&, Interval&, HitData&) const override
 		{
 			return false;
 		}
@@ -303,4 +305,6 @@ namespace OWC
 	};
 }
 
+#if defined(_WIN32) || defined(_WIN64)
 #pragma warning(pop)
+#endif

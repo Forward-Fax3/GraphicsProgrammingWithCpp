@@ -1,6 +1,7 @@
 #include "Log.hpp"
 #include <fstream>
 #include <vector>
+#include <csignal>
 
 
 namespace OWC
@@ -12,9 +13,35 @@ namespace OWC
 
 		if (!fileStream.is_open())
 		{
-			Log<LogLevel::Error>("LoadFileToBytecode: Failed to open file: {}", filepath);
-			return {};
+			std::string filePathCopy = filepath;
+
+			for (size_t i = 0; i < filePathCopy.size(); i++)
+			{
+				if (filePathCopy[i] == '\\')
+					filePathCopy[i] = '/';
+			}
+
+			fileStream.open(filePathCopy, std::ios::binary | std::ios::ate);
+
+			if (!fileStream.is_open())
+			{
+//				raise(SIGTRAP);
+
+				for (size_t i = 0; i < 16; i++)
+				{
+					filePathCopy = "../" + filePathCopy;
+					fileStream.open(filePathCopy, std::ios::binary | std::ios::ate);
+
+					if (fileStream.is_open())
+						goto FileOpened;
+				}
+
+				Log<LogLevel::Error>("LoadFileToBytecode: Failed to open file: {}", filepath);
+				return {};
+			}
 		}
+
+		FileOpened:
 
 		std::streamsize fileSize = fileStream.tellg();
 		fileStream.seekg(0, std::ios::beg);

@@ -1,9 +1,18 @@
 ﻿#include <bitset>
+#include <iostream>
 
 #include "Application.hpp"
 
 
-extern "C" __declspec(dllexport) void EntryPoint(int, char**)
+#if defined(_WIN32)
+	#define ENTRY_POINT_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__)
+	#define ENTRY_POINT_EXPORT __attribute__((visibility("default")))
+#else
+	#define ENTRY_POINT_EXPORT
+#endif
+
+extern "C" ENTRY_POINT_EXPORT void EntryPoint(int, char**)
 {
 	std::bitset<2> runFlags{ 0b10 }; // Bit 0: Application running, Bit 1: restart application
 

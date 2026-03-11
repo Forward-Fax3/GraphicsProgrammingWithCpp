@@ -35,11 +35,10 @@ namespace OWC
 	{
 		using namespace OWC::Graphics;
 
-		std::array<std::string_view, 1> waitSemaphorenames = { "ImageReady" };
-		std::array<std::string_view, 1> signalSemaphoreNames = { "RenderLayer" };
+		std::array<std::string_view, 1> waitSemaphoreNames = { "ImageReady" };
 
 		UniformBufferObject ubo{
-			.divider = 1.0f / static_cast<f32>(m_ILD->numberOfSamples),
+			.divider = 1.0f / static_cast<f32>((m_ILD->numberOfSamples - 1 == 0) ? 1 : m_ILD->numberOfSamples - 1), // avoid division by zero
 			.invGammaValue = m_ILD->invGammaValue
 		};
 
@@ -79,7 +78,7 @@ namespace OWC
 		}
 
 		Renderer::RestartRenderPass(m_renderPass);
-		Renderer::SubmitRenderPass(m_renderPass, waitSemaphorenames, signalSemaphoreNames);
+		Renderer::SubmitRenderPass(m_renderPass, waitSemaphoreNames, {});
 	}
 
 	void RenderLayer::OnEvent(class BaseEvent& e)

@@ -17,7 +17,7 @@ namespace OWC::Graphics
 			u32 ComputeFamily = std::numeric_limits<u32>::max();
 			u32 TransferFamily = std::numeric_limits<u32>::max();
 			
-			std::vector<u32> uniqueIndices = {};
+			std::vector<u32> UniqueIndices = {};
 
 			// helper function to check if all families are found
 			[[nodiscard]] inline bool FoundAll() const
@@ -29,7 +29,8 @@ namespace OWC::Graphics
 		};
 
 	public:
-		explicit VulkanContext(SDL_Window& windowHandle);
+		VulkanContext() = delete;
+		explicit VulkanContext(SDL_Window& windowHandle, const WindowProperties& properties);
 		~VulkanContext() override;
 		VulkanContext(const VulkanContext&) = delete;
 		VulkanContext& operator=(const VulkanContext&) = delete;
@@ -55,22 +56,22 @@ namespace OWC::Graphics
 		void ImGuiNewFrame() override;
 
 	private:
-		void StartInstance();
+		static void StartInstance();
 #ifndef DIST
 		void EnableVulkanDebugging();
 #endif
-		void SurfaceInit(SDL_Window& windowHandle);
+		static void SurfaceInit(SDL_Window& windowHandle);
 		void SelectPhysicalDevice();
-		std::pair<bool, u32> IsPhysicalDeviceSuitable(const vk::PhysicalDevice& device);
+		static std::pair<bool, u32> IsPhysicalDeviceSuitable(const vk::PhysicalDevice& device);
 		void FindQueueFamilies();
-		void CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties> queueFamilies);
+		void CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties>& queueFamilies);
 		void GetAndStoreGlobalQueueFamilies() const;
 		void CreateLogicalDevice();
-		void CreateSwapchain();
+		void CreateSwapchain() const;
 		void CreateCommandPools() const;
 		void WriteCommandBuffers();
 
-		void DestroySwapchain();
+		static void DestroySwapchain();
 
 		void RecreateSwapchain();
 		void RewriteCommandBuffers();
@@ -83,6 +84,8 @@ namespace OWC::Graphics
 
 		std::vector<vk::CommandBuffer> m_BeginRenderCmdBuf{};
 		std::vector<vk::CommandBuffer> m_EndRenderCmdBuf{};
+
+		const WindowProperties& m_WindowProperties;
 
 		bool m_RenderPassNeedsRecreating = false;
 		bool m_IsMinimized = false;

@@ -42,7 +42,7 @@ namespace OWC
 			AddObject(newHittables->m_Hitables[i]);
 	}
 
-	bool __vectorcall Hitables::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
+	bool VECTORCALL Hitables::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
 	{
 		bool hasAnyHit = false;
 		

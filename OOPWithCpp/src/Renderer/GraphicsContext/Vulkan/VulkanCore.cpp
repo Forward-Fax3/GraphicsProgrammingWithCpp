@@ -58,7 +58,7 @@ namespace OWC::Graphics
 		);
 
 		for (const auto& cmdBuf : commandBuffers)
-			Log<LogLevel::Debug>("Created graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(static_cast<const VkCommandBuffer>(cmdBuf)));
+			Log<LogLevel::Debug>("Created graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(std::bit_cast<const VkCommandBuffer>(cmdBuf)));
 
 		return commandBuffers;
 	}
@@ -95,7 +95,7 @@ namespace OWC::Graphics
 		);
 
 		for (const auto& cmdbuf : commandBuffers)
-			Log<LogLevel::Debug>("Allocated dynamic graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(static_cast<const VkCommandBuffer>(cmdbuf)));
+			Log<LogLevel::Debug>("Allocated dynamic graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(std::bit_cast<const VkCommandBuffer>(cmdbuf)));
 
 		return commandBuffers;
 	}
@@ -154,6 +154,9 @@ namespace OWC::Graphics
 
 	std::vector<vk::Semaphore> VulkanCore::GetSemaphoresFromNames(std::span<std::string_view> semaphoreNames)
 	{
+		if (semaphoreNames.empty())
+			return {};
+
 		std::vector<vk::Semaphore> semaphores;
 		semaphores.reserve(semaphoreNames.size());
 

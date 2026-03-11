@@ -6,7 +6,7 @@
 
 namespace OWC
 {
-	bool __vectorcall Sphere::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
+	bool VECTORCALL Sphere::IsHit(const Ray& ray, Interval& range, HitData& hitData) const
 	{
 		Vec3 oc = m_Center - ray.GetOrigin();
 

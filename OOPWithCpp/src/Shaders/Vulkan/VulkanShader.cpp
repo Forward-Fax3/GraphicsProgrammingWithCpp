@@ -9,6 +9,8 @@ namespace OWC::Graphics
 {
 	VulkanShader::VulkanShader(const std::span<ShaderData>& shaderDatas)
 	{
+		Log<LogLevel::Trace>("VulkanShader::VulkanShader: Creating Vulkan shader with {} shader stages.", shaderDatas.size());
+
 		if (shaderDatas.empty())
 			Log<LogLevel::Error>("VulkanShader::VulkanShader: No shader data provided!");
 
@@ -58,8 +60,10 @@ namespace OWC::Graphics
 			descriptorBufferInfos.emplace_back(
 				vulkanUniformBuffer->GetBuffers()[i],
 				0,
-				vulkanUniformBuffer->GetBufferSize()
+//				vulkanUniformBuffer->GetBufferSize()
+				vk::WholeSize
 			);
+			Log<LogLevel::Trace>("vulkanUniformBuffer->GetBufferSize(): {}", vulkanUniformBuffer->GetBufferSize());
 			writeDescriptorSets.emplace_back(
 				m_DescriptorSet[i],
 				binding,
@@ -148,6 +152,8 @@ namespace OWC::Graphics
 
 	void VulkanShader::CreateVulkanPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas)
 	{
+		const auto& app = Application::GetConstInstance();
+
 		// Create shader modules and pipeline
 
 		Log<LogLevel::Trace>("VulkanShader::CreateVulkanPipeline: Creating Vulkan pipeline with {} shader stages.", vulkanShaderDatas.size());
@@ -189,8 +195,8 @@ namespace OWC::Graphics
 			.setPrimitiveRestartEnable(vk::False);
 
 		const vk::Viewport viewport = vk::Viewport()
-			.setHeight(static_cast<f32>(Application::GetConstInstance().GetWindow().GetHeight()))
-			.setWidth(static_cast<f32>(Application::GetConstInstance().GetWindow().GetWidth()))
+			.setWidth(static_cast<f32>(app.GetPixelWidth()))
+			.setHeight(static_cast<f32>(app.GetPixelHeight()))
 			.setMinDepth(0.0f)
 			.setMaxDepth(1.0f)
 			.setX(0.0f)
@@ -199,8 +205,8 @@ namespace OWC::Graphics
 		const vk::Rect2D scissor = vk::Rect2D()
 			.setOffset({ 0, 0 })
 			.setExtent({
-				static_cast<u32>(Application::GetConstInstance().GetWindowWidth()),
-				static_cast<u32>(Application::GetConstInstance().GetWindowHeight())
+				app.GetPixelWidth(),
+				app.GetPixelHeight()
 			});
 
 		const vk::PipelineViewportStateCreateInfo viewportState = vk::PipelineViewportStateCreateInfo()

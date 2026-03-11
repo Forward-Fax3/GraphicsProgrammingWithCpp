@@ -22,7 +22,7 @@ namespace OWC
 
 		// Load Earth sphere
 		{
-			auto earthTexture = std::make_shared<ImageTexture>("../Images/EarthMap.jpg");
+			auto earthTexture = std::make_shared<ImageTexture>("../Images/earthmap.jpg");
 			auto earthMaterial = std::make_shared<Lambertian>(earthTexture);
 			m_SceneObjects->AddObject(std::make_shared<Sphere>(Vec3(0.0f, 0.0f, 0.0f), 1.0f, earthMaterial));
 		}
