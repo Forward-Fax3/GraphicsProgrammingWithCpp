@@ -20,7 +20,7 @@ find_package(Vulkan REQUIRED)
 file(GLOB LLVM_LIB_PATHS /usr/lib/llvm*/lib)
 find_library(Polly_LIBRARY NAMES LLVMPolly.so PATHS /usr/lib ${LLVM_LIB_PATHS} NO_DEFAULT_PATH)
 
-if (Polly_LIBRARY)
+if (Polly_LIBRARY AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(Polly_FLAGS
             -fplugin=${Polly_LIBRARY}
             "SHELL:-mllvm -polly"

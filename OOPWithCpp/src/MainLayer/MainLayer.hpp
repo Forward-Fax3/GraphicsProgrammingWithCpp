@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Layer.hpp"
-#include "RenderLayer.hpp"
+#include "CPURayTracerRenderer.hpp"
 #include "CPURayTracer.hpp"
 
 
@@ -17,7 +17,7 @@ namespace OWC
 		MainLayer&& operator=(MainLayer&&) = delete;
 
 	private:
-		std::shared_ptr<RenderLayer> m_TestLayer;
+		std::shared_ptr<CPURayTracerRenderer> m_TestLayer;
 		std::shared_ptr<CPURayTracer> m_CPURayTracerLayer;
 	};
 }

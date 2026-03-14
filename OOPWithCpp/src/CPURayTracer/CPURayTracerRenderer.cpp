@@ -1,5 +1,5 @@
 ﻿#include "Core.hpp"
-#include "RenderLayer.hpp"
+#include "CPURayTracerRenderer.hpp"
 #include "LoadFile.hpp"
 #include "Renderer.hpp"
 
@@ -20,7 +20,7 @@ namespace OWC
 		return (lhs.x > rhs) && (lhs.y > rhs);
 	}
 	
-	RenderLayer::RenderLayer(const std::shared_ptr<InterLayerData>& ILD)
+	CPURayTracerRenderer::CPURayTracerRenderer(const std::shared_ptr<InterLayerData>& ILD)
 		: m_ILD(ILD)
 	{
 		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(UniformBufferObject));
@@ -31,7 +31,7 @@ namespace OWC
 		SetupRenderPass();
 	}
 
-	void RenderLayer::OnUpdate()
+	void CPURayTracerRenderer::OnUpdate()
 	{
 		using namespace OWC::Graphics;
 
@@ -81,7 +81,7 @@ namespace OWC
 		Renderer::SubmitRenderPass(m_renderPass, waitSemaphoreNames, {});
 	}
 
-	void RenderLayer::OnEvent(class BaseEvent& e)
+	void CPURayTracerRenderer::OnEvent(class BaseEvent& e)
 	{
 		EventDispatcher dispatcher(e);
 
@@ -106,7 +106,7 @@ namespace OWC
 			});
 	}
 
-	void RenderLayer::SetupRenderPass()
+	void CPURayTracerRenderer::SetupRenderPass()
 	{
 		using namespace OWC::Graphics;
 		constexpr u32 numberOfVertices = 6;
@@ -119,7 +119,7 @@ namespace OWC
 		Renderer::EndPass(m_renderPass);
 	}
 
-	void RenderLayer::SetupPipeline()
+	void CPURayTracerRenderer::SetupPipeline()
 	{
 		using namespace OWC::Graphics;
 
@@ -140,13 +140,13 @@ namespace OWC
 
 		std::vector<ShaderData> shaderDatas = {
 			{
-				.bytecode = LoadFileToBytecode<u32>("../ShaderSrc/Image.vert.spv"),
+				.bytecode = LoadFileToBytecode<u32>("../ShaderSrc/CPURayTracerShaders/Image.vert.spv"),
 				.type = ShaderType::Vertex,
 				.language = ShaderData::ShaderLanguage::SPIRV,
 				.descriptorType = {}
 			},
 			{
-				.bytecode = LoadFileToBytecode<u32>("../ShaderSrc/Image.frag.spv"),
+				.bytecode = LoadFileToBytecode<u32>("../ShaderSrc/CPURayTracerShaders/Image.frag.spv"),
 				.type = ShaderType::Fragment,
 				.language = ShaderData::ShaderLanguage::SPIRV,
 				.descriptorType = fragmentBindingDiscriptions

@@ -167,17 +167,16 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 
 namespace OWC::Graphics
 {
-#if defined(_WIN32) || defined(_WIN64)
 	std::array g_DeviceExtensions = {
-			vk::KHRSwapchainExtensionName,
-			vk::EXTPageableDeviceLocalMemoryExtensionName,
-			vk::EXTMemoryPriorityExtensionName
-	};
-#else
-	std::array<const char*, 1> g_DeviceExtensions = {
-		vk::KHRSwapchainExtensionName
-	};
+#if defined(_WIN32) || defined(_WIN64)
+		vk::EXTPageableDeviceLocalMemoryExtensionName,
+		vk::EXTMemoryPriorityExtensionName,
 #endif
+		vk::KHRSwapchainExtensionName,
+		vk::KHRAccelerationStructureExtensionName,
+		vk::KHRRayTracingPipelineExtensionName,
+		vk::KHRBufferDeviceAddressExtensionName
+	};
 
 	VulkanContext::VulkanContext(SDL_Window& windowHandle, const WindowProperties& properties)
 		 : m_WindowProperties(properties)
@@ -714,8 +713,16 @@ namespace OWC::Graphics
 			.setPNext(&shaderObjectFeature)
 			.setShaderDrawParameters(vk::True);
 
-		vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR swapchainMaintenance1Feature = vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR()
+		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeature = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
 			.setPNext(&shaderDrawParametersFeature)
+			.setAccelerationStructure(vk::True);
+
+		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
+			.setPNext(&accelerationStructureFeature)
+			.setRayTracingPipeline(vk::True);
+
+		vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR swapchainMaintenance1Feature = vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR()
+			.setPNext(&rayTracingPipelineFeature)
 			.setSwapchainMaintenance1(vk::True);
 
 		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeature = vk::PhysicalDeviceDescriptorIndexingFeatures()

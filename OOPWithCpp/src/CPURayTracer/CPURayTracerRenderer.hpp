@@ -11,7 +11,7 @@
 
 namespace OWC
 {
-	class RenderLayer : public Layer
+	class CPURayTracerRenderer : public Layer
 	{
 	private:
 		struct UniformBufferObject
@@ -21,13 +21,13 @@ namespace OWC
 		};
 
 	public:
-		RenderLayer() = delete;
-		explicit RenderLayer(const std::shared_ptr<InterLayerData>& ILD);
-		~RenderLayer() override = default;
-		RenderLayer(const RenderLayer&) = delete;
-		RenderLayer& operator=(const RenderLayer&) = delete;
-		RenderLayer(RenderLayer&&) = delete;
-		RenderLayer& operator=(RenderLayer&&) = delete;
+		CPURayTracerRenderer() = delete;
+		explicit CPURayTracerRenderer(const std::shared_ptr<InterLayerData>& ILD);
+		~CPURayTracerRenderer() override = default;
+		CPURayTracerRenderer(const CPURayTracerRenderer&) = delete;
+		CPURayTracerRenderer& operator=(const CPURayTracerRenderer&) = delete;
+		CPURayTracerRenderer(CPURayTracerRenderer&&) = delete;
+		CPURayTracerRenderer& operator=(CPURayTracerRenderer&&) = delete;
 
 		void OnUpdate() override;
 		void OnEvent(class BaseEvent& event) override;
