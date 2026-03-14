@@ -10,7 +10,6 @@
 #include "WindowRestoreEvent.hpp"
 
 #include <imgui.h>
-#include <array>
 #include <chrono>
 
 
