@@ -17,9 +17,6 @@ namespace OWC
 		// print SDL version for debugging purposes
 		Log<LogLevel::Debug>("SDL Version: {}", SDL_GetVersion());
 
-		// convert from window size to pixel size for high DPI displays, and store it in properties
-		
-
 		SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
 		m_Window.reset(SDL_CreateWindow( // Creates the window and stores it in the unique_ptr with a custom deleter
@@ -90,7 +87,7 @@ namespace OWC
 	{
 		if (m_Window)
 		{
-			bool currentFullScreen = (SDL_GetWindowFlags(m_Window.get()) & SDL_WINDOW_FULLSCREEN) == SDL_WINDOW_FULLSCREEN;
+			const bool currentFullScreen = (SDL_GetWindowFlags(m_Window.get()) & SDL_WINDOW_FULLSCREEN) == SDL_WINDOW_FULLSCREEN;
 			SDL_SetWindowFullscreen(m_Window.get(), !currentFullScreen);
 		}
 	}

@@ -5,9 +5,9 @@
 
 namespace OWC
 {
-	OWC_FORCE_INLINE static bool operator<(const Vec3& lhs, f32 rhs)
+	OWC_FORCE_INLINE static bool operator<(const Vec3& lhs, const f32 rhs)
 	{
-		Vec3 absLHS(glm::abs(lhs));
+		const Vec3 absLHS(glm::abs(lhs));
 		return absLHS.x < rhs && absLHS.y < rhs && absLHS.z < rhs;
 	}
 
@@ -17,7 +17,7 @@ namespace OWC
 
 	bool Lambertian::Scatter(Ray& ray, const HitData& hitData) const
 	{
-		Vec3 scatterDirection = hitData.normal + Rand::FastUnitVector();
+		const Vec3 scatterDirection = hitData.normal + Rand::FastUnitVector();
 
 		ray.SetOrigin(hitData.point);
 		if (scatterDirection < 1e-8f)
