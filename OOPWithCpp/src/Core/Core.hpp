@@ -171,4 +171,25 @@ namespace OWC
     {
 		return std::bit_cast<char const*>(str.c_str());
     }
+
+	template <typename T>
+	concept HasPipeOperator = requires(T a, T b) {
+	    { a | b };
+	};
+
+	template <typename T>
+	concept HasAndOperator = requires(T a, T b) {
+	    { a & b };
+	};
+
+	template <typename T>
+	concept HasEqualOperator = requires(T a, T b) {
+		{ a == b };
+	};
+
+	template <typename T>
+	[[nodiscard]] constexpr bool testBitMask(T value, T bitMask) requires std::is_integral_v<T> || (std::is_enum_v<T> && HasAndOperator<T> && HasEqualOperator<T>)
+	{
+		return (value & bitMask) == bitMask;
+	}
 }

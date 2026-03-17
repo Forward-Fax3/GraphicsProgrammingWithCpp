@@ -6,7 +6,6 @@
 #include "InterLayerData.hpp"
 
 #include <memory>
-#include <glm/glm.hpp>
 
 
 namespace OWC
@@ -32,11 +31,11 @@ namespace OWC
 		void OnUpdate() override;
 		void OnEvent(class BaseEvent& event) override;
 
-	private:
+	private: // methods
 		void SetupRenderPass();
 		void SetupPipeline();
 
-	private:
+	private: // attributes
 		std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
 		std::shared_ptr<Graphics::RenderPassData> m_renderPass = nullptr;
 		std::shared_ptr<Graphics::UniformBuffer> m_UniformBuffer = nullptr;

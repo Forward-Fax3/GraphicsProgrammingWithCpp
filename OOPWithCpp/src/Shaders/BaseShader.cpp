@@ -9,4 +9,9 @@ namespace OWC::Graphics
 		// setup so that in future other graphics APIs can be supported
 		return std::make_unique<VulkanShader>(shaderDatas);
 	}
+
+	std::unique_ptr<BaseShader> BaseShader::CreateRTShader(const std::span<ShaderData>& shaderDatas)
+	{
+		return std::make_unique<VulkanRayTracingShader>(shaderDatas);
+	}
 }

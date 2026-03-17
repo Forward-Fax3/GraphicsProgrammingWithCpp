@@ -5,6 +5,7 @@
 #include <vector>
 #include <span>
 #include <memory>
+#include <utility>
 
 
 namespace OWC::Graphics
@@ -13,18 +14,42 @@ namespace OWC::Graphics
 	{
 		Vertex = 1<<0,
 		Fragment = 1<<1,
-		Compute = 1<<2
+		Compute = 1<<2,
+
+		// ray tracing
+		RayGen = 1<<3,
+		RayAnyHit = 1<<4,
+		RayClosestHit = 1<<5,
+		RayIntersect = 1<<6,
+		RayMiss = 1<<7,
 	};
+
+	constexpr auto operator<=>(ShaderType lhs, ShaderType rhs)
+	{
+		return std::to_underlying(lhs) <=> std::to_underlying(rhs);
+	}
+
+	constexpr ShaderType operator|(ShaderType lhs, ShaderType rhs)
+	{
+		return static_cast<ShaderType>(std::to_underlying(lhs) | std::to_underlying(rhs));
+	}
+
+	constexpr ShaderType operator&(ShaderType lhs, ShaderType rhs)
+	{
+		return static_cast<ShaderType>(std::to_underlying(lhs) & std::to_underlying(rhs));
+	}
 
 	enum class DescriptorType : u8
 	{
 		UniformBuffer,
 		Sampler,
 		CombinedImageSampler,
-		StorageBuffer
+		StorageBuffer,
+		StorageImage,
+		TLAS
 	};
 
-	struct BindingDiscription
+	struct BindingDescription
 	{
 		u32 descriptorCount;
 		u32 binding;
@@ -55,17 +80,29 @@ namespace OWC::Graphics
 				return "Fragment";
 			case Compute:
 				return "Compute";
+			case RayGen:
+				return "RayGen";
+			case RayAnyHit:
+				return "RayAnyHit";
+			case RayClosestHit:
+				return "RayClosestHit";
+			case RayIntersect:
+				return "RayIntersect";
+			case RayMiss:
+				return "RayMiss";
 			default:
 				return "Unknown";
 			}
 		}
 
 //		std::string source;
-		std::vector<u32> bytecode; // for SPIR-V
+		std::vector<u32>& bytecode; // for SPIR-V
 		
 		ShaderType type;
 		ShaderLanguage language;
-		std::span<BindingDiscription> descriptorType;
+		std::span<BindingDescription> descriptorType;
+
+		std::string entryPoint; // optional, if left empty "main" will be assumed
 	};
 
 	class BaseShader
@@ -74,7 +111,7 @@ namespace OWC::Graphics
 		BaseShader() = default;
 		virtual ~BaseShader() = default;
 		BaseShader(BaseShader&) = default;
-		BaseShader& operator=(BaseShader&) = default;
+		BaseShader& operator=(const BaseShader&) = default;
 		BaseShader(BaseShader&&) noexcept = default;
 		BaseShader& operator=(BaseShader&&) noexcept = default;
 
@@ -83,5 +120,6 @@ namespace OWC::Graphics
 		virtual void BindDynamicTexture(u32 binding, const std::shared_ptr<DynamicTextureBuffer>& dTextureBuffer) = 0;
 
 		static std::unique_ptr<BaseShader> CreateShader(const std::span<ShaderData>& shaderDatas);
+		static std::unique_ptr<BaseShader> CreateRTShader(const std::span<ShaderData>& shaderDatas);
 	};
 }

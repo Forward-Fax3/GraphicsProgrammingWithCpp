@@ -18,7 +18,7 @@ namespace OWC
 		virtual void OnEvent(class BaseEvent&) { /* default empty implementation */ };
 
 		[[nodiscard]] bool IsActive() const { return m_Active; }
-		void SetActive(bool active) { m_Active = active; }
+		void SetActiveState(bool active) { m_Active = active; }
 
 	private:
 		bool m_Active = true;

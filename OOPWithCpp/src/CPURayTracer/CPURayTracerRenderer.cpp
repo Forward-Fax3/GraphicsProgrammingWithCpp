@@ -56,7 +56,7 @@ namespace OWC
 			else if (m_ILD->imageScreenSize.x == 0 || m_ILD->imageScreenSize.y == 0) // clear image
 			{
 				m_Image = DynamicTextureBuffer::CreateDynamicTextureBuffer(1, 1);
-				std::vector<Vec4> emptyImageData = { Vec4(0.0f) };
+				const std::vector emptyImageData = { Vec4(0.0f) };
 				m_Image->UpdateBufferData(emptyImageData);
 				SetupPipeline();
 				SetupRenderPass();
@@ -87,7 +87,7 @@ namespace OWC
 
 		dispatcher.Dispatch<WindowRestore>([this](const WindowRestore& /*event*/) {
 			this->SetupRenderPass();
-			this->SetActive(true);
+			this->SetActiveState(true);
 			return false;
 			});
 
@@ -95,7 +95,7 @@ namespace OWC
 			return;
 
 		dispatcher.Dispatch<WindowMinimize>([this](const WindowMinimize& /*event*/) {
-			this->SetActive(false);
+			this->SetActiveState(false);
 			return false;
 			});
 
@@ -123,7 +123,7 @@ namespace OWC
 	{
 		using namespace OWC::Graphics;
 
-		std::vector<BindingDiscription> fragmentBindingDiscriptions = {
+		std::vector<BindingDescription> fragmentBindingDiscriptions = {
 			{
 				.descriptorCount = 1,
 				.binding = 0,
@@ -138,18 +138,22 @@ namespace OWC
 			}
 		};
 
+		auto shaderSrc = LoadFileToBytecode<u32>("../ShaderSrc/CPURayTracerShaders/Image.spv");
+
 		std::vector<ShaderData> shaderDatas = {
 			{
-				.bytecode = LoadFileToBytecode<u32>("../ShaderSrc/CPURayTracerShaders/Image.vert.spv"),
+				.bytecode = shaderSrc,
 				.type = ShaderType::Vertex,
 				.language = ShaderData::ShaderLanguage::SPIRV,
-				.descriptorType = {}
+				.descriptorType = {},
+				.entryPoint = "vertexMain"
 			},
 			{
-				.bytecode = LoadFileToBytecode<u32>("../ShaderSrc/CPURayTracerShaders/Image.frag.spv"),
+				.bytecode = shaderSrc,
 				.type = ShaderType::Fragment,
 				.language = ShaderData::ShaderLanguage::SPIRV,
-				.descriptorType = fragmentBindingDiscriptions
+				.descriptorType = fragmentBindingDiscriptions,
+				.entryPoint = "fragmentMain"
 			}
 		};
 

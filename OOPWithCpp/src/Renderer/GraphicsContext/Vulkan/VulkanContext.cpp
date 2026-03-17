@@ -165,6 +165,20 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 }
 #endif
 
+PFN_vkCreateRayTracingPipelinesKHR pfnVkCreateRayTracingPipelinesKHR;
+
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateRayTracingPipelinesKHR(
+	VkDevice device,
+	VkDeferredOperationKHR deferredOperation,
+	VkPipelineCache pipelineCache,
+	uint32_t createInfoCount,
+	const VkRayTracingPipelineCreateInfoKHR* pCreateInfos,
+	const VkAllocationCallbacks* pAllocator,
+	VkPipeline* pPipelines)
+{
+	return pfnVkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+}
+
 namespace OWC::Graphics
 {
 	std::array g_DeviceExtensions = {
@@ -175,7 +189,8 @@ namespace OWC::Graphics
 		vk::KHRSwapchainExtensionName,
 		vk::KHRAccelerationStructureExtensionName,
 		vk::KHRRayTracingPipelineExtensionName,
-		vk::KHRBufferDeviceAddressExtensionName
+		vk::KHRBufferDeviceAddressExtensionName,
+		vk::KHRDeferredHostOperationsExtensionName
 	};
 
 	VulkanContext::VulkanContext(SDL_Window& windowHandle, const WindowProperties& properties)
@@ -448,6 +463,8 @@ namespace OWC::Graphics
 			.setPApplicationInfo(&appInfo);
 
 		VulkanCore::GetInstance().SetInstance(vk::createInstance(createInfo));
+
+		pfnVkCreateRayTracingPipelinesKHR = std::bit_cast<PFN_vkCreateRayTracingPipelinesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateRayTracingPipelinesKHR"));
 	}
 
 #ifndef DIST
@@ -709,12 +726,8 @@ namespace OWC::Graphics
 			.setPNext(&pageableDeviceLocalMemoryFeature)
 			.setShaderObject(vk::True);
 
-		vk::PhysicalDeviceShaderDrawParameterFeatures shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParameterFeatures()
-			.setPNext(&shaderObjectFeature)
-			.setShaderDrawParameters(vk::True);
-
 		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeature = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
-			.setPNext(&shaderDrawParametersFeature)
+			.setPNext(&shaderObjectFeature)
 			.setAccelerationStructure(vk::True);
 
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
@@ -725,17 +738,25 @@ namespace OWC::Graphics
 			.setPNext(&rayTracingPipelineFeature)
 			.setSwapchainMaintenance1(vk::True);
 
-		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeature = vk::PhysicalDeviceDescriptorIndexingFeatures()
+		vk::PhysicalDeviceMaintenance5Features maintenance5Feature = vk::PhysicalDeviceMaintenance5Features()
 			.setPNext(&swapchainMaintenance1Feature)
+			.setMaintenance5(vk::True);
+
+		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeature = vk::PhysicalDeviceDescriptorIndexingFeatures()
+			.setPNext(&maintenance5Feature)
 			.setRuntimeDescriptorArray(vk::True)
 			.setDescriptorBindingPartiallyBound(vk::True)
 			.setDescriptorBindingVariableDescriptorCount(vk::True)
 			.setShaderSampledImageArrayNonUniformIndexing(vk::True)
 			.setShaderStorageBufferArrayNonUniformIndexing(vk::True)
-			.setShaderUniformBufferArrayNonUniformIndexing(vk::True);
+		.setShaderUniformBufferArrayNonUniformIndexing(vk::True);
+
+		vk::PhysicalDeviceShaderDrawParameterFeatures shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParameterFeatures()
+			.setPNext(&descriptorIndexingFeature)
+			.setShaderDrawParameters(vk::True);
 
 		vk::PhysicalDeviceSynchronization2Features synchronization2Feature = vk::PhysicalDeviceSynchronization2Features()
-			.setPNext(descriptorIndexingFeature)
+			.setPNext(&shaderDrawParametersFeature)
 			.setSynchronization2(vk::True);
 
 		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature = vk::PhysicalDeviceDynamicRenderingFeatures()

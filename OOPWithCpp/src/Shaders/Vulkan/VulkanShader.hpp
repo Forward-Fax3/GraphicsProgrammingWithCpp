@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include "BaseShader.hpp"
-
 #include "VulkanCore.hpp"
 
 #include <string>
@@ -9,51 +7,83 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include "BaseShader.hpp"
+
 
 namespace OWC::Graphics
 {
-	class VulkanShader : public BaseShader
+	struct VulkanShaderData
 	{
-	private:
-		struct VulkanShaderData
-		{
-			std::string entryPoint;
-			std::vector<u32> bytecode;
-			vk::ShaderStageFlagBits stage;
-			std::vector<BindingDiscription> bindingDescriptions;
-		};
+		std::string entryPoint;
+		std::vector<u32>* moduleKey = nullptr;
+		vk::ShaderStageFlagBits stage;
+		std::vector<BindingDescription> bindingDescriptions;
+	};
 
+	class VulkanBaseShader : public BaseShader
+	{
 	public:
-		explicit VulkanShader(const std::span<ShaderData>& shaderDatas);
-		~VulkanShader() override;
-		VulkanShader(VulkanShader&) = delete;
-		VulkanShader& operator=(VulkanShader&) = delete;
-		VulkanShader(VulkanShader&&) noexcept = delete;
-		VulkanShader& operator=(VulkanShader&&) noexcept = delete;
+		VulkanBaseShader() = default;
+		~VulkanBaseShader() override;
+		VulkanBaseShader(VulkanBaseShader&) = delete;
+		VulkanBaseShader& operator=(VulkanBaseShader&) = delete;
+		VulkanBaseShader(VulkanBaseShader&&) noexcept = delete;
+		VulkanBaseShader& operator=(VulkanBaseShader&&) noexcept = delete;
 
 		void BindUniform(u32 binding, const std::shared_ptr<UniformBuffer>& uniformBuffer) override;
 		void BindTexture(u32 binding, const std::shared_ptr<TextureBuffer>& textureBuffer) override;
 		void BindDynamicTexture(u32 binding, const std::shared_ptr<DynamicTextureBuffer>& dTextureBuffer) override;
 
-		[[nodiscard]] vk::Pipeline GetPipeline() const { return m_Pipeline; }
-		[[nodiscard]] vk::PipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
-		[[nodiscard]] vk::DescriptorSetLayout GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
-		[[nodiscard]] vk::DescriptorSet GetDescriptorSet() const { return m_DescriptorSet[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::Pipeline GetPipeline() const { return m_Pipeline; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::PipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::ArrayProxyNoTemporaries<const vk::DescriptorSetLayout> GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorSet GetDescriptorSet() const { return m_DescriptorSets[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
 
-	private:
-		void CreateVulkanPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas);
+	protected:
+		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorPool GetDescriptorPool() const { return m_DescriptorPool; }
 
-		[[nodiscard]] static VulkanShaderData ProcessShaderData(const ShaderData& shaderData);
+		void OWC_FORCE_INLINE SetPipeline(const vk::Pipeline pipeline) { m_Pipeline = pipeline; }
+		void OWC_FORCE_INLINE SetPipelineLayout(const vk::PipelineLayout pipelineLayout) { m_PipelineLayout = pipelineLayout; }
+		void OWC_FORCE_INLINE SetDescriptorSetLayout(const vk::DescriptorSetLayout descriptorSetLayout) { m_DescriptorSetLayout = descriptorSetLayout; }
+		void OWC_FORCE_INLINE SetDescriptorPool(const vk::DescriptorPool descriptorPool) { m_DescriptorPool = descriptorPool; }
+		void OWC_FORCE_INLINE SetDescriptorSets(const std::vector<vk::DescriptorSet>& descriptorSet) { m_DescriptorSets = descriptorSet; }
+
+		[[nodiscard]] static VulkanShaderData ProcessShaderData(const ShaderData& shaderData, std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
 		[[nodiscard]] static vk::ShaderStageFlagBits ConvertToVulkanShaderStage(ShaderType type);
 		[[nodiscard]] static vk::DescriptorType ConvertToVulkanDescriptorType(DescriptorType type);
 
 	private:
-		// store pipeline and shader module handles here
 		vk::Pipeline m_Pipeline = vk::Pipeline();
 		vk::PipelineLayout m_PipelineLayout = vk::PipelineLayout();
 		vk::DescriptorSetLayout m_DescriptorSetLayout = vk::DescriptorSetLayout();
 		vk::DescriptorPool m_DescriptorPool = vk::DescriptorPool();
-		std::vector<vk::DescriptorSet> m_DescriptorSet = {};
-		std::vector<vk::ShaderModule> m_ShaderModules = {};
+		std::vector<vk::DescriptorSet> m_DescriptorSets = {};
+	};
+
+	class VulkanShader : public VulkanBaseShader
+	{
+	public:
+		explicit VulkanShader(const std::span<ShaderData>& shaderDatas);
+		VulkanShader(VulkanShader&) = delete;
+		VulkanShader& operator=(VulkanShader&) = delete;
+		VulkanShader(VulkanShader&&) noexcept = delete;
+		VulkanShader& operator=(VulkanShader&&) noexcept = delete;
+
+	private:
+		void CreateVulkanPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
+	};
+
+	class VulkanRayTracingShader : public VulkanBaseShader
+	{
+	public:
+		explicit VulkanRayTracingShader(const std::span<ShaderData>& shaderDatas);
+
+		VulkanRayTracingShader(VulkanRayTracingShader&) = delete;
+		VulkanRayTracingShader& operator=(VulkanRayTracingShader&) = delete;
+		VulkanRayTracingShader(VulkanRayTracingShader&&) noexcept = delete;
+		VulkanRayTracingShader& operator=(VulkanRayTracingShader&&) noexcept = delete;
+
+	private:
+		void CreateVulkanRayTracingPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
 	};
 }

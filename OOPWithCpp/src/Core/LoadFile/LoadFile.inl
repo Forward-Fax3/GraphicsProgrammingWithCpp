@@ -15,10 +15,10 @@ namespace OWC
 		{
 			std::string filePathCopy = filepath;
 
-			for (size_t i = 0; i < filePathCopy.size(); i++)
+			for (auto& c : filePathCopy)
 			{
-				if (filePathCopy[i] == '\\')
-					filePathCopy[i] = '/';
+				if (c == '\\')
+					c = '/';
 			}
 
 			fileStream.open(filePathCopy, std::ios::binary | std::ios::ate);

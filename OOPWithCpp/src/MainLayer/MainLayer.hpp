@@ -2,6 +2,7 @@
 #include "Layer.hpp"
 #include "CPURayTracerRenderer.hpp"
 #include "CPURayTracer.hpp"
+#include "GPURayTracerRenderer.hpp"
 
 
 namespace OWC
@@ -19,5 +20,6 @@ namespace OWC
 	private:
 		std::shared_ptr<CPURayTracerRenderer> m_TestLayer;
 		std::shared_ptr<CPURayTracer> m_CPURayTracerLayer;
+		std::shared_ptr<GPURayTracerRenderer> m_GPURayTracerLayer;
 	};
 }

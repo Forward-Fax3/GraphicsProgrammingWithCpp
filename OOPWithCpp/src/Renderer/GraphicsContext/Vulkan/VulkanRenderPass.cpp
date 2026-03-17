@@ -111,7 +111,7 @@ namespace OWC::Graphics
 
 	void VulkanRenderPass::AddPipeline(const BaseShader& shader)
 	{
-		const auto& vulkanShader = dynamic_cast<const VulkanShader&>(shader);
+		const auto& vulkanShader = dynamic_cast<const VulkanBaseShader&>(shader);
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 		{
 			uSize frameIndex = VulkanCore::GetConstInstance().GetCurrentFrameIndex();
@@ -124,7 +124,7 @@ namespace OWC::Graphics
 
 	void VulkanRenderPass::BindUniform(const BaseShader& shader)
 	{
-		const auto& vulkanShader = dynamic_cast<const VulkanShader&>(shader);
+		const auto& vulkanShader = dynamic_cast<const VulkanBaseShader&>(shader);
 
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].bindDescriptorSets(
@@ -151,7 +151,7 @@ namespace OWC::Graphics
 		(void)binding;
 		(void)textureID;
 
-		const auto& vulkanShader = dynamic_cast<const VulkanShader&>(shader);
+		const auto& vulkanShader = dynamic_cast<const VulkanBaseShader&>(shader);
 
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].bindDescriptorSets(
@@ -253,7 +253,7 @@ namespace OWC::Graphics
 	{
 		(void)binding;
 		(void)textureID;
-		const auto& vulkanShader = dynamic_cast<const VulkanShader&>(shader);
+		const auto& vulkanShader = dynamic_cast<const VulkanBaseShader&>(shader);
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics,
