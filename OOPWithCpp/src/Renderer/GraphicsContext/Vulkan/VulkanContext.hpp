@@ -45,8 +45,6 @@ namespace OWC::Graphics
 #endif
 		void AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData) override;
 
-		[[nodiscard]] bool RenderPassNeedsRecreating() const override { return m_RenderPassNeedsRecreating; }
-
 		void Minimize() override;
 		void Restore() override;
 		void Resize() override { RecreateSwapchain(); RewriteCommandBuffers(); }
@@ -70,6 +68,7 @@ namespace OWC::Graphics
 		void CreateSwapchain() const;
 		void CreateCommandPools() const;
 		void WriteCommandBuffers();
+		static void CreateVulkanMemoryAllocator();
 
 		static void DestroySwapchain();
 
@@ -87,7 +86,6 @@ namespace OWC::Graphics
 
 		const WindowProperties& m_WindowProperties;
 
-		bool m_RenderPassNeedsRecreating = false;
 		bool m_IsMinimized = false;
 	};
 }

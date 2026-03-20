@@ -28,8 +28,7 @@ namespace OWC::Graphics
 
 	private:
 		std::vector<vk::Buffer> m_UniformBuffers;
-		std::vector<vk::DeviceMemory> m_UniformBuffersMemory;
-		std::vector<void*> m_MappedUniformBuffers;
+		std::vector<vma::Allocation> m_UniformBuffersMemory;
 	};
 
 	class VulkanTextureBuffer : public TextureBuffer
@@ -55,7 +54,7 @@ namespace OWC::Graphics
 
 	private:
 		vk::Image m_TextureImage = vk::Image();
-		vk::DeviceMemory m_TextureImageMemory = vk::DeviceMemory();
+		vma::Allocation m_TextureImageMemory = vma::Allocation();
 		vk::ImageView m_TextureImageView = vk::ImageView();
 		vk::Sampler m_TextureSampler = vk::Sampler();
 		u32 m_Width = 0;
@@ -87,7 +86,7 @@ namespace OWC::Graphics
 
 	private:
 		std::vector<vk::Image> m_TextureImage = {};
-		std::vector<vk::DeviceMemory> m_TextureImageMemory = {};
+		std::vector<vma::Allocation> m_TextureImageMemory = {};
 		std::vector<vk::ImageView> m_TextureImageView = {};
 		std::vector<vk::Sampler> m_TextureSampler = {};
 		u32 m_Width = 0;

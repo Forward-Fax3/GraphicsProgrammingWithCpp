@@ -20,6 +20,8 @@ set(GraphicsProgrammingWithCppIncludeDirs
         ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/Projects/git/ImGui
         ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/GLM
         ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/stbImage
+        ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/VMAhpp/VulkanMemoryAllocator/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/VMAhpp/include
         ${Vulkan_INCLUDE_DIRS}
 )
 

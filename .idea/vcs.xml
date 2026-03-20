@@ -3,6 +3,8 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/OOPWithCpp/3rdParty/HeaderOnly/git/GLM" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/OOPWithCpp/3rdParty/HeaderOnly/git/VMAhpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/OOPWithCpp/3rdParty/HeaderOnly/git/VMAhpp/VulkanMemoryAllocator" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/OOPWithCpp/3rdParty/HeaderOnly/git/stbImage" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/OOPWithCpp/3rdParty/Projects/git/ImGui" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/OOPWithCpp/3rdParty/Projects/git/SDL" vcs="Git" />

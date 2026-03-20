@@ -57,6 +57,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "clang_Debug")
             -fno-inline
             -fno-unroll-loops
             -fno-vectorize
+            -ftrivial-auto-var-init=zero
             $<IF:$<PLATFORM_ID:Windows>,,-fsanitize=leak>
     )
     set(LTO_ENABLED False)
@@ -74,6 +75,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "clang_Debug_Optimized")
             -finline-functions
             -funroll-loops
             -fvectorize
+            -ftrivial-auto-var-init=zero
     )
     set(LTO_ENABLED True)
     set(OUTPUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Bin/${CMAKE_HOST_SYSTEM_NAME}/Debug-Optimized/clang)

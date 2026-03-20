@@ -15,7 +15,7 @@ if (WIN32)
     set(CMAKE_RC_FLAGS "/I\"${_rc_sdk_root}/Include/${_rc_version}/um\" /I\"${_rc_sdk_root}/Include/${_rc_version}/shared\"")
 endif ()
 
-add_subdirectory(OOPWithCpp/3rdParty/Projects/git/SDL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/Projects/git/SDL)
 
 if (UNIX)
     find_path(XKBCOMMON_INCLUDE_DIR NAMES xkbcommon/xkbcommon.h)

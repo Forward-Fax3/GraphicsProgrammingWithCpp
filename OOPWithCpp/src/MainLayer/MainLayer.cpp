@@ -20,8 +20,8 @@ namespace OWC
 		app.PushLayer(m_CPURayTracerLayer);
 		app.PushLayer(m_GPURayTracerLayer);
 
-		m_TestLayer->SetActiveState(false);
-		m_CPURayTracerLayer->SetActiveState(false);
+		// m_TestLayer->SetActiveState(false);
+		// m_CPURayTracerLayer->SetActiveState(false);
 		m_GPURayTracerLayer->SetActiveState(false);
 	}
 }

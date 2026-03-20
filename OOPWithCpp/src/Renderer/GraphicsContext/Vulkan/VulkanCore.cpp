@@ -171,8 +171,7 @@ namespace OWC::Graphics
 			{
 				for (uSize i = 0; i < m_SwapchainImageViews.size(); ++i)
 				{
-					vk::SemaphoreCreateInfo semaphoreCreateInfo{};
-					semaphoreCreateInfo.setFlags(vk::SemaphoreCreateFlags());
+					constexpr auto semaphoreCreateInfo = vk::SemaphoreCreateInfo().setFlags(vk::SemaphoreCreateFlags());
 					vk::Semaphore semaphore = m_Device.createSemaphore(semaphoreCreateInfo);
 					m_Semaphores[i][std::string(name)] = semaphore;
 
@@ -183,6 +182,13 @@ namespace OWC::Graphics
 		}
 
 		return semaphores;
+	}
+
+	vk::Semaphore VulkanCore::GetSingleSemaphore() const
+	{
+		constexpr auto semaphoreCreateInfo = vk::SemaphoreCreateInfo()
+			.setFlags(vk::SemaphoreCreateFlags());
+		return m_Device.createSemaphore(semaphoreCreateInfo);
 	}
 
 	u32 VulkanCore::FindMemoryType(vk::DeviceSize size, vk::MemoryPropertyFlags properties) const
