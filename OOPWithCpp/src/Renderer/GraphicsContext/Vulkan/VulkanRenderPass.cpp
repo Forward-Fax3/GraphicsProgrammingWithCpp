@@ -10,12 +10,12 @@
 
 namespace OWC::Graphics
 {
-	VulkanRenderPass::VulkanRenderPass(RenderPassType type)
+	VulkanRenderPass::VulkanRenderPass(const RenderPassType type)
 		: RenderPassData(type)
 	{
 		const VulkanCore& vkCore = VulkanCore::GetConstInstance();
 
-		vk::Rect2D rect(
+		const vk::Rect2D rect(
 			vk::Offset2D(0, 0),
 			{
 				Application::GetConstInstance().GetPixelWidth(),
@@ -27,8 +27,8 @@ namespace OWC::Graphics
 			m_CommandBuffers = vkCore.GetGraphicsCommandBuffer();
 			for (uSize i = 0; i < m_CommandBuffers.size(); ++i)
 			{
-				vk::CommandBuffer cmdbuf = m_CommandBuffers[i];
-				cmdbuf.begin(vk::CommandBufferBeginInfo());
+				vk::CommandBuffer cmdBuf = m_CommandBuffers[i];
+				cmdBuf.begin(vk::CommandBufferBeginInfo());
 
 				const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = { vk::RenderingAttachmentInfo()
 					.setImageView(vkCore.GetSwapchainImageViews()[i])
@@ -37,18 +37,18 @@ namespace OWC::Graphics
 					.setStoreOp(vk::AttachmentStoreOp::eStore)
 				};
 
-				cmdbuf.beginRendering(vk::RenderingInfo()
+				cmdBuf.beginRendering(vk::RenderingInfo()
 					.setRenderArea(rect)
 					.setLayerCount(1)
 					.setColorAttachmentCount(1)
 					.setColorAttachments(renderingAttachmentInfo)
 				);
 
-				cmdbuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
+				cmdBuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
 					static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
 					static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
 					0.0f, 1.0f));
-				cmdbuf.setScissor(0, rect);
+				cmdBuf.setScissor(0, rect);
 			}
 		}
 		else
@@ -66,8 +66,6 @@ namespace OWC::Graphics
 		else
 			for (auto& cmdBuf : m_CommandBuffers)
 				device.freeCommandBuffers(vkCore.GetDynamicGraphicsCommandPool(), cmdBuf);
-
-		device.destroyFence(m_Fence);
 	}
 
 	void VulkanRenderPass::BeginDynamicPass()
@@ -75,17 +73,17 @@ namespace OWC::Graphics
 		VulkanCore& vkCore = VulkanCore::GetInstance();
 		const uSize frameIndex = vkCore.GetCurrentFrameIndex();
 
-		const vk::CommandBuffer& cmdbuf = m_CommandBuffers[frameIndex];
-		cmdbuf.reset(vk::CommandBufferResetFlags());
+		const vk::CommandBuffer& cmdBuf = m_CommandBuffers[frameIndex];
+		cmdBuf.reset(vk::CommandBufferResetFlags());
 
-		vk::Rect2D rect(
+		const vk::Rect2D rect(
 			vk::Offset2D(0, 0),
 			{
 				Application::GetConstInstance().GetPixelWidth(),
 				Application::GetConstInstance().GetPixelHeight()
 			});
 
-		cmdbuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+		cmdBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = {
 			vk::RenderingAttachmentInfo()
@@ -95,18 +93,18 @@ namespace OWC::Graphics
 				.setStoreOp(vk::AttachmentStoreOp::eStore)
 		};
 
-		cmdbuf.beginRendering(vk::RenderingInfo()
+		cmdBuf.beginRendering(vk::RenderingInfo()
 			.setRenderArea(rect)
 			.setLayerCount(1)
 			.setColorAttachmentCount(1)
 			.setColorAttachments(renderingAttachmentInfo)
 		);
 
-		cmdbuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
+		cmdBuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
 			static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
 			static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
 			0.0f, 1.0f));
-		cmdbuf.setScissor(0, rect);
+		cmdBuf.setScissor(0, rect);
 	}
 
 	void VulkanRenderPass::AddPipeline(const BaseShader& shader)
@@ -114,7 +112,7 @@ namespace OWC::Graphics
 		const auto& vulkanShader = dynamic_cast<const VulkanBaseShader&>(shader);
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 		{
-			uSize frameIndex = VulkanCore::GetConstInstance().GetCurrentFrameIndex();
+			const uSize frameIndex = VulkanCore::GetConstInstance().GetCurrentFrameIndex();
 			m_CommandBuffers[frameIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, vulkanShader.GetPipeline());
 		}
 		else
@@ -202,11 +200,6 @@ namespace OWC::Graphics
 			cmdBuf.endRendering();
 			cmdBuf.end();
 		}
-
-		if (m_Fence)
-			VulkanCore::GetConstInstance().GetDevice().destroyFence(m_Fence);
-
-		m_Fence = VulkanCore::GetConstInstance().GetDevice().createFence(vk::FenceCreateInfo());
 	}
 
 	void VulkanRenderPass::submitRenderPass(std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphore)
@@ -232,13 +225,12 @@ namespace OWC::Graphics
 		else
 			submitInfo.setSignalSemaphores(VK_NULL_HANDLE);
 
-		vkCore.GetGraphicsQueue().submit(submitInfo, m_Fence);
+		vkCore.GetGraphicsQueue().submit(submitInfo);
 	}
 
 	void VulkanRenderPass::RestartRenderPass()
 	{
 		const VulkanCore& vkCore = VulkanCore::GetConstInstance();
-		vkCore.GetDevice().resetFences(m_Fence);
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 			m_CommandBuffers[vkCore.GetCurrentFrameIndex()].reset(vk::CommandBufferResetFlags());
 	}

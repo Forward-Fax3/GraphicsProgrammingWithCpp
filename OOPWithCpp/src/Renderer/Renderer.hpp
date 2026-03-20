@@ -14,13 +14,13 @@ namespace OWC::Graphics
 {
 	class GraphicsContext;
 
-	enum class RendererAPI
+	enum class RendererAPI : u8
 	{
 //		None = 0,
 		Vulkan = 1,
 	}; // only Vulkan is supported for now
 
-	enum class RenderPassType
+	enum class RenderPassType : u8
 	{
 		Static = 0,
 		Dynamic = 1,
@@ -34,6 +34,10 @@ namespace OWC::Graphics
 
 	public:
 		virtual ~RenderPassData() = default;
+		RenderPassData(const RenderPassData&) = delete;
+		RenderPassData& operator=(const RenderPassData&) = delete;
+		RenderPassData(RenderPassData&&) = delete;
+		RenderPassData& operator=(RenderPassData&&) = delete;
 
 	private:
 		void virtual BeginDynamicPass() = 0;
@@ -49,17 +53,12 @@ namespace OWC::Graphics
 
 		void virtual DrawImGui(ImDrawData* drawData) = 0;
 
-		uSize virtual GetNumberOfFramesInFlight() const = 0;
+		[[nodiscard]] uSize virtual GetNumberOfFramesInFlight() const = 0;
 
 	protected:
-		explicit RenderPassData(RenderPassType type) : type(type) {}
-		// delete copy/move constructor and copy/move assignment operator
-		RenderPassData(const RenderPassData&) = delete;
-		RenderPassData& operator=(const RenderPassData&) = delete;
-		RenderPassData(RenderPassData&&) = delete;
-		RenderPassData& operator=(RenderPassData&&) = delete;
+		explicit RenderPassData(const RenderPassType type) : type(type) {}
 
-		RenderPassType GetRenderPassType() const { return type; }
+		[[nodiscard]] RenderPassType GetRenderPassType() const { return type; }
 
 	private:
 		RenderPassType type;
@@ -72,10 +71,10 @@ namespace OWC::Graphics
 		static void Shutdown();
 		static void FinishRender();
 
-		static std::shared_ptr<RenderPassData> GetDynamicPass();
+		[[nodiscard]] static std::shared_ptr<RenderPassData> GetDynamicPass();
 		static void BeginDynamicPass(const std::shared_ptr<RenderPassData>& data);
 
-		static std::shared_ptr<RenderPassData> BeginPass();
+		[[nodiscard]] static std::shared_ptr<RenderPassData> BeginPass();
 		static void PipelineBind(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader);
 		static void BindUniform(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader);
 		static void BindTexture(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader, u32 binding, u32 textureID);
@@ -88,7 +87,7 @@ namespace OWC::Graphics
 
 		static void DrawImGui(const std::shared_ptr<RenderPassData>& data, ImDrawData* drawData);
 
-		static uSize GetNumberOfFramesInFlight(const std::shared_ptr<RenderPassData>& data);
+		[[nodiscard]] static uSize GetNumberOfFramesInFlight(const std::shared_ptr<RenderPassData>& data);
 
 		static inline RendererAPI GetAPI() { return s_API; }
 

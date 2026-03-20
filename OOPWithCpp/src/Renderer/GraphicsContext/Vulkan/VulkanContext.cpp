@@ -279,20 +279,11 @@ namespace OWC::Graphics
 	void VulkanContext::FinishRender()
 	{
 		auto& vkCore = VulkanCore::GetInstance();
+		const auto& device = vkCore.GetDevice();
 
 		{
 			auto [temp, _] = vkCore.GetRenderPassDatas();
 			std::vector<std::shared_ptr<VulkanRenderPass>>& renderPassDatas = temp.get();
-
-			for (const auto& renderPassData : renderPassDatas)
-				while (vkCore.GetDevice().waitForFences(renderPassData->GetFence(), vk::True, 16'666) == vk::Result::eTimeout);
-
-			auto& endOfFrameFuncs = vkCore.GetEndOfFrameCleanUp()[vkCore.GetCurrentFrameIndex()];
-
-			for (const auto& func : endOfFrameFuncs)
-				func();
-
-			endOfFrameFuncs.clear();
 
 			renderPassDatas.clear();
 		}
@@ -309,7 +300,18 @@ namespace OWC::Graphics
 				.setWaitDstStageMask(waitDestinationStageMask)
 				.setWaitSemaphores(VK_NULL_HANDLE);
 
-			vkCore.GetGraphicsQueue().submit(submitInfo, VK_NULL_HANDLE);
+			const vk::Fence fence = device.createFence(vk::FenceCreateInfo());
+			vkCore.GetGraphicsQueue().submit(submitInfo, fence);
+
+			if (device.waitForFences(fence, VK_TRUE, std::numeric_limits<uint32_t>::max()) != vk::Result::eSuccess)
+				Log<LogLevel::Critical>("Failed to wait for render finished fence");
+
+			device.destroyFence(fence);
+
+			auto& endOfFrameFuncs = vkCore.GetEndOfFrameCleanUp()[vkCore.GetCurrentFrameIndex()];
+			for (const auto& func : endOfFrameFuncs)
+				func();
+			endOfFrameFuncs.clear();
 
 			auto indices = static_cast<u32>(vkCore.GetCurrentFrameIndex());
 			const auto result = VulkanCore::GetConstInstance().GetPresentQueue().presentKHR(
@@ -365,7 +367,6 @@ namespace OWC::Graphics
 				.setTimeout(std::numeric_limits<u32>::max())
 				.setDeviceMask(1)
 			);
-			RewriteCommandBuffers();
 
 			if (result.result == vk::Result::eErrorOutOfDateKHR)
 				Log<LogLevel::Critical>("Failed to acquire next image from swapchain: {}", vk::to_string(result.result));

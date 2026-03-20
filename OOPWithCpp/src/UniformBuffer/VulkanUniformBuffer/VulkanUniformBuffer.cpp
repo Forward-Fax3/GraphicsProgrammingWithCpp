@@ -28,7 +28,7 @@ namespace OWC::Graphics
 
 			vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
 				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
-				.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);; // explicit
+				.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
 			vma::AllocationInfo allocationInfo;
 			auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
