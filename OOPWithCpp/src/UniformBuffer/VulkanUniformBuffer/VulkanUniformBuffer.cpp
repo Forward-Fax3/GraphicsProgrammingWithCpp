@@ -19,12 +19,15 @@ namespace OWC::Graphics
 		m_UniformBuffers.reserve(vkCore.GetNumberOfFramesInFlight());
 		m_UniformBuffersMemory.reserve(vkCore.GetNumberOfFramesInFlight());
 
+		const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
+
 		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
 		{
 			vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
 				.setSize(bufferSize)
 				.setUsage(vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst)
-				.setSharingMode(vk::SharingMode::eExclusive);
+				.setSharingMode(vk::SharingMode::eConcurrent)
+				.setQueueFamilyIndices(queueIndices);
 
 			vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
 				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
@@ -85,8 +88,8 @@ namespace OWC::Graphics
 			.setDstAccessMask(vk::AccessFlagBits2::eNone)
 			.setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
 			.setDstStageMask(vk::PipelineStageFlagBits2::eNone)
-			.setSrcQueueFamilyIndex(vkCore.GetTransferQueueIndex())
-			.setDstQueueFamilyIndex(vkCore.GetGraphicsQueueIndex())
+			.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setBuffer(m_UniformBuffers[currentFrame])
 			.setOffset(0)
 			.setSize(data.size());
@@ -117,8 +120,8 @@ namespace OWC::Graphics
 			.setDstAccessMask(vk::AccessFlagBits2::eUniformRead)
 			.setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
 			.setDstStageMask(vk::PipelineStageFlagBits2::eVertexShader | vk::PipelineStageFlagBits2::eFragmentShader) // assuming the uniform buffer is used in both vertex and fragment shaders, adjust as necessary
-			.setSrcQueueFamilyIndex(vkCore.GetTransferQueueIndex())
-			.setDstQueueFamilyIndex(vkCore.GetGraphicsQueueIndex())
+			.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setBuffer(m_UniformBuffers[currentFrame])
 			.setOffset(0)
 			.setSize(data.size());
@@ -259,8 +262,8 @@ namespace OWC::Graphics
 				.setDstAccessMask(vk::AccessFlagBits2::eNone)
 				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
 				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setSrcQueueFamilyIndex(vkCore.GetTransferQueueIndex())
-				.setDstQueueFamilyIndex(vkCore.GetGraphicsQueueIndex())
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_TextureImage)
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -300,8 +303,8 @@ namespace OWC::Graphics
 				.setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
 				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
 				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setSrcQueueFamilyIndex(vkCore.GetTransferQueueIndex())
-				.setDstQueueFamilyIndex(vkCore.GetGraphicsQueueIndex())
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_TextureImage)
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -356,7 +359,7 @@ namespace OWC::Graphics
 			.setSamples(vk::SampleCountFlagBits::e1)
 			.setTiling(vk::ImageTiling::eOptimal)
 			.setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
-			.setSharingMode(vk::SharingMode::eExclusive)
+			.setSharingMode(vk::SharingMode::eConcurrent)
 			.setInitialLayout(vk::ImageLayout::eUndefined);
 
 		constexpr auto vmaCreateInfo = vma::AllocationCreateInfo()
@@ -403,7 +406,7 @@ namespace OWC::Graphics
 	// VulkanDynamicTextureBuffer
 	//--------------------------------------------------------
 
-	VulkanDynamicTextureBuffer::VulkanDynamicTextureBuffer(u32 width, u32 height)
+	VulkanDynamicTextureBuffer::VulkanDynamicTextureBuffer(const u32 width, const u32 height)
 		: m_Width(width), m_Height(height)
 	{
 		InitializeTexture();
@@ -505,8 +508,8 @@ namespace OWC::Graphics
 				.setDstAccessMask(vk::AccessFlagBits2::eNone)
 				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
 				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setSrcQueueFamilyIndex(vkCore.GetTransferQueueIndex())
-				.setDstQueueFamilyIndex(vkCore.GetGraphicsQueueIndex())
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_TextureImage[currentFrame])
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -544,10 +547,10 @@ namespace OWC::Graphics
 				.setDstStageMask(vk::PipelineStageFlagBits2::eFragmentShader | vk::PipelineStageFlagBits2::eBottomOfPipe)
 				.setSrcAccessMask(vk::AccessFlagBits2::eNone)
 				.setDstAccessMask(vk::AccessFlagBits2::eShaderRead)
-				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setOldLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
 				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
-				.setSrcQueueFamilyIndex(vkCore.GetTransferQueueIndex())
-				.setDstQueueFamilyIndex(vkCore.GetGraphicsQueueIndex())
+				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_TextureImage[currentFrame])
 				.setSubresourceRange(vk::ImageSubresourceRange()
 					.setAspectMask(vk::ImageAspectFlagBits::eColor)
@@ -596,6 +599,7 @@ namespace OWC::Graphics
 		m_TextureSampler.resize(vkCore.GetNumberOfFramesInFlight());
 
 		const f32 maxAnisotropy = vkCore.GetPhysicalDev().getProperties().limits.maxSamplerAnisotropy;
+		const auto& allQueueFamilyIndices = vkCore.GetAllUniqueQueuesIndices();
 
 		const auto imageCreateInfo = vk::ImageCreateInfo()
 				.setImageType(vk::ImageType::e2D)
@@ -609,8 +613,9 @@ namespace OWC::Graphics
 				.setSamples(vk::SampleCountFlagBits::e1)
 				.setTiling(vk::ImageTiling::eOptimal)
 				.setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
-				.setSharingMode(vk::SharingMode::eExclusive)
-				.setInitialLayout(vk::ImageLayout::eUndefined);
+				.setSharingMode(vk::SharingMode::eConcurrent)
+				.setInitialLayout(vk::ImageLayout::eUndefined)
+				.setQueueFamilyIndices(allQueueFamilyIndices);
 
 		constexpr auto allocInfo = vma::AllocationCreateInfo()
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice)

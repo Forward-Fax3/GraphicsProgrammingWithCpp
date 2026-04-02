@@ -121,6 +121,8 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetComputeQueueIndex() const { return m_ComputeQueueFamilyIndex; }
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetTransferQueueIndex() const { return m_TransferQueueFamilyIndex; }
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetPresentQueueIndex() const { return m_PresentQueueFamilyIndex; }
+		[[nodiscard]] OWC_FORCE_INLINE std::array<u32, 3> GetAllQueues() const { return { m_GraphicsQueueFamilyIndex, m_ComputeQueueFamilyIndex, m_TransferQueueFamilyIndex }; }
+		[[nodiscard]] OWC_FORCE_INLINE const std::vector<u32>& GetAllUniqueQueuesIndices() const { return m_UniqueQueueFamilyIndices;}
 
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
@@ -156,6 +158,13 @@ namespace OWC::Graphics
 			m_ComputeQueueFamilyIndex = computeIndex;
 			m_TransferQueueFamilyIndex = transferIndex;
 			m_PresentQueueFamilyIndex = presentIndex;
+
+			m_UniqueQueueFamilyIndices = { graphicsIndex };
+
+			if (computeIndex != graphicsIndex)
+				m_UniqueQueueFamilyIndices.push_back(computeIndex);
+			if (transferIndex != computeIndex && transferIndex != graphicsIndex)
+				m_UniqueQueueFamilyIndices.push_back(transferIndex);
 		}
 
 		OWC_FORCE_INLINE void SetupSemaphores()
@@ -218,6 +227,7 @@ namespace OWC::Graphics
 		u32 m_ComputeQueueFamilyIndex = 0;
 		u32 m_TransferQueueFamilyIndex = 0;
 		u32 m_PresentQueueFamilyIndex = 0;
+		std::vector<u32> m_UniqueQueueFamilyIndices{};
 
 		static std::unique_ptr<VulkanCore> s_Instance;
 	};

@@ -30,7 +30,7 @@ namespace OWC::Graphics
 				vk::CommandBuffer cmdBuf = m_CommandBuffers[i];
 				cmdBuf.begin(vk::CommandBufferBeginInfo());
 
-				const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = { vk::RenderingAttachmentInfo()
+				const std::array renderingAttachmentInfo = { vk::RenderingAttachmentInfo()
 					.setImageView(vkCore.GetSwapchainImageViews()[i])
 					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
 					.setLoadOp(vk::AttachmentLoadOp::eLoad)
@@ -85,7 +85,7 @@ namespace OWC::Graphics
 
 		cmdBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
-		const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = {
+		const std::array renderingAttachmentInfo = {
 			vk::RenderingAttachmentInfo()
 				.setImageView(vkCore.GetSwapchainImageViews()[frameIndex])
 				.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)

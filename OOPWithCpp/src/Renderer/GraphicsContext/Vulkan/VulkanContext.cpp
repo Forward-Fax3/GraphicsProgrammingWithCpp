@@ -47,7 +47,7 @@ static void PrintVulkanDebugMessages(vk::DebugUtilsMessageSeverityFlagBitsEXT me
 		loggedMessage += "\t " + msg + "\n";
 
 	if (messageSeverity & eError)
-		OWC::Log<Error>("Vulkan Validation Layer:\n{}", loggedMessage);
+		OWC::Log<Critical>("Vulkan Validation Layer:\n{}", loggedMessage);
 	else if (messageSeverity & eWarning)
 		OWC::Log<Warn>("Vulkan Validation Layer:\n{}", loggedMessage);
 	else
@@ -858,7 +858,18 @@ namespace OWC::Graphics
 			? vk::SurfaceTransformFlagBitsKHR::eIdentity
 			: surfaceCapabilities.surfaceCapabilities.currentTransform;
 
-		vk::SwapchainCreateInfoKHR swapchainCreateInfo = vk::SwapchainCreateInfoKHR()
+		std::vector<u32> allUniqueQueuesIndices = vkCore.GetAllUniqueQueuesIndices();
+
+		// Test for use of goto statement
+		for (const auto& currentQueue : allUniqueQueuesIndices)
+			if (currentQueue == m_QueueFamilyIndices.PresentFamily)
+				goto PresentFound;
+
+		allUniqueQueuesIndices.emplace_back(m_QueueFamilyIndices.PresentFamily);
+
+		PresentFound:
+
+		auto swapchainCreateInfo = vk::SwapchainCreateInfoKHR()
 			.setSurface(vkCore.GetSurface())
 			.setMinImageCount(std::max(surfaceCapabilities.surfaceCapabilities.minImageCount, 2u))
 			.setImageFormat(vkCore.GetSwapchainImageFormat())
@@ -866,7 +877,8 @@ namespace OWC::Graphics
 			.setImageExtent(swapchainExtent)
 			.setImageArrayLayers(1)
 			.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment)
-			.setImageSharingMode(vk::SharingMode::eExclusive)
+			.setImageSharingMode(vk::SharingMode::eConcurrent)
+			.setQueueFamilyIndices(allUniqueQueuesIndices)
 			.setPreTransform(preTransform)
 			.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque)
 			.setPresentMode(selectedPresentMode)
@@ -890,7 +902,7 @@ namespace OWC::Graphics
 
 		for (const auto& image : vkCore.GetSwapchainImages())
 		{
-			vk::ImageViewCreateInfo imageViewCreateInfo = vk::ImageViewCreateInfo()
+			auto imageViewCreateInfo = vk::ImageViewCreateInfo()
 				.setImage(image)
 				.setViewType(vk::ImageViewType::e2D)
 				.setFormat(vkCore.GetSwapchainImageFormat())
