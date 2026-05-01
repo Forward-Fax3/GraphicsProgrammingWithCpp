@@ -43,7 +43,7 @@ namespace OWC
 			material = std::make_shared<Dielectric>(1.5f);
 			m_SceneObjects->AddObject(std::make_shared<Sphere>(Point(0.0f, -1.0f, 0.0f), 1.0f, material));
 		}
-		// Lambertion Sphere
+		// Lambertian Sphere
 		{
 			material = std::make_shared<Lambertian>(Colour(0.4f, 0.2f, 0.1f, 1.0f));
 			m_SceneObjects->AddObject(std::make_shared<Sphere>(Point(-4.0f, -1, 0), 1.0, material));
@@ -67,7 +67,7 @@ namespace OWC
 
 			switch (auto randInt = Rand::LinearFastRandValue(0, 3); randInt)
 			{
-			case 0: // Lambertion
+			case 0: // Lambertian
 			{
 				material = std::make_shared<Lambertian>(randColour);
 				break;

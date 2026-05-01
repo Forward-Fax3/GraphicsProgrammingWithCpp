@@ -657,4 +657,130 @@ namespace OWC::Graphics
 				.setMaxLod(0.0f));
 		}
 	}
+
+	VulkanGeneralBuffer::VulkanGeneralBuffer(uSize size)
+		: m_BufferSize(size)
+	{
+		const auto& vkCore = VulkanCore::GetInstance();
+		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+
+		// Create uniform buffers for each frame in flight and allocate memory
+		const vk::DeviceSize bufferSize = size;
+
+		const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
+
+		constexpr auto bufferUsageInfo2 = vk::BufferUsageFlags2CreateInfo()
+			.setUsage(
+				vk::BufferUsageFlagBits2::eTransferDst |
+				vk::BufferUsageFlagBits2::eUniformBuffer |
+				vk::BufferUsageFlagBits2::eVertexBuffer |
+				vk::BufferUsageFlagBits2::eIndexBuffer |
+				vk::BufferUsageFlagBits2::eUniformBuffer |
+				vk::BufferUsageFlagBits2::eTransferSrc |
+				vk::BufferUsageFlagBits2::eStorageBuffer |
+				vk::BufferUsageFlagBits2::eShaderDeviceAddress |
+				vk::BufferUsageFlagBits2::eAccelerationStructureBuildInputReadOnlyKHR |
+				vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
+			);
+
+		const auto bufferInfo = vk::BufferCreateInfo()
+			.setPNext(&bufferUsageInfo2)
+			.setSize(bufferSize)
+			.setSharingMode(vk::SharingMode::eConcurrent)
+			.setQueueFamilyIndices(queueIndices);
+
+		constexpr vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eGpuOnly)
+			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+
+		vma::AllocationInfo allocationInfo;
+		auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
+		m_Buffer = buffer;
+		m_BufferMemory = allocation;
+
+		m_BufferDeviceAddress = vkCore.GetDevice().getBufferAddress(vk::BufferDeviceAddressInfo().setBuffer(m_Buffer));
+	}
+
+	VulkanGeneralBuffer::~VulkanGeneralBuffer()
+	{
+		const auto& vkCore = VulkanCore::GetConstInstance();
+		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+
+		allocator.destroyBuffer(m_Buffer, m_BufferMemory);
+	}
+
+	void VulkanGeneralBuffer::UpdateBufferDataImpl(const u8* data, uSize count, uSize offset)
+	{
+		if (data == nullptr)
+		{
+			Log<LogLevel::Error>("Data pointer is null in VulkanGeneralBuffer::UpdateBufferDataImpl");
+			return;
+		}
+
+		if (count == 0)
+			count = m_BufferSize;
+
+		const auto& vkCore = VulkanCore::GetInstance();
+		const auto& device = vkCore.GetDevice();
+		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+
+		// Create staging buffer
+		const vk::DeviceSize bufferSize = count;
+
+		const auto bufferCreateInfo = vk::BufferCreateInfo()
+			.setSize(bufferSize)
+			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
+			.setSharingMode(vk::SharingMode::eExclusive);
+
+		constexpr auto allocationCreateInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAuto)
+			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
+
+		vma::AllocationInfo allocInfo;
+		const auto [allocation, stagingBuffer] = allocator.createBuffer(bufferCreateInfo, allocationCreateInfo, allocInfo);
+
+		std::memcpy(allocInfo.pMappedData, data, bufferSize);
+
+		const auto& cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
+		cmdTransBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+		const auto copyBufferSize = vk::BufferCopy2()
+				.setSrcOffset(0)
+				.setDstOffset(0)
+				.setSize(bufferSize);
+
+		const auto copyBufferInfo = vk::CopyBufferInfo2()
+			.setSrcBuffer(stagingBuffer)
+			.setDstBuffer(m_Buffer)
+			.setRegions(copyBufferSize);
+
+		cmdTransBuf.copyBuffer2(copyBufferInfo);
+
+		const auto transferBufferMemoryBarrier = vk::BufferMemoryBarrier2()
+			.setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
+			.setDstAccessMask(vk::AccessFlagBits2::eNone)
+			.setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
+			.setDstStageMask(vk::PipelineStageFlagBits2::eNone)
+			.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+			.setBuffer(m_Buffer)
+			.setOffset(0)
+			.setSize(bufferSize);
+
+		cmdTransBuf.pipelineBarrier2(vk::DependencyInfo()
+			.setBufferMemoryBarriers(transferBufferMemoryBarrier)
+		);
+		cmdTransBuf.end();
+
+		const auto fence = device.createFence(vk::FenceCreateInfo());
+		const auto cmdSubmit = vk::CommandBufferSubmitInfo().setCommandBuffer(cmdTransBuf);
+		const auto submitInfo = vk::SubmitInfo2().setCommandBufferInfos(cmdSubmit);
+		vkCore.GetTransferQueue().submit2(submitInfo, fence);
+		if (device.waitForFences(fence, VK_TRUE, UINT64_MAX) != vk::Result::eSuccess)
+		{
+			Log<LogLevel::Error>("Failed to wait for fence in VulkanGeneralBuffer::UpdateBufferDataImpl");
+		}
+		device.destroyFence(fence);
+		allocator.destroyBuffer(stagingBuffer, allocation);
+	}
 }

@@ -22,6 +22,7 @@ set(GraphicsProgrammingWithCppIncludeDirs
         ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/stbImage
         ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/VMAhpp/VulkanMemoryAllocator/include
         ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/git/VMAhpp/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/HeaderOnly/Src/TinyGLTF
         ${Vulkan_INCLUDE_DIRS}
 )
 
@@ -42,6 +43,7 @@ foreach (TargetArch SSE4_2 AVX2 AVX512)
             -DGLM_ENABLE_EXPERIMENTAL
             -DGLM_FORCE_DEFAULT_ALIGNED_GENTYPES
             -DGLM_FORCE_INLINE
+            -DTINYGLTF_JSON_NO_EXCEPTIONS
     )
     target_include_directories(GraphicsProgrammingWithCpp${TargetArch} PUBLIC
             ${GraphicsProgrammingWithCppPaths}
@@ -67,16 +69,19 @@ endforeach ()
 target_compile_options(GraphicsProgrammingWithCppSSE4_2 PRIVATE
         ${SSE42_FLAGS}
         -DGLM_FORCE_SSE42
+        -DTINYGLTF3_JSON_SIMD_SSE2 # TinyGLTF doesn't have an SSE4.2 specific SIMD code path, so we use the SSE2 SIMD code path for the SSE4.2 build
         -DSSE4_2
 )
 target_compile_options(GraphicsProgrammingWithCppAVX2 PRIVATE
         ${AVX2_FLAGS}
         -DGLM_FORCE_AVX2
+        -DTINYGLTF3_JSON_SIMD_AVX2
         -DAVX2
 )
 target_compile_options(GraphicsProgrammingWithCppAVX512 PRIVATE
         ${AVX512_FLAGS}
         -DGLM_FORCE_AVX2 # GLM no longer supports AVX-512 specific code paths, so we use AVX2 for the AVX-512 build as well
+        -DTINYGLTF3_JSON_SIMD_AVX2 # TinyGLTF also doesn't have AVX-512 specific code paths, so we use the AVX2 SIMD code path for the AVX-512 build as well
         -DAVX2
         -DAVX512
 )

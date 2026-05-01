@@ -31,6 +31,7 @@ namespace OWC::Rand
 		);
 		return min + (max - min) * randFloats;
 	}
+
 	template<typename T>
 	OWC_FORCE_INLINE T LinearFastRandValue(const T min, const T max)
 	{
@@ -38,7 +39,7 @@ namespace OWC::Rand
 
 		if constexpr (std::is_integral_v<T>)
 		{
-			std::uniform_int_distribution<T> dist(min, max - 1);
+			std::uniform_int_distribution<T> dist(min, max - static_cast<T>(1));
 			return dist(globalMtEngine);
 		}
 		else // floating point

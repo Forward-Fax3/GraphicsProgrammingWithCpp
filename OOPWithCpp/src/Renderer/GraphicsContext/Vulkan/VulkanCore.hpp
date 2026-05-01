@@ -117,6 +117,9 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE uSize GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		[[nodiscard]] OWC_FORCE_INLINE uSize GetNumberOfFramesInFlight() const { return m_SwapchainImageViews.size(); }
 
+		[[nodiscard]] OWC_FORCE_INLINE const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR& GetRayTracingPipelineProperties() const { return m_RayTracingPipelineProperties; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::PhysicalDeviceAccelerationStructurePropertiesKHR& GetAccelerationStructureProperties() const { return m_AccelerationStructureProperties; }
+
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetGraphicsQueueIndex() const { return m_GraphicsQueueFamilyIndex; }
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetComputeQueueIndex() const { return m_ComputeQueueFamilyIndex; }
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetTransferQueueIndex() const { return m_TransferQueueFamilyIndex; }
@@ -151,6 +154,12 @@ namespace OWC::Graphics
 		OWC_FORCE_INLINE void SetCurrentFrameIndex(uSize newIndex) { m_CurrentFrameIndex = newIndex; }
 		OWC_FORCE_INLINE void SetVulkanMemoryAllocator(const vma::Allocator& allocator) { m_Allocator = allocator; }
 		OWC_FORCE_INLINE void AddVulkanEndOfFrameCleanUpFunction(std::function<void()> func) { m_EndOfFrameCleanUp[m_CurrentFrameIndex].emplace_back(std::move(func)); }
+
+		OWC_FORCE_INLINE void SetRTPhysicalDeviceProperties(const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR& rayTracingPipelineProperties, const vk::PhysicalDeviceAccelerationStructurePropertiesKHR& accelerationStructureProperties)
+		{
+			m_RayTracingPipelineProperties = rayTracingPipelineProperties;
+			m_AccelerationStructureProperties = accelerationStructureProperties;
+		}
 
 		OWC_FORCE_INLINE void SetQueueFamilyIndexes(const u32 graphicsIndex, const u32 computeIndex, const u32 transferIndex, const u32 presentIndex)
 		{
@@ -211,6 +220,9 @@ namespace OWC::Graphics
 		vk::DescriptorPool m_ImGuiDescriptorPool = vk::DescriptorPool();
 		std::vector<vk::Image> m_SwapchainImages{};
 		std::vector<vk::ImageView> m_SwapchainImageViews{};
+
+		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR m_RayTracingPipelineProperties{};
+		vk::PhysicalDeviceAccelerationStructurePropertiesKHR m_AccelerationStructureProperties{};
 
 		std::vector<std::list<std::function<void()>>> m_EndOfFrameCleanUp{};
 

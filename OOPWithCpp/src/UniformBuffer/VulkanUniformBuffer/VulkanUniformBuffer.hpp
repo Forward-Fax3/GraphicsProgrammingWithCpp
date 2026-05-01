@@ -39,7 +39,7 @@ namespace OWC::Graphics
 		explicit VulkanTextureBuffer(u32 width, u32 height);
 		~VulkanTextureBuffer() override;
 		VulkanTextureBuffer(VulkanTextureBuffer&) = delete;
-		VulkanTextureBuffer& operator=(VulkanTextureBuffer&) = delete;
+		VulkanTextureBuffer& operator=(const VulkanTextureBuffer&) = delete;
 		VulkanTextureBuffer(VulkanTextureBuffer&&) noexcept = delete;
 		VulkanTextureBuffer& operator=(VulkanTextureBuffer&&) noexcept = delete;
 
@@ -91,5 +91,27 @@ namespace OWC::Graphics
 		std::vector<vk::Sampler> m_TextureSampler = {};
 		u32 m_Width = 0;
 		u32 m_Height = 0;
+	};
+
+	class VulkanGeneralBuffer : public GeneralBuffer
+	{
+		public:
+		VulkanGeneralBuffer() = delete;
+		explicit VulkanGeneralBuffer(uSize size);
+		~VulkanGeneralBuffer() override;
+		VulkanGeneralBuffer(VulkanGeneralBuffer&&) noexcept = delete;
+		VulkanGeneralBuffer& operator=(VulkanGeneralBuffer&&) noexcept = delete;
+
+		void UpdateBufferDataImpl(const u8* data, uSize count, uSize offset) override;
+
+		[[nodiscard]] vk::Buffer GetBuffer() const { return m_Buffer; }
+		[[nodiscard]] uSize GetBufferSize() const { return static_cast<uSize>(VulkanCore::GetConstInstance().GetDevice().getBufferMemoryRequirements(m_Buffer).size); }
+		[[nodiscard]] vk::DeviceAddress GetBufferDeviceAddress() const { return m_BufferDeviceAddress; }
+
+	private:
+		vk::Buffer m_Buffer = vk::Buffer();
+		vk::DeviceAddress m_BufferDeviceAddress = vk::DeviceAddress();
+		vma::Allocation m_BufferMemory = vma::Allocation();
+		uSize m_BufferSize = 0;
 	};
 }

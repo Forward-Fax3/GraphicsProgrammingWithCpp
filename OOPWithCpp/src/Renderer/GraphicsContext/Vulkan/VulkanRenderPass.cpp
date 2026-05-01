@@ -175,7 +175,7 @@ namespace OWC::Graphics
 	{
 		if (GetRenderPassType() == RenderPassType::Dynamic)
 		{
-			uSize frameIndex = VulkanCore::GetConstInstance().GetCurrentFrameIndex();
+			const uSize frameIndex = VulkanCore::GetConstInstance().GetCurrentFrameIndex();
 			m_CommandBuffers[frameIndex].draw(vertexCount, instanceCount, firstVertex, firstInstance);
 		}
 		else
@@ -194,9 +194,9 @@ namespace OWC::Graphics
 			}
 		else
 		{
-			VulkanCore& vkCore = VulkanCore::GetInstance();
+			const VulkanCore& vkCore = VulkanCore::GetInstance();
 			const uSize i = vkCore.GetCurrentFrameIndex();
-			vk::CommandBuffer& cmdBuf = m_CommandBuffers[i];
+			const vk::CommandBuffer& cmdBuf = m_CommandBuffers[i];
 			cmdBuf.endRendering();
 			cmdBuf.end();
 		}

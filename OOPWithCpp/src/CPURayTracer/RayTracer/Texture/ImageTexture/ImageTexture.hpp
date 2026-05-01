@@ -10,7 +10,8 @@ namespace OWC
     class ImageTexture : public BaseTexture
     {
     public:
-        ImageTexture(const std::string& imagePath);
+    	ImageTexture() = delete; // file path required
+        explicit ImageTexture(const std::string& imagePath);
 		~ImageTexture() override = default;
 
 		ImageTexture(const ImageTexture&) = delete;
@@ -18,7 +19,7 @@ namespace OWC
 		ImageTexture(ImageTexture&&) = delete;
 		ImageTexture& operator=(ImageTexture&&) = delete;
 
-        Colour Value(const HitData& p) const override;
+        [[nodiscard]] Colour Value(const HitData& p) const override;
 
 	private:
 		ImageLoader m_Image;

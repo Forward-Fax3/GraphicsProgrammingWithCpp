@@ -32,9 +32,9 @@ namespace OWC
 
 		bool VECTORCALL IsHit(const Ray& ray, Interval& range, HitData& hitData) const override;
 
-		AABB GetAABB() const override { return m_AABB; }
+		[[nodiscard]] AABB GetAABB() const override { return m_AABB; }
 
-		Colour BackgroundColour(const Ray& ray) const override
+		[[nodiscard]] Colour BackgroundColour(const Ray& ray) const override
 		{
 			return m_BackgroundFunction ?
 				m_BackgroundFunction(ray) :

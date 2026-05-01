@@ -166,6 +166,10 @@ static VKAPI_ATTR vk::Bool32 VKAPI_CALL debugMessageFunc( // TODO: add objects i
 #endif
 
 PFN_vkCreateRayTracingPipelinesKHR pfnVkCreateRayTracingPipelinesKHR;
+PFN_vkGetAccelerationStructureBuildSizesKHR pfnVkGetAccelerationStructureBuildSizesKHR;
+PFN_vkCreateAccelerationStructureKHR pfnVkCreateAccelerationStructureKHR;
+PFN_vkCmdBuildAccelerationStructuresKHR pfnVkCmdBuildAccelerationStructureKHR;
+PFN_vkDestroyAccelerationStructureKHR pfnVkDestroyAccelerationStructureKHR;
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateRayTracingPipelinesKHR(
 	VkDevice device,
@@ -177,6 +181,42 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateRayTracingPipelinesKHR(
 	VkPipeline* pPipelines)
 {
 	return pfnVkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
+}
+
+VKAPI_ATTR void VKAPI_CALL vkGetAccelerationStructureBuildSizesKHR(
+	VkDevice device,
+	VkAccelerationStructureBuildTypeKHR buildType,
+	const VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo,
+	const uint32_t* pMaxPrimitiveCounts,
+	VkAccelerationStructureBuildSizesInfoKHR* pSizeInfo)
+{
+	pfnVkGetAccelerationStructureBuildSizesKHR(device, buildType, pBuildInfo, pMaxPrimitiveCounts, pSizeInfo);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL vkCreateAccelerationStructureKHR(
+	VkDevice device,
+	const VkAccelerationStructureCreateInfoKHR* pCreateInfo,
+	const VkAllocationCallbacks* pAllocator,
+	VkAccelerationStructureKHR* pAccelerationStructure)
+{
+	return pfnVkCreateAccelerationStructureKHR(device, pCreateInfo, pAllocator, pAccelerationStructure);
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdBuildAccelerationStructuresKHR(
+	VkCommandBuffer commandBuffer,
+	uint32_t infoCount,
+	const VkAccelerationStructureBuildGeometryInfoKHR* pInfos,
+	const VkAccelerationStructureBuildRangeInfoKHR* const* ppBuildRangeInfos)
+{
+	pfnVkCmdBuildAccelerationStructureKHR(commandBuffer, infoCount, pInfos, ppBuildRangeInfos);
+}
+
+VKAPI_CALL void VKAPI_CALL vkDestroyAccelerationStructureKHR(
+	VkDevice device,
+	VkAccelerationStructureKHR accelerationStructure,
+	const VkAllocationCallbacks* pAllocator)
+{
+	pfnVkDestroyAccelerationStructureKHR(device, accelerationStructure, pAllocator);
 }
 
 namespace OWC::Graphics
@@ -475,6 +515,10 @@ namespace OWC::Graphics
 		VulkanCore::GetInstance().SetInstance(vk::createInstance(createInfo));
 
 		pfnVkCreateRayTracingPipelinesKHR = std::bit_cast<PFN_vkCreateRayTracingPipelinesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateRayTracingPipelinesKHR"));
+		pfnVkGetAccelerationStructureBuildSizesKHR = std::bit_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetAccelerationStructureBuildSizesKHR"));
+		pfnVkCreateAccelerationStructureKHR = std::bit_cast<PFN_vkCreateAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateAccelerationStructureKHR"));
+		pfnVkCmdBuildAccelerationStructureKHR = std::bit_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdBuildAccelerationStructuresKHR"));
+		pfnVkDestroyAccelerationStructureKHR = std::bit_cast<PFN_vkDestroyAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyAccelerationStructureKHR"));
 	}
 
 #ifndef DIST
@@ -525,7 +569,9 @@ namespace OWC::Graphics
 			}
 		}
 
-		if (!VulkanCore::GetConstInstance().GetPhysicalDev())
+		const auto pDevice = VulkanCore::GetConstInstance().GetPhysicalDev();
+
+		if (!pDevice)
 			Log<LogLevel::Critical>("Failed to find a suitable GPU");
 		else
 		{
@@ -536,6 +582,15 @@ namespace OWC::Graphics
 				deviceProperties.deviceID,
 				vk::to_string(deviceProperties.deviceType));
 			Log<LogLevel::NewLine>();
+
+			auto asProperties = vk::PhysicalDeviceAccelerationStructurePropertiesKHR();
+			auto rtPipeline = vk::PhysicalDeviceRayTracingPipelinePropertiesKHR();
+			rtPipeline.pNext = &asProperties;
+			auto deviceProperties2 = vk::PhysicalDeviceProperties2();
+			deviceProperties2.pNext = &rtPipeline;
+			pDevice.getProperties2(&deviceProperties2);
+
+			VulkanCore::GetInstance().SetRTPhysicalDeviceProperties(rtPipeline, asProperties);
 		}
 	}
 
@@ -755,8 +810,12 @@ namespace OWC::Graphics
 			.setPNext(&rayTracingPipelineFeature)
 			.setSwapchainMaintenance1(vk::True);
 
-		vk::PhysicalDeviceMaintenance5Features maintenance5Feature = vk::PhysicalDeviceMaintenance5Features()
+		vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeature = vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR()
 			.setPNext(&swapchainMaintenance1Feature)
+			.setBufferDeviceAddress(vk::True);
+
+		vk::PhysicalDeviceMaintenance5Features maintenance5Feature = vk::PhysicalDeviceMaintenance5Features()
+			.setPNext(&bufferDeviceAddressFeature)
 			.setMaintenance5(vk::True);
 
 		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeature = vk::PhysicalDeviceDescriptorIndexingFeatures()
@@ -1094,6 +1153,7 @@ namespace OWC::Graphics
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eKhrBindMemory2;
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eExtMemoryPriority;
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eExtMemoryBudget;
+		allocatorFlags |= vma::AllocatorCreateFlagBits::eBufferDeviceAddress;
 
 		const vma::AllocatorCreateInfo allocatorCreateInfo = vma::AllocatorCreateInfo()
 			.setPhysicalDevice(vkCore.GetPhysicalDev())

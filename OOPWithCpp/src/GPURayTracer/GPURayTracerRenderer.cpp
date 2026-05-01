@@ -12,6 +12,8 @@
 #include "WindowRestoreEvent.hpp"
 #include "WindowResize.hpp"
 
+#include "SponzaPalace.hpp"
+
 #include <array>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -27,6 +29,8 @@ namespace OWC
 	GPURayTracerRenderer::GPURayTracerRenderer()
 	{
 		SetupPipeline();
+
+		m_Scene = std::make_shared<SponzaPalace>();
 	}
 
 	void GPURayTracerRenderer::OnUpdate()

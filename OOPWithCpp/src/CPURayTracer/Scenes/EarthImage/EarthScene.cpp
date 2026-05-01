@@ -29,7 +29,7 @@ namespace OWC
 		// sun
 		{
 			auto sunMaterial = std::make_shared<DefusedLight>(Colour(1.0f), 500.0f);
-			auto sunSphere = std::make_shared<Sphere>(Point(50.0f, -50.0f, -50.0f), 10.0f, sunMaterial);
+			const auto sunSphere = std::make_shared<Sphere>(Point(50.0f, -50.0f, -50.0f), 10.0f, sunMaterial);
 			m_SceneObjects->AddObject(sunSphere);
 		}
 

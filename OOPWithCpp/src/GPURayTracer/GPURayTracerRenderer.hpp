@@ -9,6 +9,7 @@
 #include "Renderer.hpp"
 #include "UniformBuffer.hpp"
 #include "InterLayerData.hpp"
+#include "BaseGPUScene.hpp"
 
 
 namespace OWC
@@ -44,5 +45,7 @@ namespace OWC
         std::shared_ptr<Graphics::DynamicTextureBuffer> m_Image = nullptr;
         std::shared_ptr<InterLayerData> m_ILD = nullptr;
         //uSize framesUpdated = 0;
+
+        std::shared_ptr<BaseGPUScene> m_Scene = nullptr;
     };
 } // OWC
