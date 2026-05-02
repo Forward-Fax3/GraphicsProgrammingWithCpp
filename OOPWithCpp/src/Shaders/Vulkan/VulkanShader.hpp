@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "VulkanCore.hpp"
+#include "VulkanUniformBuffer.hpp"
 
 #include <string>
 #include <vector>
@@ -83,7 +84,21 @@ namespace OWC::Graphics
 		VulkanRayTracingShader(VulkanRayTracingShader&&) noexcept = delete;
 		VulkanRayTracingShader& operator=(VulkanRayTracingShader&&) noexcept = delete;
 
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetRayGenShaderSBTEntry() const { return m_RayGenShaderSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetHitGroupSBTEntry() const { return m_HitGroupSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetMissGroupSBTEntry() const { return m_MissGroupSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetCallableGroupSBTEntry() const { return m_CallableGroupSBTEntry; }
+
 	private:
 		void CreateVulkanRayTracingPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
+		void CreateShaderBindingTable(u32 numberOfShaders);
+
+	private:
+		vk::StridedDeviceAddressRangeKHR m_RayGenShaderSBTEntry = {};
+		vk::StridedDeviceAddressRangeKHR m_HitGroupSBTEntry = {};
+		vk::StridedDeviceAddressRangeKHR m_MissGroupSBTEntry = {};
+		vk::StridedDeviceAddressRangeKHR m_CallableGroupSBTEntry = {}; // This won't be implemented yet
+		std::unique_ptr<VulkanGeneralBuffer> m_SBTBuffer;
+		std::vector<u8> m_ShaderHandles;
 	};
 }

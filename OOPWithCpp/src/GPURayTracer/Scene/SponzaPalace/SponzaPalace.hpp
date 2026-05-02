@@ -28,7 +28,7 @@ namespace OWC
 
     private:
         std::map<i32, std::shared_ptr<SceneMesh>> m_Meshes;
-        tg3_model m_Model;
+        tg3_model m_Model = {};
         std::shared_ptr<BaseTLAS> m_TLAS;
         std::shared_ptr<Graphics::GeneralBuffer> m_GPUBuffer;
     };

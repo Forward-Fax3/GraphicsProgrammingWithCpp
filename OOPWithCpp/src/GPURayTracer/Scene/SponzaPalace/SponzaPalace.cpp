@@ -20,7 +20,7 @@ namespace OWC
     SponzaPalace::SponzaPalace()
         : m_TLAS(BaseTLAS::CreateTopLevelAccelerationStructure())
     {
-        std::string_view filename = "./../../../../../GLTFs/Sponza/NewSponza_Main_glTF_003.gltf";
+        constexpr std::string_view filename = "./../../../../../GLTFs/Sponza/NewSponza_Main_glTF_003.gltf";
 
         tg3_parse_options options;
         tg3_parse_options_init(&options);
@@ -30,9 +30,7 @@ namespace OWC
 
         if (errorStack.has_error)
         {
-            const u32 numberOfErrors = errorStack.count;
-
-            for (u32 i = 0; i < numberOfErrors; i++)
+            for (u32 i = 0; i < errorStack.count; i++)
                 switch (const tg3_error_entry& e = errorStack.entries[i]; e.severity)
                 {
                 case TG3_SEVERITY_INFO:
@@ -51,7 +49,7 @@ namespace OWC
             return;
         }
 
-        const auto bufferSize = m_Model.buffers[0].data.count; // add 10% because of alignment
+        const auto bufferSize = m_Model.buffers[0].data.count;
         m_GPUBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(bufferSize);
         m_GPUBuffer->UpdateBufferData(std::bit_cast<const u8*>(m_Model.buffers[0].data.data));
 

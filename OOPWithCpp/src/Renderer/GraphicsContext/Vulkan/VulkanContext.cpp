@@ -170,6 +170,7 @@ PFN_vkGetAccelerationStructureBuildSizesKHR pfnVkGetAccelerationStructureBuildSi
 PFN_vkCreateAccelerationStructureKHR pfnVkCreateAccelerationStructureKHR;
 PFN_vkCmdBuildAccelerationStructuresKHR pfnVkCmdBuildAccelerationStructureKHR;
 PFN_vkDestroyAccelerationStructureKHR pfnVkDestroyAccelerationStructureKHR;
+PFN_vkGetRayTracingShaderGroupHandlesKHR pfnVkGetRayTracingShaderGroupHandlesKHR;
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateRayTracingPipelinesKHR(
 	VkDevice device,
@@ -217,6 +218,17 @@ VKAPI_CALL void VKAPI_CALL vkDestroyAccelerationStructureKHR(
 	const VkAllocationCallbacks* pAllocator)
 {
 	pfnVkDestroyAccelerationStructureKHR(device, accelerationStructure, pAllocator);
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL vkGetRayTracingShaderGroupHandlesKHR(
+	VkDevice device,
+	VkPipeline pipeline,
+	uint32_t firstGroup,
+	uint32_t groupCount,
+	size_t dataSize,
+	void* pData)
+{
+	return pfnVkGetRayTracingShaderGroupHandlesKHR(device, pipeline, firstGroup, groupCount, dataSize, pData);
 }
 
 namespace OWC::Graphics
@@ -519,6 +531,7 @@ namespace OWC::Graphics
 		pfnVkCreateAccelerationStructureKHR = std::bit_cast<PFN_vkCreateAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateAccelerationStructureKHR"));
 		pfnVkCmdBuildAccelerationStructureKHR = std::bit_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdBuildAccelerationStructuresKHR"));
 		pfnVkDestroyAccelerationStructureKHR = std::bit_cast<PFN_vkDestroyAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyAccelerationStructureKHR"));
+		pfnVkGetRayTracingShaderGroupHandlesKHR = std::bit_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetRayTracingShaderGroupHandlesKHR"));
 	}
 
 #ifndef DIST

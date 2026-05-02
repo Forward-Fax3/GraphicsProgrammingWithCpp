@@ -680,7 +680,8 @@ namespace OWC::Graphics
 				vk::BufferUsageFlagBits2::eStorageBuffer |
 				vk::BufferUsageFlagBits2::eShaderDeviceAddress |
 				vk::BufferUsageFlagBits2::eAccelerationStructureBuildInputReadOnlyKHR |
-				vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
+				vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR |
+				vk::BufferUsageFlagBits2::eShaderBindingTableKHR
 			);
 
 		const auto bufferInfo = vk::BufferCreateInfo()

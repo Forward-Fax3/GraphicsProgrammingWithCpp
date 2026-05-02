@@ -439,6 +439,7 @@ namespace OWC::Graphics
 		}
 
 		CreateVulkanRayTracingPipeline(vulkanShaderDatas, srcToShaderModuleMap);
+		CreateShaderBindingTable(static_cast<u32>(vulkanShaderDatas.size()));
 	}
 
 	void VulkanRayTracingShader::CreateVulkanRayTracingPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap)
@@ -577,5 +578,64 @@ namespace OWC::Graphics
 			descriptorSets.push_back(device.allocateDescriptorSets(allocInfo).front());
 
 		SetDescriptorSets(descriptorSets);
+	}
+
+	void VulkanRayTracingShader::CreateShaderBindingTable(const u32 numberOfShaders)
+	{
+		const auto& vkCore = VulkanCore::GetConstInstance();
+		const auto& device = vkCore.GetDevice();
+		const auto& RTProps = vkCore.GetRayTracingPipelineProperties();
+
+		const u32 handleSize = RTProps.shaderGroupHandleSize;
+		const u32 handleAlignment = RTProps.shaderGroupHandleAlignment;
+		const u32 baseAlignment = RTProps.shaderGroupBaseAlignment;
+
+		const uSize shaderHandleSize = handleSize * numberOfShaders;
+		m_ShaderHandles.resize(shaderHandleSize);
+		auto result = device.getRayTracingShaderGroupHandlesKHR(GetPipeline(), 0, numberOfShaders, shaderHandleSize, m_ShaderHandles.data());
+		if (result != vk::Result::eSuccess)
+		{
+			Log<LogLevel::Error>("VulkanRayTracingShader::CreateShaderBindingTable: Failed to get ray tracing shader group handles!");
+			return;
+		}
+
+		// nVidia vk_raytracing_tutorial helper func
+		auto alignUp = [](auto value, size_t alignment) noexcept { return ((value + alignment - 1) & ~(alignment - 1)); };
+		u32 raygenSize   = alignUp(handleSize, handleAlignment);
+		u32 missSize     = alignUp(handleSize, handleAlignment);
+		u32 hitSize      = alignUp(handleSize, handleAlignment);
+		u32 callableSize = 0;  // Callable shaders not supported yet
+
+		u32 raygenOffset   = 0;
+		u32 missOffset     = alignUp(raygenSize, baseAlignment);
+		u32 hitOffset      = alignUp(missOffset + missSize, baseAlignment);
+		u32 callableOffset = alignUp(hitOffset + hitSize, baseAlignment);
+
+		const uSize bufferSize = callableOffset + callableSize;
+		m_SBTBuffer = std::make_unique<VulkanGeneralBuffer>(bufferSize);
+
+		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data(), handleSize, raygenOffset);
+		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data() + missOffset, handleSize, missOffset);
+		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data() + hitOffset, handleSize, hitOffset);
+
+		m_RayGenShaderSBTEntry
+			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + raygenOffset)
+			.setSize(raygenSize)
+			.setStride(raygenSize);
+
+		m_HitGroupSBTEntry
+			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + hitOffset)
+			.setSize(hitSize)
+			.setStride(hitSize);
+
+		m_MissGroupSBTEntry
+			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + missOffset)
+			.setSize(missSize)
+			.setStride(missSize);
+
+		m_CallableGroupSBTEntry
+			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + callableOffset)
+			.setSize(callableSize)
+			.setStride(callableSize);
 	}
 }
