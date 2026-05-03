@@ -25,6 +25,8 @@ namespace OWC
         void AddInstance(const Mat4& transform, const std::shared_ptr<SceneMesh>& mesh) override;
         void CreateTLAS() override;
 
+        const vk::AccelerationStructureKHR& GetTLAS() const { return m_TLAS; }
+
     private:
         [[nodiscard]] static vk::TransformMatrixKHR ConvertMat4ToVulkanTransform(const Mat4& transform);
 

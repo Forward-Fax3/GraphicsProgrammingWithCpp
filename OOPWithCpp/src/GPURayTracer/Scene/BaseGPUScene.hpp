@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "BaseTLAS.hpp"
 
 
 namespace OWC
@@ -16,5 +17,7 @@ namespace OWC
         BaseGPUScene& operator=(BaseGPUScene&) = delete;
         BaseGPUScene(BaseGPUScene&&) noexcept = delete;
         BaseGPUScene& operator=(BaseGPUScene&&) noexcept = delete;
+
+        virtual std::shared_ptr<BaseTLAS>& GetTLAS() = 0;
     };
 }

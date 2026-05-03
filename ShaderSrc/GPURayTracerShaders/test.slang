@@ -1,6 +1,6 @@
-// shaders.slang
+#include "gltfData.h.slang"
 
-struct Uniforms
+struct GeneralData
 {
     float screenWidth, screenHeight;
     float focalLength, frameHeight;
@@ -10,51 +10,47 @@ struct Uniforms
     float4 cameraPosition;
     float4 lightDir;
     uint randSeed;
-    uint bounces;
-};
-
-struct Primitive
-{
-    float4 data0;
-    float4 color;
-    float3 getNormal() { return data0.xyz; }
-    float3 getColor() { return color.xyz; }
 };
 
 struct [raypayload] RayPayload
 {
     float4 color             : read(caller)           : write(caller, closesthit, miss);
     uint randSeed            : read(closesthit)       : write(caller, closesthit);
-    uint numberOfBouncesLeft : read(closesthit, miss) : write(caller, closesthit, miss);
 };
 
-uniform RWTexture2D resultTexture;
+struct PushConstantData
+{
+    GeneralData* generalData;
+    uint64_t mainBufferData;
+}
+
+[[push_constant]] ConstantBuffer<PushConstantData> PC;
+
+uniform RWTexture2D<float4> resultTexture;
 uniform RaytracingAccelerationStructure sceneBVH;
-uniform StructuredBuffer<Primitive> primitiveBuffer;
-uniform Uniforms uniforms;
+uniform StructuredBuffer<GeometryDescriptor> geometries;
 
 [shader("raygeneration")]
 void rayGenShader()
-{
+{       
     uint2 threadIdx = DispatchRaysIndex().xy;
-    if (threadIdx.x >= (int)uniforms.screenWidth) return;
-    if (threadIdx.y >= (int)uniforms.screenHeight) return;
+    if (threadIdx.x >= (int)PC.generalData.screenWidth) return;
+    if (threadIdx.y >= (int)PC.generalData.screenHeight) return;
 
-    float frameWidth = uniforms.screenWidth / uniforms.screenHeight * uniforms.frameHeight;
-    float imageY = (threadIdx.y / uniforms.screenHeight - 0.5f) * uniforms.frameHeight;
-    float imageX = (threadIdx.x / uniforms.screenWidth - 0.5f) * frameWidth;
-    float imageZ = uniforms.focalLength;
-    float3 rayDir = normalize(uniforms.cameraDir.xyz*imageZ - uniforms.cameraUp.xyz * imageY + uniforms.cameraRight.xyz * imageX);
+    float frameWidth = PC.generalData.screenWidth / PC.generalData.screenHeight * PC.generalData.frameHeight;
+    float imageY = (threadIdx.y / PC.generalData.screenHeight - 0.5f) * PC.generalData.frameHeight;
+    float imageX = (threadIdx.x / PC.generalData.screenWidth - 0.5f) * frameWidth;
+    float imageZ = PC.generalData.focalLength;
+    float3 rayDir = normalize(PC.generalData.cameraDir.xyz * imageZ - PC.generalData.cameraUp.xyz * imageY + PC.generalData.cameraRight.xyz * imageX);
 
     // Trace the ray.
     RayDesc ray;
-    ray.Origin = uniforms.cameraPosition.xyz;
+    ray.Origin = PC.generalData.cameraPosition.xyz;
     ray.Direction = rayDir;
     ray.TMin = 0.001;
     ray.TMax = 10000.0;
     RayPayload payload = { float4(0, 0, 0, 0) };
-    payload.randSeed = uniforms.randSeed;
-    payload.numberOfBouncesLeft = uniforms.bounces;
+    payload.randSeed = PC.generalData.randSeed;
     TraceRay(sceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
 
     resultTexture[threadIdx.xy] = payload.color;
@@ -96,27 +92,44 @@ float3 diffuseReflection(float3 normal, inout uint rngState)
     return normalize(direction);
 }
 
+__generic<T : IFloat> T GetTriangleAttributes(uint64_t bufferOffset, uint3 attributeIndex, float3 barycentricCoords)
+{
+    T* attr = reinterpret<T*>(PC.mainBufferData + bufferOffset);
+
+    return T(barycentricCoords.x) * attr[attributeIndex.x] +
+        T(barycentricCoords.y) * attr[attributeIndex.y] +
+        T(barycentricCoords.z) * attr[attributeIndex.z];
+}
+
 [shader("closesthit")]
 void closestHitShader(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr)
 {
+    float3 barycentricCoords = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
+
+    uint instanceID = InstanceID();
+    uint geomertyIndex = GeometryIndex();
     uint primitiveIndex = PrimitiveIndex();
 
-    if (payload.numberOfBouncesLeft > 0)
-    {
-        float3 hitLocation = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-        float3 hitNormal = primitiveBuffer[primitiveIndex].getNormal();
-        float3 newRayDirection = diffuseReflection(hitNormal, payload.randSeed);
+    GeometryDescriptor geometry = geometries[instanceID + geomertyIndex];
 
-        payload.numberOfBouncesLeft--;
+    uint3 attributeIndex = reinterpret<uint3*>(PC.mainBufferData + geometry.indicesOffset)[primitiveIndex * 3];
 
-        RayDesc ray;
-        ray.Origin = hitLocation;
-        ray.Direction = normalize(newRayDirection);
-        ray.TMin = 0.001;
-        ray.TMax = 10000.0;
-        TraceRay(sceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 0, ray, payload);
-    }
+    float3 hitLocation = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
+    float3 hitNormal = normalize(GetTriangleAttributes<float3>(geometry.normalsOffset, attributeIndex, barycentricCoords));
+    float3 newRayDirection = diffuseReflection(hitNormal, payload.randSeed);
 
-    float3 color = primitiveBuffer[primitiveIndex].getColor();
-    payload.color *= float4(color, 1.0f);
+    RayDesc ray;
+    ray.Origin = hitLocation;
+    ray.Direction = normalize(newRayDirection);
+    ray.TMin = 0.001;
+    ray.TMax = 10000.0;
+    TraceRay(sceneBVH, RAY_FLAG_NONE, 0xFF, 1, 0, 0, ray, payload);
+
+    float4 colour;
+    if (geometry.coloursOffset != uint64_t.maxValue)
+        colour = GetTriangleAttributes<float4>(geometry.coloursOffset, attributeIndex, barycentricCoords);
+    else
+        colour = float4(float3(0.8), 1.0);
+    
+    payload.color *= colour;
 }

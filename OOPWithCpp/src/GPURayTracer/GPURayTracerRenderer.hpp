@@ -42,7 +42,7 @@ namespace OWC
         std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
         std::shared_ptr<Graphics::RenderPassData> m_renderPass = nullptr;
         std::shared_ptr<Graphics::UniformBuffer> m_UniformBuffer = nullptr;
-        std::shared_ptr<Graphics::DynamicTextureBuffer> m_Image = nullptr;
+        std::shared_ptr<Graphics::TextureBuffer> m_RenderTarget = nullptr;
         std::shared_ptr<InterLayerData> m_ILD = nullptr;
         //uSize framesUpdated = 0;
 

@@ -15,7 +15,7 @@ namespace OWC
     {
     public:
         VulkanSceneMesh() = delete;
-        explicit VulkanSceneMesh(const tg3_model& model, i32 meshIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer);
+        explicit VulkanSceneMesh(const tg3_model& model, i32 meshIndex, i32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
         ~VulkanSceneMesh() override;
 
         VulkanSceneMesh(const VulkanSceneMesh&) = delete;
@@ -25,7 +25,7 @@ namespace OWC
 
         [[nodiscard]] const AttributeData& GetAttributeData(const std::string& attributeName) const override;
 
-        [[nodiscard]] i32 GetIndex() const { return index; }
+        [[nodiscard]] i32 GetCustomInstanceIndex() const { return m_CustomInstanceIndex; }
         [[nodiscard]] vk::AccelerationStructureKHR GetAccelerationStructure() const { return m_AccelerationStructure; }
         [[nodiscard]] const std::shared_ptr<Graphics::VulkanGeneralBuffer>& GetAccelerationStructureBuffer() const { return m_AccelerationStructureBuffer; }
 
@@ -33,6 +33,6 @@ namespace OWC
         std::shared_ptr<Graphics::VulkanGeneralBuffer> m_AccelerationStructureBuffer;
         vk::AccelerationStructureKHR m_AccelerationStructure;
         const tg3_model& m_Model;
-        i32 index;
+        i32 m_CustomInstanceIndex;
     };
 } // OWC

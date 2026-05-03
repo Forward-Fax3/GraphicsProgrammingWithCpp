@@ -49,17 +49,27 @@ namespace OWC
             return;
         }
 
+        uSize numberOfGPUGLTFDatas = 0;
+        for (uSize i = 0; i < m_Model.meshes_count; i++)
+            numberOfGPUGLTFDatas += m_Model.meshes[i].primitives_count;
+
+        m_GPUData.reserve(numberOfGPUGLTFDatas);
+
         const auto bufferSize = m_Model.buffers[0].data.count;
-        m_GPUBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(bufferSize);
-        m_GPUBuffer->UpdateBufferData(std::bit_cast<const u8*>(m_Model.buffers[0].data.data));
+        const auto totalBufferSize = bufferSize + numberOfGPUGLTFDatas * sizeof(GPUGLTFData);
+        m_GPUBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(totalBufferSize);
+        m_GPUBuffer->UpdateBufferData(std::bit_cast<const u8*>(m_Model.buffers[0].data.data), bufferSize);
 
         const auto sceneIndex = m_Model.default_scene == -1 ? 0 : m_Model.default_scene;
         const auto& scene = m_Model.scenes[sceneIndex];
+        i32 customInstancesIndex = 0;
 
         for (u32 i = 0; i < scene.nodes_count; i++)
-            IterateThroughNodes(m_Model, scene.nodes[i], Mat4(1.0f));
+            IterateThroughNodes(m_Model, scene.nodes[i], Mat4(1.0f), customInstancesIndex);
 
         m_TLAS->CreateTLAS();
+
+        m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GPUData.size() * sizeof(GPUGLTFData), bufferSize);
 
         tg3_error_stack_free(&errorStack);
     }
@@ -69,7 +79,7 @@ namespace OWC
         tg3_model_free(&m_Model);
     }
 
-    void SponzaPalace::IterateThroughNodes(const tg3_model& model, const u32 nodeIndex, Mat4 parentTransform)
+    void SponzaPalace::IterateThroughNodes(const tg3_model& model, const u32 nodeIndex, Mat4 parentTransform, i32& customInstancesIndex)
     {
         const tg3_node& node = m_Model.nodes[nodeIndex];
 
@@ -90,7 +100,10 @@ namespace OWC
         if (node.mesh != -1)
         {
             if (!m_Meshes.contains(node.mesh))
-                m_Meshes.emplace(node.mesh, SceneMesh::CreateFromGLTFModelWithMeshIndex(m_Model, node.mesh, m_GPUBuffer));
+            {
+                m_Meshes.emplace(node.mesh, SceneMesh::CreateFromGLTFModelWithMeshIndex(m_Model, node.mesh, customInstancesIndex, m_GPUBuffer, m_GPUData));
+                customInstancesIndex += model.meshes[node.mesh].primitives_count;
+            }
 
             m_TLAS->AddInstance(parentTransform, m_Meshes[node.mesh]);
         }
@@ -101,6 +114,6 @@ namespace OWC
         }
 
         for (u32 i = 0; i < node.children_count; i++)
-            IterateThroughNodes(model, node.children[i], parentTransform);
+            IterateThroughNodes(model, node.children[i], parentTransform, customInstancesIndex);
     }
 } // OWC

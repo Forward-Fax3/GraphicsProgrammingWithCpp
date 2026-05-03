@@ -11,6 +11,7 @@
 #include "BaseTLAS.hpp"
 #include "UniformBuffer.hpp"
 
+
 namespace OWC
 {
     class SponzaPalace : public BaseGPUScene
@@ -23,13 +24,16 @@ namespace OWC
         SponzaPalace(SponzaPalace&&) noexcept = delete;
         SponzaPalace& operator=(SponzaPalace&&) noexcept = delete;
 
+        std::shared_ptr<BaseTLAS>& GetTLAS() override { return m_TLAS; }
+
     private:
-        void IterateThroughNodes(const tg3_model& model, u32 nodeIndex, Mat4 parentTransform);
+        void IterateThroughNodes(const tg3_model& model, u32 nodeIndex, Mat4 parentTransform, i32& customInstancesIndex);
 
     private:
         std::map<i32, std::shared_ptr<SceneMesh>> m_Meshes;
         tg3_model m_Model = {};
         std::shared_ptr<BaseTLAS> m_TLAS;
         std::shared_ptr<Graphics::GeneralBuffer> m_GPUBuffer;
+        std::vector<GPUGLTFData> m_GPUData;
     };
 }// OWC

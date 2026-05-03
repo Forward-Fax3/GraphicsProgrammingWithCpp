@@ -4,6 +4,8 @@
 #include "VulkanUniformBuffer.hpp"
 #include "Log.hpp"
 
+#include "VulkanTLAS.hpp"
+
 
 namespace OWC::Graphics
 {
@@ -67,7 +69,7 @@ namespace OWC::Graphics
 		const auto& device = vkCore.GetDevice();
 
 		vk::DescriptorImageInfo descriptorImageInfo = vk::DescriptorImageInfo()
-			.setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+			.setImageLayout(vk::ImageLayout::eGeneral)
 			.setImageView(vulkanTextureBuffer->GetImageView())
 			.setSampler(vulkanTextureBuffer->GetSampler());
 
@@ -81,7 +83,7 @@ namespace OWC::Graphics
 				binding,
 				0,
 				1,
-				vk::DescriptorType::eCombinedImageSampler,
+				vk::DescriptorType::eStorageImage,
 				&descriptorImageInfo
 			);
 		}
@@ -186,7 +188,7 @@ namespace OWC::Graphics
 		return static_cast<vk::ShaderStageFlagBits>(static_cast<u32>(stage)); // don't ask
 	}
 
-	vk::DescriptorType VulkanBaseShader::ConvertToVulkanDescriptorType(DescriptorType type)
+	vk::DescriptorType VulkanBaseShader::ConvertToVulkanDescriptorType(const DescriptorType type)
 	{
 		switch (type)
 		{
@@ -442,6 +444,38 @@ namespace OWC::Graphics
 		CreateShaderBindingTable(static_cast<u32>(vulkanShaderDatas.size()));
 	}
 
+	void VulkanRayTracingShader::BindTLAS(u32 binding, const std::shared_ptr<BaseTLAS>& tlas)
+	{
+		const auto vulkanTLASBuffer = std::dynamic_pointer_cast<VulkanTLAS>(tlas);
+
+		const auto& vkCore = VulkanCore::GetConstInstance();
+		const auto& device = vkCore.GetDevice();
+
+		auto descriptorAccelerationStructureInfo = vk::WriteDescriptorSetAccelerationStructureKHR()
+			.setPAccelerationStructures(&vulkanTLASBuffer->GetTLAS())
+			.setAccelerationStructureCount(1);
+
+		std::vector<vk::WriteDescriptorSet> writeDescriptorSets{};
+		writeDescriptorSets.reserve(vkCore.GetNumberOfFramesInFlight());
+
+		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
+		{
+			writeDescriptorSets.emplace_back(
+				GetSpecificDescriptorSet(i),
+				binding,
+				0,
+				1,
+				vk::DescriptorType::eAccelerationStructureKHR,
+				nullptr,
+				nullptr,
+				nullptr,
+				&descriptorAccelerationStructureInfo
+			);
+		}
+
+		device.updateDescriptorSets(writeDescriptorSets, {});
+	}
+
 	void VulkanRayTracingShader::CreateVulkanRayTracingPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap)
 	{
 		//const auto& app = Application::GetConstInstance();
@@ -510,8 +544,14 @@ namespace OWC::Graphics
 
 		SetDescriptorSetLayout(device.createDescriptorSetLayout(layoutInfo));
 
+		vk::PushConstantRange pushConstantRange = vk::PushConstantRange()
+			.setOffset(0)
+			.setSize(128) // TODO: make this configurable
+			.setStageFlags(vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eMissKHR);
+
 		const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayouts(GetDescriptorSetLayout());
+			.setSetLayouts(GetDescriptorSetLayout())
+			.setPushConstantRanges(pushConstantRange);
 
 		SetPipelineLayout(device.createPipelineLayout(pipelineLayoutInfo));
 
@@ -531,9 +571,6 @@ namespace OWC::Graphics
 			Log<LogLevel::Error>("VulkanShader::CreateVulkanRayTracingPipeline: Failed to create Vulkan ray tracing pipeline!");
 		else
 			SetPipeline(result.value);
-
-		// create descriptor pool
-		// TODO: make this dynamic based on actual usage
 
 		std::vector<vk::DescriptorPoolSize> poolSize;
 

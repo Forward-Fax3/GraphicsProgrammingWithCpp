@@ -24,7 +24,7 @@ namespace OWC
 
         m_BLASInstances.emplace_back(
             ConvertMat4ToVulkanTransform(transform),
-            vulkanMesh->GetIndex(),
+            vulkanMesh->GetCustomInstanceIndex(),
             0xFF,
             0,
             vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable,

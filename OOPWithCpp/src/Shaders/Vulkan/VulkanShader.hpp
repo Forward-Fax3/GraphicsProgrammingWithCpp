@@ -39,6 +39,7 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE vk::PipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
 		[[nodiscard]] OWC_FORCE_INLINE vk::ArrayProxyNoTemporaries<const vk::DescriptorSetLayout> GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
 		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorSet GetDescriptorSet() const { return m_DescriptorSets[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorSet GetSpecificDescriptorSet(const uSize i) const { return m_DescriptorSets[i]; }
 
 	protected:
 		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorPool GetDescriptorPool() const { return m_DescriptorPool; }
@@ -70,6 +71,8 @@ namespace OWC::Graphics
 		VulkanShader(VulkanShader&&) noexcept = delete;
 		VulkanShader& operator=(VulkanShader&&) noexcept = delete;
 
+		void BindTLAS(u32 binding, const std::shared_ptr<BaseTLAS>& tlasBuffer) override { Log<LogLevel::Error>("VulkanShader::BindTLAS: TLAS can only be bound to ray tracing shaders! For this shader type please use VulkanRayTracingShader."); }
+
 	private:
 		void CreateVulkanPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
 	};
@@ -88,6 +91,8 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetHitGroupSBTEntry() const { return m_HitGroupSBTEntry; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetMissGroupSBTEntry() const { return m_MissGroupSBTEntry; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetCallableGroupSBTEntry() const { return m_CallableGroupSBTEntry; }
+
+		void BindTLAS(u32 binding, const std::shared_ptr<BaseTLAS>& tlasBuffer) override;
 
 	private:
 		void CreateVulkanRayTracingPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);

@@ -17,8 +17,8 @@
 
 namespace OWC
 {
-    VulkanSceneMesh::VulkanSceneMesh(const tg3_model& model, const i32 meshIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer)
-        : m_Model(model), index(meshIndex)
+    VulkanSceneMesh::VulkanSceneMesh(const tg3_model& model, const i32 meshIndex, i32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData)
+        : m_Model(model), m_CustomInstanceIndex(customInstancesIndex)
     {
         using namespace OWC::Graphics;
 		const auto& vkCore = VulkanCore::GetConstInstance();
@@ -109,43 +109,18 @@ namespace OWC
                     vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + indexData.offset)
                 );
 
+                auto normalData = extractAttribute(prim, "NORMAL");
+                auto colourData = extractAttribute(prim, "COLOR_0");
                 /*
-                test = extractAttribute(prim, "NORMAL");
-                if (test.hasData)
-                    for (u32 j = 0; j < test.count; j++)
-                    {
-                        auto data = std::bit_cast<const float*>(model.buffers[0].data.data + test.offset + j * test.byteStride);
-                        glm::vec<3, float, glm::packed_highp> normal(data[0], data[1], data[2]);
-                        vertexPrimitiveData[j].normal = normal;
-                    }
-
-                test = extractAttribute(prim, "COLOR_0");
-                if (test.hasData)
-                    for (u32 j = 0; j < test.count; j++)
-                    {
-                        auto data = std::bit_cast<const float*>(model.buffers[0].data.data + test.offset + j * test.byteStride);
-                        glm::vec<4, float, glm::packed_highp> colour(data[0], data[1], data[2], data[3]);
-                        vertexPrimitiveData[j].colour = colour;
-                    }
-
-                test = extractAttribute(prim, "TEXCOORD_0");
-                if (test.hasData)
-                    for (u32 j = 0; j < test.count; j++)
-                    {
-                        auto data = std::bit_cast<const float*>(model.buffers[0].data.data + test.offset + j * test.byteStride);
-                        glm::vec<2, float, glm::packed_highp> texcoords(data[0], data[1]);
-                        vertexPrimitiveData[j].texcoord = texcoords;
-                    }
-
-                test = extractAttribute(prim, "TANGENT");
-                if (test.hasData)
-                    for (u32 j = 0; j < test.count; j++)
-                    {
-                        auto data = std::bit_cast<const float*>(model.buffers[0].data.data + test.offset + j * test.byteStride);
-                        glm::vec<4, float, glm::packed_highp> tangent(data[0], data[1], data[2], data[3]);
-                        vertexPrimitiveData[j].tangent = tangent;
-                    }
-                */
+                auto texCoordsdata = extractAttribute(prim, "TEXCOORD_0");
+                auto Tangentsdata = extractAttribute(prim, "TANGENT");*/
+                GPUData.emplace_back(
+                    positionData.offset,
+                    indexData.offset,
+                    normalData.hasData ? normalData.offset : ~0,
+                    colourData.hasData ? colourData.offset : ~0,
+                    prim.material
+                );
             }
         }
 

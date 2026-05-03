@@ -838,7 +838,7 @@ namespace OWC::Graphics
 			.setDescriptorBindingVariableDescriptorCount(vk::True)
 			.setShaderSampledImageArrayNonUniformIndexing(vk::True)
 			.setShaderStorageBufferArrayNonUniformIndexing(vk::True)
-		.setShaderUniformBufferArrayNonUniformIndexing(vk::True);
+			.setShaderUniformBufferArrayNonUniformIndexing(vk::True);
 
 		vk::PhysicalDeviceShaderDrawParameterFeatures shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParameterFeatures()
 			.setPNext(&descriptorIndexingFeature)
@@ -859,7 +859,8 @@ namespace OWC::Graphics
 				.setSampleRateShading(vk::True)
 				.setFillModeNonSolid(vk::True)
 				.setWideLines(vk::True)
-				.setPipelineStatisticsQuery(vk::True));
+				.setPipelineStatisticsQuery(vk::True)
+				.setShaderInt64(vk::True));
 
 		VulkanCore::GetInstance().SetDevice(
 			VulkanCore::GetConstInstance().GetPhysicalDev().createDevice(

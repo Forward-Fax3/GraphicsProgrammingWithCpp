@@ -347,6 +347,8 @@ namespace OWC::Graphics
 		const auto& device = vkCore.GetDevice();
 		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
 
+		const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
+
 		const auto createInfo = vk::ImageCreateInfo()
 			.setImageType(vk::ImageType::e2D)
 			.setFormat(vk::Format::eR32G32B32A32Sfloat)
@@ -358,9 +360,10 @@ namespace OWC::Graphics
 			.setArrayLayers(1)
 			.setSamples(vk::SampleCountFlagBits::e1)
 			.setTiling(vk::ImageTiling::eOptimal)
-			.setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
+			.setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage)
 			.setSharingMode(vk::SharingMode::eConcurrent)
-			.setInitialLayout(vk::ImageLayout::eUndefined);
+			.setInitialLayout(vk::ImageLayout::eUndefined)
+			.setQueueFamilyIndices(queueIndices);
 
 		constexpr auto vmaCreateInfo = vma::AllocationCreateInfo()
 			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
