@@ -39,12 +39,14 @@ namespace OWC
         void SetupPipeline();
 
     private: // attributes
-        std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
-        std::shared_ptr<Graphics::RenderPassData> m_renderPass = nullptr;
+        std::unique_ptr<Graphics::BaseShader> m_RayTracingShader = nullptr;
+        std::unique_ptr<Graphics::BaseShader> m_DisplayShader = nullptr;
+        std::shared_ptr<Graphics::RenderPassData> m_RayTracingRenderPass = nullptr;
+        std::shared_ptr<Graphics::RenderPassData> m_DisplayRenderPass = nullptr;
         std::shared_ptr<Graphics::UniformBuffer> m_UniformBuffer = nullptr;
         std::shared_ptr<Graphics::TextureBuffer> m_RenderTarget = nullptr;
         std::shared_ptr<InterLayerData> m_ILD = nullptr;
-        //uSize framesUpdated = 0;
+        uSize framesUpdated = 0;
 
         std::shared_ptr<BaseGPUScene> m_Scene = nullptr;
     };

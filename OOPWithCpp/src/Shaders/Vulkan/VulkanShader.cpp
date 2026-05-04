@@ -656,22 +656,22 @@ namespace OWC::Graphics
 		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data() + hitOffset, handleSize, hitOffset);
 
 		m_RayGenShaderSBTEntry
-			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + raygenOffset)
+			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + raygenOffset)
 			.setSize(raygenSize)
 			.setStride(raygenSize);
 
 		m_HitGroupSBTEntry
-			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + hitOffset)
+			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + hitOffset)
 			.setSize(hitSize)
 			.setStride(hitSize);
 
 		m_MissGroupSBTEntry
-			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + missOffset)
+			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + missOffset)
 			.setSize(missSize)
 			.setStride(missSize);
 
 		m_CallableGroupSBTEntry
-			.setAddress(m_SBTBuffer->GetBufferDeviceAddress() + callableOffset)
+			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + callableOffset)
 			.setSize(callableSize)
 			.setStride(callableSize);
 	}

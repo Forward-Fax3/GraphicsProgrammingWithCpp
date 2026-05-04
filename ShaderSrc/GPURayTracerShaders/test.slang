@@ -22,13 +22,13 @@ struct PushConstantData
 {
     GeneralData* generalData;
     uint64_t mainBufferData;
+    uint64_t geomertyData;
 }
 
 [[push_constant]] ConstantBuffer<PushConstantData> PC;
 
 uniform RWTexture2D<float4> resultTexture;
 uniform RaytracingAccelerationStructure sceneBVH;
-uniform StructuredBuffer<GeometryDescriptor> geometries;
 
 [shader("raygeneration")]
 void rayGenShader()
@@ -110,7 +110,9 @@ void closestHitShader(inout RayPayload payload, in BuiltInTriangleIntersectionAt
     uint geomertyIndex = GeometryIndex();
     uint primitiveIndex = PrimitiveIndex();
 
-    GeometryDescriptor geometry = geometries[instanceID + geomertyIndex];
+    GeometryDescriptor *geometry = reinterpret<GeometryDescriptor *>(
+        PC.geomertyData + sizeof(GeometryDescriptor) * (instanceID + geomertyIndex)
+    );
 
     uint3 attributeIndex = reinterpret<uint3*>(PC.mainBufferData + geometry.indicesOffset)[primitiveIndex * 3];
 

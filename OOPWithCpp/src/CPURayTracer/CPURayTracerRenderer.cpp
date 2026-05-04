@@ -25,7 +25,7 @@ namespace OWC
 	{
 		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(UniformBufferObject));
 		m_Image = Graphics::DynamicTextureBuffer::CreateDynamicTextureBuffer(1, 1);
-		std::vector<Vec4> emptyImageData = { Vec4(0.0f) };
+		const std::vector emptyImageData = { Vec4(0.0f) };
 		m_Image->UpdateBufferData(emptyImageData);
 		SetupPipeline();
 		SetupRenderPass();
@@ -77,11 +77,10 @@ namespace OWC
 			framesUpdated++;
 		}
 
-		Renderer::RestartRenderPass(m_renderPass);
 		Renderer::SubmitRenderPass(m_renderPass, waitSemaphoreNames, {});
 	}
 
-	void CPURayTracerRenderer::OnEvent(class BaseEvent& e)
+	void CPURayTracerRenderer::OnEvent(BaseEvent& e)
 	{
 		EventDispatcher dispatcher(e);
 
@@ -123,7 +122,7 @@ namespace OWC
 	{
 		using namespace OWC::Graphics;
 
-		std::vector<BindingDescription> fragmentBindingDiscriptions = {
+		std::vector<BindingDescription> fragmentBindingDescriptions = {
 			{
 				.descriptorCount = 1,
 				.binding = 0,
@@ -152,7 +151,7 @@ namespace OWC
 				.bytecode = shaderSrc,
 				.type = ShaderType::Fragment,
 				.language = ShaderData::ShaderLanguage::SPIRV,
-				.descriptorType = fragmentBindingDiscriptions,
+				.descriptorType = fragmentBindingDescriptions,
 				.entryPoint = "fragmentMain"
 			}
 		};

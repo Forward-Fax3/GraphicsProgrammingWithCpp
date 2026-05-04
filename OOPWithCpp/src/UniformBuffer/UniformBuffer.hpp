@@ -72,6 +72,8 @@ namespace OWC::Graphics
 			UpdateBufferDataImpl(data, count, offset);
 		}
 
+		virtual uSize GetDeviceBufferPtr() const = 0;
+
 		static std::shared_ptr<GeneralBuffer> CreateGeneralBuffer(uSize size);
 	};
 

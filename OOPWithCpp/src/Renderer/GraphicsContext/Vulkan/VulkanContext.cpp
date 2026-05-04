@@ -171,6 +171,7 @@ PFN_vkCreateAccelerationStructureKHR pfnVkCreateAccelerationStructureKHR;
 PFN_vkCmdBuildAccelerationStructuresKHR pfnVkCmdBuildAccelerationStructureKHR;
 PFN_vkDestroyAccelerationStructureKHR pfnVkDestroyAccelerationStructureKHR;
 PFN_vkGetRayTracingShaderGroupHandlesKHR pfnVkGetRayTracingShaderGroupHandlesKHR;
+PFN_vkCmdTraceRaysKHR pfnVkCmdTraceRaysKHR;
 
 VKAPI_ATTR VkResult VKAPI_CALL vkCreateRayTracingPipelinesKHR(
 	VkDevice device,
@@ -229,6 +230,19 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetRayTracingShaderGroupHandlesKHR(
 	void* pData)
 {
 	return pfnVkGetRayTracingShaderGroupHandlesKHR(device, pipeline, firstGroup, groupCount, dataSize, pData);
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdTraceRaysKHR(
+	VkCommandBuffer commandBuffer,
+	const VkStridedDeviceAddressRegionKHR* pRaygenShaderBindingTable,
+	const VkStridedDeviceAddressRegionKHR* pMissShaderBindingTable,
+	const VkStridedDeviceAddressRegionKHR* pHitShaderBindingTable,
+	const VkStridedDeviceAddressRegionKHR* pCallableShaderBindingTable,
+	uint32_t width,
+	uint32_t height,
+	uint32_t depth)
+{
+	pfnVkCmdTraceRaysKHR(commandBuffer, pRaygenShaderBindingTable, pMissShaderBindingTable, pHitShaderBindingTable, pCallableShaderBindingTable, width, height, depth);
 }
 
 namespace OWC::Graphics
@@ -532,6 +546,7 @@ namespace OWC::Graphics
 		pfnVkCmdBuildAccelerationStructureKHR = std::bit_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdBuildAccelerationStructuresKHR"));
 		pfnVkDestroyAccelerationStructureKHR = std::bit_cast<PFN_vkDestroyAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyAccelerationStructureKHR"));
 		pfnVkGetRayTracingShaderGroupHandlesKHR = std::bit_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetRayTracingShaderGroupHandlesKHR"));
+		pfnVkCmdTraceRaysKHR = std::bit_cast<PFN_vkCmdTraceRaysKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdTraceRaysKHR"));
 	}
 
 #ifndef DIST

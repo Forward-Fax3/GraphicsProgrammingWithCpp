@@ -25,6 +25,8 @@ namespace OWC
         SponzaPalace& operator=(SponzaPalace&&) noexcept = delete;
 
         std::shared_ptr<BaseTLAS>& GetTLAS() override { return m_TLAS; }
+        uSize GetDeviceMegaBufferPtr() const override { return m_GPUBuffer->GetDeviceBufferPtr(); }
+        uSize GetDeviceGeometryBufferPtr() const override { return m_GPUBuffer->GetDeviceBufferPtr() + m_GeometryBufferOffset; }
 
     private:
         void IterateThroughNodes(const tg3_model& model, u32 nodeIndex, Mat4 parentTransform, i32& customInstancesIndex);
@@ -35,5 +37,6 @@ namespace OWC
         std::shared_ptr<BaseTLAS> m_TLAS;
         std::shared_ptr<Graphics::GeneralBuffer> m_GPUBuffer;
         std::vector<GPUGLTFData> m_GPUData;
+        uSize m_GeometryBufferOffset = 0;
     };
 }// OWC

@@ -86,10 +86,16 @@ namespace OWC
             .setDstAccelerationStructure(m_TLAS);
 
         auto cmd = vkCore.GetSingleTimeComputeCommandBuffer();
+        constexpr auto barrierData = vk::MemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
+            .setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR)
+            .setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
 
         const auto buildRangesPtr = &accelerationStructureBuildRangeInfo;
         cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         cmd.buildAccelerationStructuresKHR(1, &buildInfo, &buildRangesPtr);
+        cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierData));
         cmd.end();
 
         auto fence = device.createFence(vk::FenceCreateInfo());

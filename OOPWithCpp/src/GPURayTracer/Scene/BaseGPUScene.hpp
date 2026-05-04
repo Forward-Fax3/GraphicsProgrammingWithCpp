@@ -19,5 +19,7 @@ namespace OWC
         BaseGPUScene& operator=(BaseGPUScene&&) noexcept = delete;
 
         virtual std::shared_ptr<BaseTLAS>& GetTLAS() = 0;
+        virtual uSize GetDeviceMegaBufferPtr() const = 0;
+        virtual uSize GetDeviceGeometryBufferPtr() const = 0;
     };
 }

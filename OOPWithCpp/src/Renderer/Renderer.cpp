@@ -36,6 +36,28 @@ namespace OWC::Graphics
 		}
 	}
 
+	std::shared_ptr<RenderPassData> Renderer::GetDynamicRayTracingPass()
+	{
+		switch (s_API) // Switch statement for future APIs
+		{
+		case OWC::Graphics::RendererAPI::Vulkan:
+			return std::make_shared<VulkanRenderPass>(RenderPassType::DynamicRayTracing);
+		default:
+			return nullptr;
+		}
+	}
+
+	std::shared_ptr<RenderPassData> Renderer::GetStaticRayTracingPass()
+	{
+		switch (s_API) // Switch statement for future APIs
+		{
+		case OWC::Graphics::RendererAPI::Vulkan:
+			return std::make_shared<VulkanRenderPass>(RenderPassType::StaticRayTracing);
+		default:
+			return nullptr;
+		}
+	}
+
 	std::shared_ptr<RenderPassData> Renderer::BeginPass()
 	{
 		switch (s_API) // Switch statement for future APIs
@@ -45,6 +67,12 @@ namespace OWC::Graphics
 		default:
 			return nullptr;
 		}
+	}
+
+	void Renderer::PushConstant(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader, uSize size,
+		const void* dataPtr)
+	{
+		data->PushConstant(shader, size, dataPtr);
 	}
 
 	void Renderer::BeginDynamicPass(const std::shared_ptr<RenderPassData>& data)
@@ -60,6 +88,11 @@ namespace OWC::Graphics
 	void Renderer::Draw(const std::shared_ptr<RenderPassData>& data, u32 vertexCount, u32 instanceCount /*= 1*/, u32 firstVertex /*= 0*/, u32 firstInstance /*= 0*/)
 	{
 		data->Draw(vertexCount, instanceCount, firstVertex, firstInstance);
+	}
+
+	void Renderer::RayTrace(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader, u32 depth)
+	{
+		data->RayTrace(shader, depth);
 	}
 
 	void Renderer::PipelineBind(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader)

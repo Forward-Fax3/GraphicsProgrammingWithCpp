@@ -54,9 +54,10 @@ namespace OWC
             numberOfGPUGLTFDatas += m_Model.meshes[i].primitives_count;
 
         m_GPUData.reserve(numberOfGPUGLTFDatas);
+        m_GeometryBufferOffset = numberOfGPUGLTFDatas * sizeof(GPUGLTFData);
 
         const auto bufferSize = m_Model.buffers[0].data.count;
-        const auto totalBufferSize = bufferSize + numberOfGPUGLTFDatas * sizeof(GPUGLTFData);
+        const auto totalBufferSize = bufferSize + m_GeometryBufferOffset;
         m_GPUBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(totalBufferSize);
         m_GPUBuffer->UpdateBufferData(std::bit_cast<const u8*>(m_Model.buffers[0].data.data), bufferSize);
 
@@ -69,7 +70,7 @@ namespace OWC
 
         m_TLAS->CreateTLAS();
 
-        m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GPUData.size() * sizeof(GPUGLTFData), bufferSize);
+        m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GeometryBufferOffset, bufferSize);
 
         tg3_error_stack_free(&errorStack);
     }

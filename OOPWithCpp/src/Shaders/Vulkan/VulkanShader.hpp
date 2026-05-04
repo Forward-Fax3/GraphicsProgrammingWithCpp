@@ -87,10 +87,10 @@ namespace OWC::Graphics
 		VulkanRayTracingShader(VulkanRayTracingShader&&) noexcept = delete;
 		VulkanRayTracingShader& operator=(VulkanRayTracingShader&&) noexcept = delete;
 
-		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetRayGenShaderSBTEntry() const { return m_RayGenShaderSBTEntry; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetHitGroupSBTEntry() const { return m_HitGroupSBTEntry; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetMissGroupSBTEntry() const { return m_MissGroupSBTEntry; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRangeKHR& GetCallableGroupSBTEntry() const { return m_CallableGroupSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRegionKHR& GetRayGenShaderSBTEntry() const { return m_RayGenShaderSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRegionKHR& GetHitGroupSBTEntry() const { return m_HitGroupSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRegionKHR& GetMissGroupSBTEntry() const { return m_MissGroupSBTEntry; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::StridedDeviceAddressRegionKHR& GetCallableGroupSBTEntry() const { return m_CallableGroupSBTEntry; }
 
 		void BindTLAS(u32 binding, const std::shared_ptr<BaseTLAS>& tlasBuffer) override;
 
@@ -99,10 +99,10 @@ namespace OWC::Graphics
 		void CreateShaderBindingTable(u32 numberOfShaders);
 
 	private:
-		vk::StridedDeviceAddressRangeKHR m_RayGenShaderSBTEntry = {};
-		vk::StridedDeviceAddressRangeKHR m_HitGroupSBTEntry = {};
-		vk::StridedDeviceAddressRangeKHR m_MissGroupSBTEntry = {};
-		vk::StridedDeviceAddressRangeKHR m_CallableGroupSBTEntry = {}; // This won't be implemented yet
+		vk::StridedDeviceAddressRegionKHR m_RayGenShaderSBTEntry = {};
+		vk::StridedDeviceAddressRegionKHR m_HitGroupSBTEntry = {};
+		vk::StridedDeviceAddressRegionKHR m_MissGroupSBTEntry = {};
+		vk::StridedDeviceAddressRegionKHR m_CallableGroupSBTEntry = {}; // This won't be implemented yet
 		std::unique_ptr<VulkanGeneralBuffer> m_SBTBuffer;
 		std::vector<u8> m_ShaderHandles;
 	};

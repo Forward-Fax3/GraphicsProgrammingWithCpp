@@ -108,6 +108,8 @@ namespace OWC::Graphics
 		[[nodiscard]] uSize GetBufferSize() const { return static_cast<uSize>(VulkanCore::GetConstInstance().GetDevice().getBufferMemoryRequirements(m_Buffer).size); }
 		[[nodiscard]] vk::DeviceAddress GetBufferDeviceAddress() const { return m_BufferDeviceAddress; }
 
+		[[nodiscard]] uSize GetDeviceBufferPtr() const override { return m_BufferDeviceAddress; }
+
 	private:
 		vk::Buffer m_Buffer = vk::Buffer();
 		vk::DeviceAddress m_BufferDeviceAddress = vk::DeviceAddress();
