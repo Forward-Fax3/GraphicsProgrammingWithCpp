@@ -81,6 +81,7 @@ namespace OWC::Graphics
 	{
 	public:
 		explicit VulkanRayTracingShader(const std::span<ShaderData>& shaderDatas);
+		~VulkanRayTracingShader() override;
 
 		VulkanRayTracingShader(VulkanRayTracingShader&) = delete;
 		VulkanRayTracingShader& operator=(VulkanRayTracingShader&) = delete;
@@ -96,14 +97,16 @@ namespace OWC::Graphics
 
 	private:
 		void CreateVulkanRayTracingPipeline(const std::span<VulkanShaderData>& vulkanShaderDatas, const std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
-		void CreateShaderBindingTable(u32 numberOfShaders);
+		void CreateShaderBindingTable(u32 numberOfGroups);
 
 	private:
 		vk::StridedDeviceAddressRegionKHR m_RayGenShaderSBTEntry = {};
 		vk::StridedDeviceAddressRegionKHR m_HitGroupSBTEntry = {};
 		vk::StridedDeviceAddressRegionKHR m_MissGroupSBTEntry = {};
 		vk::StridedDeviceAddressRegionKHR m_CallableGroupSBTEntry = {}; // This won't be implemented yet
-		std::unique_ptr<VulkanGeneralBuffer> m_SBTBuffer;
+		vk::Buffer m_SBTBuffer;
+		vma::Allocation m_SBTBufferAllocation;
 		std::vector<u8> m_ShaderHandles;
+		u32 m_ShaderGroupCount = 0;
 	};
 }

@@ -109,7 +109,9 @@ namespace OWC
 		if (!m_IsMinimized)
 		{
 			Renderer::BeginDynamicPass(m_RenderPassData);
+			Renderer::BeginRasterPass(m_RenderPassData);
 			Renderer::DrawImGui(m_RenderPassData, drawData);
+			Renderer::EndRasterPass(m_RenderPassData);
 			Renderer::EndPass(m_RenderPassData);
 			Renderer::SubmitRenderPass(m_RenderPassData, {}, {});
 		}

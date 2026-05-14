@@ -186,10 +186,18 @@ namespace OWC::Graphics
 	void VulkanTextureBuffer::UpdateBufferData(const std::vector<Vec4>& data)
 	{
 		const auto& vkCore = VulkanCore::GetInstance();
+		const auto& device = vkCore.GetDevice();
 		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
 
 		// Create staging buffer
 		const vk::DeviceSize imageSize = static_cast<uSize>(m_Width) * static_cast<uSize>(m_Height) * sizeof(Vec4);
+
+		if (data.size() * sizeof(Vec4) != imageSize)
+		{
+			Log<LogLevel::Error>("Data size does not match texture size in VulkanTextureBuffer::UpdateBufferData");
+			return;
+		}
+
 		const auto bufferInfo = vk::BufferCreateInfo()
 			.setSize(imageSize)
 			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
@@ -197,10 +205,17 @@ namespace OWC::Graphics
 
 		constexpr auto allocCreateInfo = vma::AllocationCreateInfo()
 			.setUsage(vma::MemoryUsage::eAutoPreferHost)
-			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite); // explicit
+			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
 
 		vma::AllocationInfo stagingBufferAllocationInfo;
 		const auto [allocation, stagingBuffer] = allocator.createBuffer(bufferInfo, allocCreateInfo, stagingBufferAllocationInfo);
+
+		if (stagingBufferAllocationInfo.pMappedData == nullptr || stagingBufferAllocationInfo.size != imageSize)
+		{
+			Log<LogLevel::Error>("Failed to map staging buffer memory in VulkanTextureBuffer::UpdateBufferData");
+			allocator.destroyBuffer(stagingBuffer, allocation);
+			return;
+		}
 
 		std::memcpy(stagingBufferAllocationInfo.pMappedData, data.data(), imageSize);
 
@@ -210,12 +225,12 @@ namespace OWC::Graphics
 
 		const std::array imageMemoryBarrierBegin = {
 			vk::ImageMemoryBarrier2()
-				.setSrcStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
+				.setSrcStageMask(GetCurrentPipelineStageFlags())
 				.setDstStageMask(vk::PipelineStageFlagBits2::eTransfer)
-				.setSrcAccessMask(vk::AccessFlagBits2::eNone)
+				.setSrcAccessMask(GetCurrentAccessFlags())
 				.setDstAccessMask(vk::AccessFlagBits2::eTransferWrite)
-				.setOldLayout(vk::ImageLayout::eUndefined)
-				.setNewLayout(vk::ImageLayout::eTransferDstOptimal)
+				.setOldLayout(GetCurrentLayout())
+				.setNewLayout(vk::ImageLayout::eGeneral)
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_TextureImage)
@@ -235,7 +250,7 @@ namespace OWC::Graphics
 		cmdTransBuf.copyBufferToImage(
 			stagingBuffer,
 			m_TextureImage,
-			vk::ImageLayout::eTransferDstOptimal,
+			vk::ImageLayout::eGeneral,
 			vk::BufferImageCopy()
 				.setBufferOffset(0)
 				.setBufferRowLength(0)
@@ -250,18 +265,17 @@ namespace OWC::Graphics
 					m_Width,
 					m_Height,
 					1
-				}
-			)
-		);
+				})
+			);
 
 		const std::array imageMemoryBarrierEnd = {
 			vk::ImageMemoryBarrier2()
 				.setSrcStageMask(vk::PipelineStageFlagBits2::eTransfer)
-				.setDstStageMask(vk::PipelineStageFlagBits2::eNone)
+				.setDstStageMask(vk::PipelineStageFlagBits2::eTopOfPipe)
 				.setSrcAccessMask(vk::AccessFlagBits2::eTransferWrite)
 				.setDstAccessMask(vk::AccessFlagBits2::eNone)
-				.setOldLayout(vk::ImageLayout::eTransferDstOptimal)
-				.setNewLayout(vk::ImageLayout::eShaderReadOnlyOptimal)
+				.setOldLayout(vk::ImageLayout::eGeneral)
+				.setNewLayout(vk::ImageLayout::eGeneral)
 				.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 				.setImage(m_TextureImage)
@@ -278,21 +292,36 @@ namespace OWC::Graphics
 			.setImageMemoryBarriers(imageMemoryBarrierEnd)
 		);
 
+		SetCurrentAccessFlags(vk::AccessFlagBits2::eTransferWrite);
+		SetCurrentImageLayout(vk::ImageLayout::eGeneral);
+		SetCurrentPipelineStageFlags(vk::PipelineStageFlagBits2::eTransfer);
+
 		cmdTransBuf.end();
 
-		auto semaphore = vkCore.GetSingleSemaphore();
+		//auto semaphore = vkCore.GetSingleSemaphore();
 
 		const auto cmdTransferSubmitInfo = vk::CommandBufferSubmitInfo()
 			.setCommandBuffer(cmdTransBuf);
-		const auto semaphoreTransferInfo = vk::SemaphoreSubmitInfo()
-			.setSemaphore(semaphore)
+
+		/*
+		const auto signalSemaphoreTransferInfo = vk::SemaphoreSubmitInfo()
+			//.setSemaphore(semaphore)
 			.setStageMask(vk::PipelineStageFlagBits2::eAllTransfer);
+		*/
+
+		auto fence = device.createFence(vk::FenceCreateInfo());
 
 		const auto submitTransferInfo = vk::SubmitInfo2()
-			.setCommandBufferInfos(cmdTransferSubmitInfo)
-			.setSignalSemaphoreInfos(semaphoreTransferInfo);
-		vkCore.GetTransferQueue().submit2(submitTransferInfo);
+			.setCommandBufferInfos(cmdTransferSubmitInfo);
+			//.setSignalSemaphoreInfos(signalSemaphoreTransferInfo);
+		vkCore.GetTransferQueue().submit2(submitTransferInfo, fence);
 
+		if (device.waitForFences(fence, VK_TRUE, UINT64_MAX) != vk::Result::eSuccess)
+			Log<LogLevel::Critical>("Failed to wait for transfer finished fence");
+
+		device.destroyFence(fence);
+
+		/*
 		const auto cmdGraphicsBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
 		cmdGraphicsBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 		const std::array graphicsImageBuffer = {
@@ -327,14 +356,15 @@ namespace OWC::Graphics
 			.setCommandBufferInfos(cmdInfo)
 			.setWaitSemaphoreInfos(semaphoreInfo);
 		vkCore.GetGraphicsQueue().submit2(submitGraphicsInfo);
+		*/
 
-		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([&vkCore, &allocator, cmdTransBuf, cmdGraphicsBuf, semaphore, stagingBuffer, allocation]() -> void
+		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([&vkCore, &allocator, cmdTransBuf, /*cmdGraphicsBuf, semaphore,*/ stagingBuffer, allocation]() -> void
 		{
 			const auto& device = vkCore.GetDevice();
 
 			device.freeCommandBuffers(vkCore.GetTransferCommandPool(), cmdTransBuf);
-			device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), cmdGraphicsBuf);
-			device.destroySemaphore(semaphore);
+			//device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), cmdGraphicsBuf);
+			//device.destroySemaphore(semaphore);
 
 			// Clean up staging buffer
 			allocator.destroyBuffer(stagingBuffer, allocation);
@@ -403,6 +433,10 @@ namespace OWC::Graphics
 			.setMipLodBias(0.0f)
 			.setMinLod(0.0f)
 			.setMaxLod(0.0f));
+
+		SetCurrentAccessFlags(vk::AccessFlagBits2::eNone);
+		SetCurrentImageLayout(vk::ImageLayout::eUndefined);
+		SetCurrentPipelineStageFlags(vk::PipelineStageFlagBits2::eTopOfPipe);
 	}
 
 	//--------------------------------------------------------
@@ -750,7 +784,7 @@ namespace OWC::Graphics
 
 		const auto copyBufferSize = vk::BufferCopy2()
 				.setSrcOffset(0)
-				.setDstOffset(0)
+				.setDstOffset(offset)
 				.setSize(bufferSize);
 
 		const auto copyBufferInfo = vk::CopyBufferInfo2()

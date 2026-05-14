@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core.hpp"
 #include "Log.hpp"
 #include "Renderer.hpp"
 #include "VulkanRenderPass.hpp"
@@ -14,6 +15,15 @@
 #include <map>
 #include <ranges>
 
+
+namespace OWC
+{
+	template <typename T, typename U>
+	[[nodiscard]] constexpr bool testBitMask(T value, U bitMask) requires (std::is_same_v<T, vk::Flags<U>> && !std::is_same_v<T, U>)
+	{
+		return (value & bitMask) == bitMask;
+	}
+}
 
 namespace OWC::Graphics
 {
@@ -132,6 +142,8 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<std::list<std::function<void()>>>& GetEndOfFrameCleanUp() { return m_EndOfFrameCleanUp; }
 		[[nodiscard]] OWC_FORCE_INLINE std::pair<std::reference_wrapper<std::vector<std::shared_ptr<VulkanRenderPass>>>, std::unique_lock<std::mutex>> GetRenderPassDatas() { return { std::ref(m_RenderPassDatas), std::unique_lock(m_RenderPassesMutex) }; }
 
+		[[nodiscard]] OWC_FORCE_INLINE vk::Semaphore GetLastFrameFinishedSemaphore() const { return m_LastFrameWaitSemaphore; }
+
 		OWC_FORCE_INLINE void SetInstance(const vk::Instance& instance) { m_Instance = instance; }
 		OWC_FORCE_INLINE void SetSurface(const vk::SurfaceKHR& surface) { m_Surface = surface; }
 		OWC_FORCE_INLINE void SetPhysicalDevice(const vk::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
@@ -154,6 +166,8 @@ namespace OWC::Graphics
 		OWC_FORCE_INLINE void SetCurrentFrameIndex(uSize newIndex) { m_CurrentFrameIndex = newIndex; }
 		OWC_FORCE_INLINE void SetVulkanMemoryAllocator(const vma::Allocator& allocator) { m_Allocator = allocator; }
 		OWC_FORCE_INLINE void AddVulkanEndOfFrameCleanUpFunction(std::function<void()> func) { m_EndOfFrameCleanUp[m_CurrentFrameIndex].emplace_back(std::move(func)); }
+
+		OWC_FORCE_INLINE void SetLastFrameWaitSemaphore(const vk::Semaphore semaphore) { m_LastFrameWaitSemaphore = semaphore; }
 
 		OWC_FORCE_INLINE void SetRTPhysicalDeviceProperties(const vk::PhysicalDeviceRayTracingPipelinePropertiesKHR& rayTracingPipelineProperties, const vk::PhysicalDeviceAccelerationStructurePropertiesKHR& accelerationStructureProperties)
 		{
@@ -240,6 +254,8 @@ namespace OWC::Graphics
 		u32 m_TransferQueueFamilyIndex = 0;
 		u32 m_PresentQueueFamilyIndex = 0;
 		std::vector<u32> m_UniqueQueueFamilyIndices{};
+
+		vk::Semaphore m_LastFrameWaitSemaphore = vk::Semaphore();
 
 		static std::unique_ptr<VulkanCore> s_Instance;
 	};

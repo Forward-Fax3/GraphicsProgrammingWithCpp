@@ -12,6 +12,10 @@
 
 #include "glm/gtc/type_ptr.hpp"
 
+#include <algorithm>
+#include <cstring>
+
+
 #define DEFAULT_TRIANGLES static_cast<u32>(-1)
 
 
@@ -23,6 +27,8 @@ namespace OWC
         using namespace OWC::Graphics;
 		const auto& vkCore = VulkanCore::GetConstInstance();
         const auto& device = vkCore.GetDevice();
+        const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+        const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
 
         const tg3_mesh& mesh = model.meshes[meshIndex];
 
@@ -47,6 +53,91 @@ namespace OWC
             return {};
         };
 
+        auto computeMaxIndex = [&model](const tg3_accessor& indexAccessor, const u32 fallbackMaxVertex) -> u32
+        {
+            if (indexAccessor.buffer_view < 0)
+            {
+                return fallbackMaxVertex;
+            }
+
+            const tg3_buffer_view& bufferView = model.buffer_views[indexAccessor.buffer_view];
+            if (bufferView.buffer < 0)
+            {
+                return fallbackMaxVertex;
+            }
+
+            const tg3_buffer& buffer = model.buffers[bufferView.buffer];
+            if (!buffer.data.data || buffer.data.count == 0)
+            {
+                return fallbackMaxVertex;
+            }
+
+            const uint64_t baseOffset = bufferView.byte_offset + indexAccessor.byte_offset;
+            uint32_t componentSize = 0;
+            switch (indexAccessor.component_type)
+            {
+                case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
+                    componentSize = sizeof(uint8_t);
+                    break;
+                case TG3_COMPONENT_TYPE_UNSIGNED_SHORT:
+                    componentSize = sizeof(uint16_t);
+                    break;
+                case TG3_COMPONENT_TYPE_UNSIGNED_INT:
+                    componentSize = sizeof(uint32_t);
+                    break;
+                default:
+                    return fallbackMaxVertex;
+            }
+
+            const uint64_t stride = bufferView.byte_stride ? bufferView.byte_stride : componentSize;
+            if (indexAccessor.count == 0)
+            {
+                return fallbackMaxVertex;
+            }
+
+            const uint64_t lastOffset = baseOffset + stride * (indexAccessor.count - 1);
+            if (baseOffset >= buffer.data.count || lastOffset + componentSize > buffer.data.count)
+            {
+                return fallbackMaxVertex;
+            }
+
+            u32 maxIndex = 0;
+            for (uint64_t i = 0; i < indexAccessor.count; i++)
+            {
+                const uint8_t* ptr = buffer.data.data + baseOffset + stride * i;
+                u32 value = 0;
+                switch (indexAccessor.component_type)
+                {
+                    case TG3_COMPONENT_TYPE_UNSIGNED_BYTE:
+                    {
+                        uint8_t v = 0;
+                        std::memcpy(&v, ptr, sizeof(uint8_t));
+                        value = static_cast<u32>(v);
+                        break;
+                    }
+                    case TG3_COMPONENT_TYPE_UNSIGNED_SHORT:
+                    {
+                        uint16_t v = 0;
+                        std::memcpy(&v, ptr, sizeof(uint16_t));
+                        value = static_cast<u32>(v);
+                        break;
+                    }
+                    case TG3_COMPONENT_TYPE_UNSIGNED_INT:
+                    {
+                        uint32_t v = 0;
+                        std::memcpy(&v, ptr, sizeof(uint32_t));
+                        value = v;
+                        break;
+                    }
+                    default:
+                        break;
+                }
+                maxIndex = std::max(maxIndex, value);
+            }
+
+            return maxIndex;
+        };
+
         // nVidia vk_raytracing_tutorial helper func
         auto alignUp = [](auto value, size_t alignment) noexcept { return ((value + alignment - 1) & ~(alignment - 1)); };
 
@@ -61,67 +152,73 @@ namespace OWC
         std::vector<vk::AccelerationStructureGeometryKHR> geometries;
         std::vector<u32> primitiveCount;
         std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges;
+        std::vector<vk::AccelerationStructureGeometryTrianglesDataKHR> triangles;
 
         geometries.reserve(mesh.primitives_count);
         primitiveCount.reserve(mesh.primitives_count);
         buildRanges.reserve(mesh.primitives_count);
+        triangles.reserve(mesh.primitives_count);
 
+        for (u32 i = 0; i < mesh.primitives_count; i++)
         {
-            std::vector<vk::AccelerationStructureGeometryTrianglesDataKHR> triangles;
-            triangles.reserve(mesh.primitives_count);
+            const tg3_primitive& prim = mesh.primitives[i];
 
-            for (u32 i = 0; i < mesh.primitives_count; i++)
+            if (prim.mode != TG3_MODE_TRIANGLES && prim.mode != DEFAULT_TRIANGLES)
             {
-                const tg3_primitive& prim = mesh.primitives[i];
-
-                if (prim.mode != TG3_MODE_TRIANGLES && prim.mode != DEFAULT_TRIANGLES)
-                {
-                    Log<LogLevel::Error>("Mesh primitive {} in mesh {} is not in triangle mode, which is required for ray tracing. Skipping this primitive.", i, meshIndex);
-                    continue;
-                }
-                if (prim.indices == -1)
-                {
-                    Log<LogLevel::Warn>("Mesh primitive {} in mesh {} does not have an index accessor, which is required for ray tracing. Skipping this primitive.", i, meshIndex);
-                    continue;
-                }
-
-                AttributeData positionData = extractAttribute(prim, "POSITION");
-
-                auto& accessor = model.accessors[prim.indices];
-                auto& bufferView = model.buffer_views[accessor.buffer_view];
-                AttributeData indexData = {
-                    .offset = static_cast<u32>(bufferView.byte_offset + accessor.byte_offset),
-                    .count = static_cast<u32>(accessor.count),
-                    .byteStride = (bufferView.byte_stride ? static_cast<u32>(bufferView.byte_stride) : 0 /* FIXME: 0 for now */),
-                    .bufferIndex = static_cast<u32>(bufferView.buffer),
-                    .hasData = true
-                };
-
-                primitiveCount.emplace_back(positionData.count / 3);
-                buildRanges.emplace_back(positionData.count / 3, positionData.offset, 0, 0);
-
-                triangles.emplace_back(
-                    vk::Format::eR32G32B32Sfloat,
-                    vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + positionData.offset),
-                    positionData.byteStride,
-                    positionData.count,
-                    accessor.component_type == TG3_COMPONENT_TYPE_UNSIGNED_SHORT ? vk::IndexType::eUint16 : vk::IndexType::eUint32,
-                    vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + indexData.offset)
-                );
-
-                auto normalData = extractAttribute(prim, "NORMAL");
-                auto colourData = extractAttribute(prim, "COLOR_0");
-                /*
-                auto texCoordsdata = extractAttribute(prim, "TEXCOORD_0");
-                auto Tangentsdata = extractAttribute(prim, "TANGENT");*/
-                GPUData.emplace_back(
-                    positionData.offset,
-                    indexData.offset,
-                    normalData.hasData ? normalData.offset : ~0,
-                    colourData.hasData ? colourData.offset : ~0,
-                    prim.material
-                );
+                Log<LogLevel::Error>("Mesh primitive {} in mesh {} is not in triangle mode, which is required for ray tracing. Skipping this primitive.", i, meshIndex);
+                continue;
             }
+            if (prim.indices == -1)
+            {
+                Log<LogLevel::Warn>("Mesh primitive {} in mesh {} does not have an index accessor, which is required for ray tracing. Skipping this primitive.", i, meshIndex);
+                continue;
+            }
+
+            AttributeData positionData = extractAttribute(prim, "POSITION");
+
+            auto& accessor = model.accessors[prim.indices];
+            auto& bufferView = model.buffer_views[accessor.buffer_view];
+            AttributeData indexData = {
+                .offset = static_cast<u32>(bufferView.byte_offset + accessor.byte_offset),
+                .count = static_cast<u32>(accessor.count),
+                .byteStride = (bufferView.byte_stride ? static_cast<u32>(bufferView.byte_stride) : 0 /* FIXME: 0 for now */),
+                .bufferIndex = static_cast<u32>(bufferView.buffer),
+                .hasData = true
+            };
+
+            const u32 fallbackMaxVertex = positionData.count > 0 ? positionData.count - 1 : 0;
+            const u32 maxIndex = computeMaxIndex(accessor, fallbackMaxVertex);
+
+            triangles.emplace_back(
+                vk::Format::eR32G32B32Sfloat,
+                vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + positionData.offset),
+                positionData.byteStride,
+                maxIndex,
+                accessor.component_type == TG3_COMPONENT_TYPE_UNSIGNED_SHORT ? vk::IndexType::eUint16 : vk::IndexType::eUint32,
+                vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + indexData.offset)
+            );
+
+            geometries.emplace_back(
+                vk::GeometryTypeKHR::eTriangles,
+                vk::AccelerationStructureGeometryDataKHR()
+                    .setTriangles(triangles.back())
+            );
+
+            primitiveCount.emplace_back(indexData.count / 3);
+            buildRanges.emplace_back(indexData.count / 3, 0, 0, 0);
+
+            auto normalData = extractAttribute(prim, "NORMAL");
+            auto colourData = extractAttribute(prim, "COLOR_0");
+            /*auto texCoordsdata = extractAttribute(prim, "TEXCOORD_0");
+            auto Tangentsdata = extractAttribute(prim, "TANGENT");*/
+            GPUData.emplace_back(
+                positionData.offset,
+                indexData.offset,
+                normalData.hasData ? static_cast<u64>(normalData.offset) : ~0ULL,
+                colourData.hasData ? static_cast<u64>(colourData.offset) : ~0ULL,
+                prim.material,
+                accessor.component_type == TG3_COMPONENT_TYPE_UNSIGNED_SHORT ? static_cast<u32>(true) : static_cast<u32>(false)
+            );
         }
 
         auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
@@ -140,14 +237,36 @@ namespace OWC
         const vk::DeviceSize scratchBufferSize = alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
 
         VulkanGeneralBuffer scratchBuffer(scratchBufferSize);
-        m_AccelerationStructureBuffer = std::make_shared<VulkanGeneralBuffer>(buildSizes.accelerationStructureSize);
+
+        constexpr auto bufferUsageInfo2 = vk::BufferUsageFlags2CreateInfo()
+            .setUsage(
+                vk::BufferUsageFlagBits2::eShaderDeviceAddress |
+                vk::BufferUsageFlagBits2::eAccelerationStructureBuildInputReadOnlyKHR |
+                vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
+            );
+
+        const auto bufferInfo = vk::BufferCreateInfo()
+            .setPNext(&bufferUsageInfo2)
+            .setSize(buildSizes.accelerationStructureSize)
+            .setSharingMode(vk::SharingMode::eConcurrent)
+            .setQueueFamilyIndices(queueIndices);
+
+        constexpr vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
+            .setUsage(vma::MemoryUsage::eGpuOnly)
+            .setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+
+        vma::AllocationInfo allocationInfo;
+        auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
+        m_Buffer = buffer;
+        m_BufferMemory = allocation;
 
         const auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
             .setSize(buildSizes.accelerationStructureSize)
-            .setBuffer(m_AccelerationStructureBuffer->GetBuffer());
+            .setBuffer(m_Buffer);
 
         m_AccelerationStructure = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
+        m_BufferDeviceAddress = vkCore.GetDevice().getAccelerationStructureAddressKHR(vk::AccelerationStructureDeviceAddressInfoKHR().setAccelerationStructure(m_AccelerationStructure));
 
         buildInfo.setScratchData(vk::DeviceOrHostAddressKHR().setDeviceAddress(scratchBuffer.GetBufferDeviceAddress()))
             .setDstAccelerationStructure(m_AccelerationStructure);
@@ -164,6 +283,7 @@ namespace OWC
         if(device.waitForFences(fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
             Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
         device.destroyFence(fence);
+        device.freeCommandBuffers(vkCore.GetComputeCommandPool(), cmd);
     }
 
     VulkanSceneMesh::~VulkanSceneMesh()
@@ -171,7 +291,9 @@ namespace OWC
          if (m_AccelerationStructure)
          {
              const auto& vkCore = Graphics::VulkanCore::GetConstInstance();
+             const auto& allocator = vkCore.GetVulkanMemoryAllocator();
              vkCore.GetDevice().destroyAccelerationStructureKHR(m_AccelerationStructure);
+             allocator.destroyBuffer(m_Buffer, m_BufferMemory);
          }
     }
 

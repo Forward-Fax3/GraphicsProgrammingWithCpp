@@ -48,6 +48,8 @@ namespace OWC
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetPixelHeight() const { return m_Window->GetPixelHeight(); }
 		[[nodiscard]] OWC_FORCE_INLINE Vec2u GetPixelSize() const { return m_Window->GetPixelSize(); }
 
+		[[nodiscard]] OWC_FORCE_INLINE u32 IsFirstFrame() const { return m_IsFirstFrame; }
+
 	private:
 		void OnEvent(BaseEvent& event) const;
 
@@ -59,6 +61,7 @@ namespace OWC
 		std::shared_ptr<ImGuiLayer> m_ImGuiLayer = nullptr;
 
 		std::unordered_map<u32, bool> m_KeyStates;
+		mutable bool m_IsFirstFrame = true;
 
 		static Application* s_Instance;
 	};

@@ -28,7 +28,7 @@ namespace OWC
             0xFF,
             0,
             vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable,
-            vulkanMesh->GetAccelerationStructureBuffer()->GetBufferDeviceAddress()
+            vulkanMesh->GetAccelerationStructureBufferDeviceAddress()
         );
     }
 
@@ -60,7 +60,7 @@ namespace OWC
             .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace)
             .setGeometries(accelerationStructureGeometry);
 
-        std::array<u32, 1> primitiveCount = { static_cast<u32>(m_BLASInstances.size()) };
+        std::array primitiveCount = { static_cast<u32>(m_BLASInstances.size()) };
 
         vk::AccelerationStructureBuildSizesInfoKHR buildSizes;
         device.getAccelerationStructureBuildSizesKHR(
@@ -103,6 +103,7 @@ namespace OWC
         if(device.waitForFences(fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
             Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
         device.destroyFence(fence);
+        device.freeCommandBuffers(vkCore.GetComputeCommandPool(), cmd);
     }
 
     vk::TransformMatrixKHR VulkanTLAS::ConvertMat4ToVulkanTransform(const Mat4& transform)

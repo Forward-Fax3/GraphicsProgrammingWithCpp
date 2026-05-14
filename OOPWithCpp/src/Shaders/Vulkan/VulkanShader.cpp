@@ -441,7 +441,15 @@ namespace OWC::Graphics
 		}
 
 		CreateVulkanRayTracingPipeline(vulkanShaderDatas, srcToShaderModuleMap);
-		CreateShaderBindingTable(static_cast<u32>(vulkanShaderDatas.size()));
+		CreateShaderBindingTable(m_ShaderGroupCount);
+	}
+
+	VulkanRayTracingShader::~VulkanRayTracingShader()
+	{
+		const auto& vkCore = VulkanCore::GetConstInstance();
+		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+
+		allocator.destroyBuffer(m_SBTBuffer, m_SBTBufferAllocation);
 	}
 
 	void VulkanRayTracingShader::BindTLAS(u32 binding, const std::shared_ptr<BaseTLAS>& tlas)
@@ -572,6 +580,8 @@ namespace OWC::Graphics
 		else
 			SetPipeline(result.value);
 
+		m_ShaderGroupCount = static_cast<u32>(shaderGroups.size());
+
 		std::vector<vk::DescriptorPoolSize> poolSize;
 
 		for (const auto& shaderData : vulkanShaderDatas)
@@ -617,19 +627,27 @@ namespace OWC::Graphics
 		SetDescriptorSets(descriptorSets);
 	}
 
-	void VulkanRayTracingShader::CreateShaderBindingTable(const u32 numberOfShaders)
+	void VulkanRayTracingShader::CreateShaderBindingTable(const u32 numberOfGroups)
 	{
 		const auto& vkCore = VulkanCore::GetConstInstance();
 		const auto& device = vkCore.GetDevice();
 		const auto& RTProps = vkCore.GetRayTracingPipelineProperties();
 
+		if (numberOfGroups < 3)
+		{
+			Log<LogLevel::Error>("VulkanRayTracingShader::CreateShaderBindingTable: Expected at least 3 shader groups (raygen/miss/hit), got {}.", numberOfGroups);
+			return;
+		}
+		if (numberOfGroups > 3)
+			Log<LogLevel::Warn>("VulkanRayTracingShader::CreateShaderBindingTable: Extra shader groups will be ignored. Count: {}.", numberOfGroups);
+
 		const u32 handleSize = RTProps.shaderGroupHandleSize;
 		const u32 handleAlignment = RTProps.shaderGroupHandleAlignment;
 		const u32 baseAlignment = RTProps.shaderGroupBaseAlignment;
 
-		const uSize shaderHandleSize = handleSize * numberOfShaders;
+		const uSize shaderHandleSize = handleSize * numberOfGroups;
 		m_ShaderHandles.resize(shaderHandleSize);
-		auto result = device.getRayTracingShaderGroupHandlesKHR(GetPipeline(), 0, numberOfShaders, shaderHandleSize, m_ShaderHandles.data());
+		auto result = device.getRayTracingShaderGroupHandlesKHR(GetPipeline(), 0, numberOfGroups, shaderHandleSize, m_ShaderHandles.data());
 		if (result != vk::Result::eSuccess)
 		{
 			Log<LogLevel::Error>("VulkanRayTracingShader::CreateShaderBindingTable: Failed to get ray tracing shader group handles!");
@@ -638,40 +656,70 @@ namespace OWC::Graphics
 
 		// nVidia vk_raytracing_tutorial helper func
 		auto alignUp = [](auto value, size_t alignment) noexcept { return ((value + alignment - 1) & ~(alignment - 1)); };
-		u32 raygenSize   = alignUp(handleSize, handleAlignment);
-		u32 missSize     = alignUp(handleSize, handleAlignment);
-		u32 hitSize      = alignUp(handleSize, handleAlignment);
-		u32 callableSize = 0;  // Callable shaders not supported yet
+		const u32 handleSizeAligned = alignUp(handleSize, handleAlignment);
+		const u32 recordStride = alignUp(handleSizeAligned, baseAlignment);
+		u32 raygenSize   = recordStride;
+		u32 missSize     = recordStride;
+		u32 hitSize      = recordStride;
+		u32 callableSize = 0; // Callable shaders not supported yet
 
 		u32 raygenOffset   = 0;
-		u32 missOffset     = alignUp(raygenSize, baseAlignment);
-		u32 hitOffset      = alignUp(missOffset + missSize, baseAlignment);
-		u32 callableOffset = alignUp(hitOffset + hitSize, baseAlignment);
+		u32 missOffset     = raygenOffset + raygenSize;
+		u32 hitOffset      = missOffset + missSize;
+		u32 callableOffset = hitOffset + hitSize;
 
-		const uSize bufferSize = callableOffset + callableSize;
-		m_SBTBuffer = std::make_unique<VulkanGeneralBuffer>(bufferSize);
+		const vk::DeviceSize bufferSize = callableOffset + callableSize;
 
-		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data(), handleSize, raygenOffset);
-		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data() + missOffset, handleSize, missOffset);
-		m_SBTBuffer->UpdateBufferData(m_ShaderHandles.data() + hitOffset, handleSize, hitOffset);
+		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+
+		const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
+
+		constexpr auto bufferUsageInfo2 = vk::BufferUsageFlags2CreateInfo()
+			.setUsage(
+				vk::BufferUsageFlagBits2::eShaderDeviceAddress |
+				vk::BufferUsageFlagBits2::eShaderBindingTableKHR
+			);
+
+		const auto bufferInfo = vk::BufferCreateInfo()
+			.setPNext(&bufferUsageInfo2)
+			.setSize(bufferSize)
+			.setSharingMode(vk::SharingMode::eConcurrent)
+			.setQueueFamilyIndices(queueIndices);
+
+		constexpr vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
+			.setFlags(vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
+
+		vma::AllocationInfo allocationInfo;
+		auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
+		m_SBTBuffer = buffer;
+		m_SBTBufferAllocation = allocation;
+
+		const auto pData = static_cast<u8*>(allocationInfo.pMappedData);
+
+		std::memcpy(pData + raygenOffset, m_ShaderHandles.data() + 0 * handleSize, handleSize);
+		std::memcpy(pData + missOffset, m_ShaderHandles.data() + 1 * handleSize, handleSize);
+		std::memcpy(pData + hitOffset, m_ShaderHandles.data() + 2 * handleSize, handleSize);
+
+		const auto SBTBufferDeviceAddress = vkCore.GetDevice().getBufferAddress(vk::BufferDeviceAddressInfo().setBuffer(m_SBTBuffer));
 
 		m_RayGenShaderSBTEntry
-			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + raygenOffset)
+			.setDeviceAddress(SBTBufferDeviceAddress + raygenOffset)
 			.setSize(raygenSize)
-			.setStride(raygenSize);
+			.setStride(recordStride);
 
 		m_HitGroupSBTEntry
-			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + hitOffset)
+			.setDeviceAddress(SBTBufferDeviceAddress + hitOffset)
 			.setSize(hitSize)
-			.setStride(hitSize);
+			.setStride(recordStride);
 
 		m_MissGroupSBTEntry
-			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + missOffset)
+			.setDeviceAddress(SBTBufferDeviceAddress + missOffset)
 			.setSize(missSize)
-			.setStride(missSize);
+			.setStride(recordStride);
 
 		m_CallableGroupSBTEntry
-			.setDeviceAddress(m_SBTBuffer->GetBufferDeviceAddress() + callableOffset)
+			.setDeviceAddress(SBTBufferDeviceAddress + callableOffset)
 			.setSize(callableSize)
 			.setStride(callableSize);
 	}

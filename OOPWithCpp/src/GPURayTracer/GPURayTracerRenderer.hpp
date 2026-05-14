@@ -23,6 +23,13 @@ namespace OWC
             f32 invGammaValue = 0.0f;
         };
 
+        struct GeneralGPUData
+        {
+            Mat4 InvProjection = 0.0f;
+            Mat4 InvViewMatrix = 0.0f;
+            u32 randSeed = 0;
+        };
+
     public:
         GPURayTracerRenderer();
         ~GPURayTracerRenderer() override = default;
@@ -32,11 +39,13 @@ namespace OWC
         GPURayTracerRenderer& operator=(GPURayTracerRenderer&&) = delete;
 
         void OnUpdate() override;
-        void OnEvent(class BaseEvent&) override;
+        void ImGuiRender() override;
+        void OnEvent(BaseEvent&) override;
 
     private: // methods
         void SetupRenderPass();
         void SetupPipeline();
+        void CalculateCamera();
 
     private: // attributes
         std::unique_ptr<Graphics::BaseShader> m_RayTracingShader = nullptr;
@@ -45,8 +54,13 @@ namespace OWC
         std::shared_ptr<Graphics::RenderPassData> m_DisplayRenderPass = nullptr;
         std::shared_ptr<Graphics::UniformBuffer> m_UniformBuffer = nullptr;
         std::shared_ptr<Graphics::TextureBuffer> m_RenderTarget = nullptr;
-        std::shared_ptr<InterLayerData> m_ILD = nullptr;
-        uSize framesUpdated = 0;
+        std::shared_ptr<Graphics::GeneralBuffer> m_GeneralGPUDataBuffer = nullptr;
+        uSize m_NumberOfSamples = 0;
+
+        Mat4 m_ProjectionMatrix = 0.0f;
+        Vec3 m_CameraPosition = Vec3(0.0f);
+        Vec3 m_CameraRotation = Vec3(0.0f);
+        bool m_ScreenNeedsRefreshing = false;
 
         std::shared_ptr<BaseGPUScene> m_Scene = nullptr;
     };

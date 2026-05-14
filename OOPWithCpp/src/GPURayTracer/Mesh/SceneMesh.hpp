@@ -19,7 +19,8 @@ namespace OWC
         u64 normalsOffset;
         u64 coloursOffset;
         u32 materialIndex;
-        u32 _[3]; // pad to 48 bytes
+        u32 is16BitIndices; // bool
+        u32 _[2]; // pad to 48 bytes
     };
 
     struct AttributeData

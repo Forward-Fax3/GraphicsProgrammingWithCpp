@@ -54,10 +54,11 @@ namespace OWC
             numberOfGPUGLTFDatas += m_Model.meshes[i].primitives_count;
 
         m_GPUData.reserve(numberOfGPUGLTFDatas);
-        m_GeometryBufferOffset = numberOfGPUGLTFDatas * sizeof(GPUGLTFData);
+        m_GeometryBufferSize = numberOfGPUGLTFDatas * sizeof(GPUGLTFData);
+        m_GeometryBufferOffset = m_Model.buffers[0].data.count;
 
         const auto bufferSize = m_Model.buffers[0].data.count;
-        const auto totalBufferSize = bufferSize + m_GeometryBufferOffset;
+        const auto totalBufferSize = bufferSize + m_GeometryBufferSize;
         m_GPUBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(totalBufferSize);
         m_GPUBuffer->UpdateBufferData(std::bit_cast<const u8*>(m_Model.buffers[0].data.data), bufferSize);
 
@@ -70,7 +71,7 @@ namespace OWC
 
         m_TLAS->CreateTLAS();
 
-        m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GeometryBufferOffset, bufferSize);
+        m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GeometryBufferSize, m_GeometryBufferOffset);
 
         tg3_error_stack_free(&errorStack);
     }
@@ -93,7 +94,7 @@ namespace OWC
 
             const Mat4 translation = glm::translate(glm::mat4(1.0f), static_cast<Vec3>(glm::make_vec3(node.translation)));
             const Mat4 rotation = glm::mat4_cast(glm::quat(floatRotation.w, floatRotation.x, floatRotation.y, floatRotation.z));
-            const Mat4 scale = glm::scale(Mat4(1), static_cast<Vec3>(glm::make_vec3(node.scale)));
+            const Mat4 scale = glm::scale(Mat4(1.0f), static_cast<Vec3>(glm::make_vec3(node.scale)));
 
             parentTransform = parentTransform * (translation * rotation * scale);
         }

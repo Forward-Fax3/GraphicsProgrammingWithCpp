@@ -25,42 +25,16 @@ namespace OWC::Graphics
 		if (type == RenderPassType::Static)
 		{
 			m_CommandBuffers = vkCore.GetGraphicsCommandBuffer();
-			for (uSize i = 0; i < m_CommandBuffers.size(); ++i)
-			{
-				vk::CommandBuffer cmdBuf = m_CommandBuffers[i];
+			for (auto& cmdBuf : m_CommandBuffers)
 				cmdBuf.begin(vk::CommandBufferBeginInfo());
-
-				const std::array renderingAttachmentInfo = { vk::RenderingAttachmentInfo()
-					.setImageView(vkCore.GetSwapchainImageViews()[i])
-					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-					.setLoadOp(vk::AttachmentLoadOp::eLoad)
-					.setStoreOp(vk::AttachmentStoreOp::eStore)
-				};
-
-				cmdBuf.beginRendering(vk::RenderingInfo()
-					.setRenderArea(rect)
-					.setLayerCount(1)
-					.setColorAttachmentCount(1)
-					.setColorAttachments(renderingAttachmentInfo)
-				);
-
-				cmdBuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
-					static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
-					static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
-					0.0f, 1.0f));
-				cmdBuf.setScissor(0, rect);
-			}
 		}
 		else if (type == RenderPassType::Dynamic)
 			m_CommandBuffers = vkCore.GetDynamicGraphicsCommandBuffer();
 		else if (type == RenderPassType::StaticRayTracing)
 		{
 			m_CommandBuffers = vkCore.GetComputeCommandBuffer();
-			for (uSize i = 0; i < m_CommandBuffers.size(); ++i)
-			{
-				vk::CommandBuffer cmdBuf = m_CommandBuffers[i];
+			for (auto& cmdBuf : m_CommandBuffers)
 				cmdBuf.begin(vk::CommandBufferBeginInfo());
-			}
 		}
 		else if (type == RenderPassType::DynamicRayTracing)
 			m_CommandBuffers = vkCore.GetDynamicComputeCommandBuffer();
@@ -98,7 +72,6 @@ namespace OWC::Graphics
 			.setSize(size)
 			.setPValues(dataPtr);
 
-		const auto& vulkanShader = dynamic_cast<const VulkanBaseShader&>(shader);
 		if (testBitMask(GetRenderPassType(), RenderPassType::Dynamic))
 			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].pushConstants2(info);
 		else
@@ -106,52 +79,134 @@ namespace OWC::Graphics
 				cmdBuf.pushConstants2(info);
 	}
 
+	void VulkanRenderPass::TransitionImage(const std::shared_ptr<TextureBuffer>& textureBuffer, const AccessMask dstAccessMask, StageMask dstStageMask, const ImageLayout newLayout)
+	{
+		const auto vulkanTextureBuffer = std::dynamic_pointer_cast<VulkanTextureBuffer>(textureBuffer);
+
+		const auto barrier = vk::ImageMemoryBarrier2()
+			.setSrcAccessMask(vulkanTextureBuffer->GetCurrentAccessFlags())
+			.setDstAccessMask(GetVulkanAccessMask(dstAccessMask))
+			.setOldLayout(vulkanTextureBuffer->GetCurrentLayout())
+			.setNewLayout(GetVulkanImageLayout(newLayout))
+			.setSrcStageMask(vulkanTextureBuffer->GetCurrentPipelineStageFlags())
+			.setDstStageMask(GetVulkanPipelineStageMask(dstStageMask))
+			.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
+			.setImage(vulkanTextureBuffer->GetImage())
+			.setSubresourceRange(vk::ImageSubresourceRange()
+				.setAspectMask(vk::ImageAspectFlagBits::eColor)
+				.setBaseMipLevel(0)
+				.setLevelCount(1)
+				.setBaseArrayLayer(0)
+				.setLayerCount(1)
+			);
+
+		vulkanTextureBuffer->SetCurrentAccessFlags(GetVulkanAccessMask(dstAccessMask));
+		vulkanTextureBuffer->SetCurrentImageLayout(GetVulkanImageLayout(newLayout));
+		vulkanTextureBuffer->SetCurrentPipelineStageFlags(GetVulkanPipelineStageMask(dstStageMask));
+
+		const auto dependencyInfo = vk::DependencyInfo().setImageMemoryBarriers(barrier);
+
+		if (testBitMask(GetRenderPassType(), RenderPassType::Dynamic))
+			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].pipelineBarrier2(dependencyInfo);
+		else
+			for (const auto& cmdBuf : m_CommandBuffers)
+				cmdBuf.pipelineBarrier2(dependencyInfo);
+	}
+
 	void VulkanRenderPass::BeginDynamicPass()
 	{
 		if (testBitMask(GetRenderPassType(), RenderPassType::Static))
 		{
-			Log<LogLevel::Error>("BeginDynamicPass is not needed for static render, this is due to begin code already being done in the constructor");
+			Log<LogLevel::Error>("Attempted to begin dynamic pass on a static render pass. This is not allowed.");
+			return;
+		}
+
+		const auto& cmdBuf = m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()];
+		cmdBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+	}
+
+	void VulkanRenderPass::BeginRasterPass()
+	{
+		if (testBitMask(GetRenderPassType(), RenderPassType::RayTracingBit))
+		{
+			Log<LogLevel::Error>("Attempted to begin raster pass on a ray tracing render pass. This is not allowed.");
 			return;
 		}
 
 		VulkanCore& vkCore = VulkanCore::GetInstance();
-		const uSize frameIndex = vkCore.GetCurrentFrameIndex();
 
-		const vk::CommandBuffer& cmdBuf = m_CommandBuffers[frameIndex];
-		cmdBuf.reset(vk::CommandBufferResetFlags());
 
-		cmdBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+		if (testBitMask(GetRenderPassType(), RenderPassType::Dynamic))
+		{
+			const uSize frameIndex = vkCore.GetCurrentFrameIndex();
+			const vk::CommandBuffer& cmdBuf = m_CommandBuffers[frameIndex];
 
-		if ((GetRenderPassType() & RenderPassType::RayTracingBit) == RenderPassType::RayTracingBit)
-			return;
+			const std::array renderingAttachmentInfo = {
+				vk::RenderingAttachmentInfo()
+					.setImageView(vkCore.GetSwapchainImageViews()[frameIndex])
+					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+					.setLoadOp(vk::AttachmentLoadOp::eLoad)
+					.setStoreOp(vk::AttachmentStoreOp::eStore)
+			};
 
-		const std::array renderingAttachmentInfo = {
-			vk::RenderingAttachmentInfo()
-				.setImageView(vkCore.GetSwapchainImageViews()[frameIndex])
-				.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
-				.setLoadOp(vk::AttachmentLoadOp::eLoad)
-				.setStoreOp(vk::AttachmentStoreOp::eStore)
-		};
+			const vk::Rect2D rect(
+				vk::Offset2D(0, 0),
+				{
+					Application::GetConstInstance().GetPixelWidth(),
+					Application::GetConstInstance().GetPixelHeight()
+				});
 
-		const vk::Rect2D rect(
-			vk::Offset2D(0, 0),
+			cmdBuf.beginRendering(vk::RenderingInfo()
+				.setRenderArea(rect)
+				.setLayerCount(1)
+				.setColorAttachmentCount(1)
+				.setColorAttachments(renderingAttachmentInfo)
+			);
+
+			cmdBuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
+				static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
+				static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
+				0.0f, 1.0f));
+			cmdBuf.setScissor(0, rect);
+		}
+		else
+		{
+			const uSize numOfFrames = vkCore.GetNumberOfFramesInFlight();
+
+			for (uSize i = 0; i < numOfFrames; i++)
 			{
-				Application::GetConstInstance().GetPixelWidth(),
-				Application::GetConstInstance().GetPixelHeight()
-			});
+				auto& cmdBuf = m_CommandBuffers[i];
 
-		cmdBuf.beginRendering(vk::RenderingInfo()
-			.setRenderArea(rect)
-			.setLayerCount(1)
-			.setColorAttachmentCount(1)
-			.setColorAttachments(renderingAttachmentInfo)
-		);
+				const std::array renderingAttachmentInfo = {
+					vk::RenderingAttachmentInfo()
+						.setImageView(vkCore.GetSwapchainImageViews()[i])
+						.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+						.setLoadOp(vk::AttachmentLoadOp::eLoad)
+						.setStoreOp(vk::AttachmentStoreOp::eStore)
+				};
 
-		cmdBuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
-			static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
-			static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
-			0.0f, 1.0f));
-		cmdBuf.setScissor(0, rect);
+				const vk::Rect2D rect(
+					vk::Offset2D(0, 0),
+					{
+						Application::GetConstInstance().GetPixelWidth(),
+						Application::GetConstInstance().GetPixelHeight()
+					});
+
+				cmdBuf.beginRendering(vk::RenderingInfo()
+					.setRenderArea(rect)
+					.setLayerCount(1)
+					.setColorAttachmentCount(1)
+					.setColorAttachments(renderingAttachmentInfo)
+				);
+
+				cmdBuf.setViewport(0, vk::Viewport(0.0f, 0.0f,
+					static_cast<f32>(Application::GetConstInstance().GetPixelWidth()),
+					static_cast<f32>(Application::GetConstInstance().GetPixelHeight()),
+					0.0f, 1.0f));
+				cmdBuf.setScissor(0, rect);
+			}
+		}
 	}
 
 	void VulkanRenderPass::AddPipeline(const BaseShader& shader)
@@ -274,32 +329,45 @@ namespace OWC::Graphics
 
 	void VulkanRenderPass::EndRenderPass()
 	{
-		if (GetRenderPassType() == RenderPassType::Static)
+		if (testBitMask(GetRenderPassType(), RenderPassType::RayTracingBit))
+		{
+			Log<LogLevel::Error>("EndRenderPass called on a ray tracing render pass. This is not allowed.");
+			return;
+		}
+
+		if (testBitMask(GetRenderPassType(), RenderPassType::Static))
 			for (uSize i = 0; i != VulkanCore::GetConstInstance().GetSwapchainImages().size(); i++)
 			{
 				vk::CommandBuffer& cmdBuf = m_CommandBuffers[i];
 				cmdBuf.endRendering();
-				cmdBuf.end();
 			}
 		else
 		{
-			const VulkanCore& vkCore = VulkanCore::GetInstance();
-			const uSize i = vkCore.GetCurrentFrameIndex();
-			const vk::CommandBuffer& cmdBuf = m_CommandBuffers[i];
-			if (!testBitMask(GetRenderPassType(), RenderPassType::RayTracingBit))
-				cmdBuf.endRendering();
-			cmdBuf.end();
+			const vk::CommandBuffer& cmdBuf = m_CommandBuffers[VulkanCore::GetInstance().GetCurrentFrameIndex()];
+			cmdBuf.endRendering();
 		}
 	}
 
-	void VulkanRenderPass::submitRenderPass(std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphore)
+	void VulkanRenderPass::EndPass()
+	{
+		if (testBitMask(GetRenderPassType(), RenderPassType::Dynamic))
+			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].end();
+		else
+			for (auto& cmdBuf : m_CommandBuffers)
+				cmdBuf.end();
+	}
+
+	void VulkanRenderPass::submitRenderPass(std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphore, bool waitForLastFrameToFinish)
 	{
 		VulkanCore& vkCore = VulkanCore::GetInstance();
 
 		std::vector<vk::Semaphore> waitSemaphores = vkCore.GetSemaphoresFromNames(waitSemaphoreNames);
 		std::vector<vk::Semaphore> signalSemaphores = vkCore.GetSemaphoresFromNames(startSemaphore);
 
-		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+		if (waitForLastFrameToFinish && !Application::GetConstInstance().IsFirstFrame())
+			waitSemaphores.push_back(vkCore.GetLastFrameFinishedSemaphore());
+
+		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eAllCommands);
 		vk::SubmitInfo submitInfo = vk::SubmitInfo()
 			.setWaitDstStageMask(waitDestinationStageMask)
 			.setCommandBuffers(m_CommandBuffers[vkCore.GetCurrentFrameIndex()])
@@ -334,6 +402,86 @@ namespace OWC::Graphics
 	{
 		const vk::CommandBuffer& cmdBuf = m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()];
 		ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuf);
+	}
+
+	vk::AccessFlags2 VulkanRenderPass::GetVulkanAccessMask(const AccessMask accessMask)
+	{
+		vk::AccessFlags2 accessFlags;
+
+		if (testBitMask(accessMask, AccessMask::IndirectCommandRead))
+			accessFlags |= vk::AccessFlagBits2::eIndirectCommandRead;
+		if (testBitMask(accessMask, AccessMask::IndexRead))
+			accessFlags |= vk::AccessFlagBits2::eIndexRead;
+		if (testBitMask(accessMask, AccessMask::VertexAttributeRead))
+			accessFlags |= vk::AccessFlagBits2::eVertexAttributeRead;
+		if (testBitMask(accessMask, AccessMask::UniformRead))
+			accessFlags |= vk::AccessFlagBits2::eUniformRead;
+		if (testBitMask(accessMask, AccessMask::InputAttachmentRead))
+			accessFlags |= vk::AccessFlagBits2::eInputAttachmentRead;
+		if (testBitMask(accessMask, AccessMask::ShaderRead))
+			accessFlags |= vk::AccessFlagBits2::eShaderRead;
+		if (testBitMask(accessMask, AccessMask::ShaderWrite))
+			accessFlags |= vk::AccessFlagBits2::eShaderWrite;
+		if (testBitMask(accessMask, AccessMask::ColorAttachmentRead))
+			accessFlags |= vk::AccessFlagBits2::eColorAttachmentRead;
+		if (testBitMask(accessMask, AccessMask::ColorAttachmentWrite))
+			accessFlags |= vk::AccessFlagBits2::eColorAttachmentWrite;
+		if (testBitMask(accessMask, AccessMask::DepthStencilAttachmentRead))
+			accessFlags |= vk::AccessFlagBits2::eDepthStencilAttachmentRead;
+		if (testBitMask(accessMask, AccessMask::DepthStencilAttachmentWrite))
+			accessFlags |= vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
+		if (testBitMask(accessMask, AccessMask::TransferRead))
+			accessFlags |= vk::AccessFlagBits2::eTransferRead;
+		if (testBitMask(accessMask, AccessMask::TransferWrite))
+			accessFlags |= vk::AccessFlagBits2::eTransferWrite;
+
+		return accessFlags;
+	}
+
+	vk::PipelineStageFlags2 VulkanRenderPass::GetVulkanPipelineStageMask(const StageMask stageMask)
+	{
+		vk::PipelineStageFlags2 result;
+
+		if (testBitMask(stageMask, StageMask::TopOfPipe))
+			result |= vk::PipelineStageFlagBits2::eTopOfPipe;
+		if (testBitMask(stageMask, StageMask::BottomOfPipe))
+			result |= vk::PipelineStageFlagBits2::eBottomOfPipe;
+		if (testBitMask(stageMask, StageMask::FragmentShader))
+			result |= vk::PipelineStageFlagBits2::eFragmentShader;
+		if (testBitMask(stageMask, StageMask::VertexShader))
+			result |= vk::PipelineStageFlagBits2::eVertexShader;
+		if (testBitMask(stageMask, StageMask::GeometryShader))
+			result |= vk::PipelineStageFlagBits2::eGeometryShader;
+		if (testBitMask(stageMask, StageMask::ComputeShader))
+			result |= vk::PipelineStageFlagBits2::eComputeShader;
+		if (testBitMask(stageMask, StageMask::RayTracing))
+			result |= vk::PipelineStageFlagBits2::eRayTracingShaderKHR;
+
+		return result;
+	}
+
+	vk::ImageLayout VulkanRenderPass::GetVulkanImageLayout(const ImageLayout layout)
+	{
+		switch (layout)
+		{
+		case ImageLayout::Undefined:
+			return vk::ImageLayout::eUndefined;
+		case ImageLayout::ColorAttachmentOptimal:
+			return vk::ImageLayout::eColorAttachmentOptimal;
+		case ImageLayout::DepthStencilAttachmentOptimal:
+			return vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		case ImageLayout::ShaderReadOnlyOptimal:
+			return vk::ImageLayout::eShaderReadOnlyOptimal;
+		case ImageLayout::TransferSrcOptimal:
+			return vk::ImageLayout::eTransferSrcOptimal;
+		case ImageLayout::TransferDstOptimal:
+			return vk::ImageLayout::eTransferDstOptimal;
+		case ImageLayout::General:
+			return vk::ImageLayout::eGeneral;
+		default:
+			Log<LogLevel::Error>("Invalid ImageLayout specified when converting to Vulkan image layout");
+			return vk::ImageLayout::eUndefined;
+		}
 	}
 
 	void VulkanRenderPass::BindDynamicTexture(const BaseShader& shader, u32 binding, u32 textureID)

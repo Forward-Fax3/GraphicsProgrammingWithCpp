@@ -64,6 +64,7 @@ namespace OWC
 			m_ImGuiLayer->End();
 
 			Graphics::Renderer::FinishRender();
+			m_IsFirstFrame = false;
 			m_Window->Update();
 		}
 	}

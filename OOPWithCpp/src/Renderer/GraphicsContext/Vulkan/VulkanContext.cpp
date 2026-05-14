@@ -170,6 +170,7 @@ PFN_vkGetAccelerationStructureBuildSizesKHR pfnVkGetAccelerationStructureBuildSi
 PFN_vkCreateAccelerationStructureKHR pfnVkCreateAccelerationStructureKHR;
 PFN_vkCmdBuildAccelerationStructuresKHR pfnVkCmdBuildAccelerationStructureKHR;
 PFN_vkDestroyAccelerationStructureKHR pfnVkDestroyAccelerationStructureKHR;
+PFN_vkGetAccelerationStructureDeviceAddressKHR pfnVkGetAccelerationStructureDeviceAddressKHR;
 PFN_vkGetRayTracingShaderGroupHandlesKHR pfnVkGetRayTracingShaderGroupHandlesKHR;
 PFN_vkCmdTraceRaysKHR pfnVkCmdTraceRaysKHR;
 
@@ -221,6 +222,13 @@ VKAPI_CALL void VKAPI_CALL vkDestroyAccelerationStructureKHR(
 	pfnVkDestroyAccelerationStructureKHR(device, accelerationStructure, pAllocator);
 }
 
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL vkGetAccelerationStructureDeviceAddressKHR(
+	VkDevice device,
+	const VkAccelerationStructureDeviceAddressInfoKHR* pInfo)
+{
+	return pfnVkGetAccelerationStructureDeviceAddressKHR(device, pInfo);
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL vkGetRayTracingShaderGroupHandlesKHR(
 	VkDevice device,
 	VkPipeline pipeline,
@@ -256,7 +264,8 @@ namespace OWC::Graphics
 		vk::KHRAccelerationStructureExtensionName,
 		vk::KHRRayTracingPipelineExtensionName,
 		vk::KHRBufferDeviceAddressExtensionName,
-		vk::KHRDeferredHostOperationsExtensionName
+		vk::KHRDeferredHostOperationsExtensionName,
+		vk::KHRShaderNonSemanticInfoExtensionName
 	};
 
 	VulkanContext::VulkanContext(SDL_Window& windowHandle, const WindowProperties& properties)
@@ -358,6 +367,7 @@ namespace OWC::Graphics
 		{
 			std::array<std::string_view, 1> semaphoreNames = { "RenderFinished" };
 			auto semaphores = vkCore.GetSemaphoresFromNames(semaphoreNames);
+			vkCore.SetLastFrameWaitSemaphore(semaphores[0]);
 
 			vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eBottomOfPipe);
 			const vk::SubmitInfo submitInfo = vk::SubmitInfo()
@@ -412,12 +422,12 @@ namespace OWC::Graphics
 	{
 		auto& vkCore = VulkanCore::GetInstance();
 
-		std::array<std::string_view, 1> imageAcquiredName = { "ImageAcquired" };
-		auto imageAcquired = vkCore.GetSemaphoresFromNames(imageAcquiredName)[0];
+		std::vector<std::string_view> imageAcquiredName = { "ImageAcquired" };
+		auto imageAcquired = vkCore.GetSemaphoresFromNames(imageAcquiredName);
 
 		auto result = vkCore.GetDevice().acquireNextImage2KHR(vk::AcquireNextImageInfoKHR()
 			.setSwapchain(vkCore.GetSwapchain())
-			.setSemaphore(imageAcquired)
+			.setSemaphore(imageAcquired[0])
 //			.setTimeout(16'666)
 			.setTimeout(std::numeric_limits<u32>::max())
 			.setDeviceMask(1)
@@ -428,7 +438,7 @@ namespace OWC::Graphics
 			RecreateSwapchain();
 			result = vkCore.GetDevice().acquireNextImage2KHR(vk::AcquireNextImageInfoKHR()
 				.setSwapchain(vkCore.GetSwapchain())
-				.setSemaphore(imageAcquired)
+				.setSemaphore(imageAcquired[0])
 //				.setTimeout(16'666)
 				.setTimeout(std::numeric_limits<u32>::max())
 				.setDeviceMask(1)
@@ -458,6 +468,8 @@ namespace OWC::Graphics
 //		}
 
 		std::array<std::string_view, 1> imageReadyName = { "ImageReady" };
+		if (!Application::GetConstInstance().IsFirstFrame())
+			imageAcquired.push_back(vkCore.GetLastFrameFinishedSemaphore());
 		auto imageReady = vkCore.GetSemaphoresFromNames(imageReadyName)[0];
 
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -512,14 +524,20 @@ namespace OWC::Graphics
 		vk::InstanceCreateInfo createInfo;
 		
 		std::vector<const char*> validationLayers;
-		if constexpr (!IsDistributionMode())
-		{
-			extensions.emplace_back(vk::EXTDebugUtilsExtensionName);
+#ifndef DIST
+		extensions.emplace_back(vk::EXTDebugUtilsExtensionName);
 
-			validationLayers.push_back("VK_LAYER_KHRONOS_validation");
-			createInfo.setEnabledLayerCount(static_cast<u32>(validationLayers.size()));
-			createInfo.setPpEnabledLayerNames(validationLayers.data());
-		}
+		validationLayers.push_back("VK_LAYER_KHRONOS_validation");
+		createInfo.setEnabledLayerCount(static_cast<u32>(validationLayers.size()));
+		createInfo.setPpEnabledLayerNames(validationLayers.data());
+
+		std::array validationFeaturesData = {
+			vk::ValidationFeatureEnableEXT::eDebugPrintf
+		};
+		const auto validationFeatures = vk::ValidationFeaturesEXT()
+			.setEnabledValidationFeatures(validationFeaturesData);
+		createInfo.setPNext(&validationFeatures);
+#endif
 
 		const auto [extensionsAvailable, missingExtension] = IsExtentionAvailable(instanceExtensionProperties, extensions);
 
@@ -545,6 +563,7 @@ namespace OWC::Graphics
 		pfnVkCreateAccelerationStructureKHR = std::bit_cast<PFN_vkCreateAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateAccelerationStructureKHR"));
 		pfnVkCmdBuildAccelerationStructureKHR = std::bit_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdBuildAccelerationStructuresKHR"));
 		pfnVkDestroyAccelerationStructureKHR = std::bit_cast<PFN_vkDestroyAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyAccelerationStructureKHR"));
+		pfnVkGetAccelerationStructureDeviceAddressKHR = std::bit_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetAccelerationStructureDeviceAddressKHR"));
 		pfnVkGetRayTracingShaderGroupHandlesKHR = std::bit_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetRayTracingShaderGroupHandlesKHR"));
 		pfnVkCmdTraceRaysKHR = std::bit_cast<PFN_vkCmdTraceRaysKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdTraceRaysKHR"));
 	}
@@ -863,8 +882,12 @@ namespace OWC::Graphics
 			.setPNext(&shaderDrawParametersFeature)
 			.setSynchronization2(vk::True);
 
-		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature = vk::PhysicalDeviceDynamicRenderingFeatures()
+		vk::PhysicalDeviceDynamicRenderingLocalReadFeatures dynamicRenderingLocalReadFeature = vk::PhysicalDeviceDynamicRenderingLocalReadFeatures()
 			.setPNext(&synchronization2Feature)
+			.setDynamicRenderingLocalRead(vk::True);
+
+		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature = vk::PhysicalDeviceDynamicRenderingFeatures()
+			.setPNext(&dynamicRenderingLocalReadFeature)
 			.setDynamicRendering(vk::True);
 
 		vk::PhysicalDeviceFeatures2 enabledFeatures = vk::PhysicalDeviceFeatures2()
@@ -875,7 +898,10 @@ namespace OWC::Graphics
 				.setFillModeNonSolid(vk::True)
 				.setWideLines(vk::True)
 				.setPipelineStatisticsQuery(vk::True)
-				.setShaderInt64(vk::True));
+				.setShaderInt16(vk::True)
+				.setShaderInt64(vk::True)
+				.setFragmentStoresAndAtomics(vk::True)
+				.setShaderImageGatherExtended(vk::True));
 
 		VulkanCore::GetInstance().SetDevice(
 			VulkanCore::GetConstInstance().GetPhysicalDev().createDevice(

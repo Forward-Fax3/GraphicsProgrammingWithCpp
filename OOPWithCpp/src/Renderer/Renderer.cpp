@@ -58,7 +58,7 @@ namespace OWC::Graphics
 		}
 	}
 
-	std::shared_ptr<RenderPassData> Renderer::BeginPass()
+	std::shared_ptr<RenderPassData> Renderer::GetStaticRenderPass()
 	{
 		switch (s_API) // Switch statement for future APIs
 		{
@@ -69,10 +69,21 @@ namespace OWC::Graphics
 		}
 	}
 
+	void Renderer::BeginRasterPass(const std::shared_ptr<RenderPassData>& data)
+	{
+		data->BeginRasterPass();
+	}
+
 	void Renderer::PushConstant(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader, uSize size,
-		const void* dataPtr)
+	                            const void* dataPtr)
 	{
 		data->PushConstant(shader, size, dataPtr);
+	}
+
+	void Renderer::TransitionImage(const std::shared_ptr<RenderPassData>& data,
+		const std::shared_ptr<TextureBuffer>& textureBuffer, AccessMask dstAccessMask, StageMask dstStageMask, ImageLayout newLayout)
+	{
+		data->TransitionImage(textureBuffer, dstAccessMask, dstStageMask, newLayout);
 	}
 
 	void Renderer::BeginDynamicPass(const std::shared_ptr<RenderPassData>& data)
@@ -100,14 +111,21 @@ namespace OWC::Graphics
 		data->AddPipeline(shader);
 	}
 
-	void Renderer::EndPass(const std::shared_ptr<RenderPassData>& data)
+	void Renderer::EndRasterPass(const std::shared_ptr<RenderPassData>& data)
 	{
 		data->EndRenderPass();
 	}
 
-	void Renderer::SubmitRenderPass(const std::shared_ptr<RenderPassData>& data, std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphoreNames)
+	void Renderer::EndPass(const std::shared_ptr<RenderPassData>& data)
 	{
-		data->submitRenderPass(waitSemaphoreNames, startSemaphoreNames);
+		data->EndPass();
+	}
+
+	void Renderer::SubmitRenderPass(const std::shared_ptr<RenderPassData>& data,
+		std::span<std::string_view> waitSemaphoreNames, std::span<std::string_view> startSemaphoreNames,
+		bool waitForLastFrameToFinish)
+	{
+		data->submitRenderPass(waitSemaphoreNames, startSemaphoreNames, waitForLastFrameToFinish);
 		s_GC->AddRenderPassData(data);
 	}
 

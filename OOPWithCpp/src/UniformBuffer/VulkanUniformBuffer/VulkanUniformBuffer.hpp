@@ -45,9 +45,18 @@ namespace OWC::Graphics
 
 		void UpdateBufferData(const std::vector<Vec4>& data) override;
 
-		[[nodiscard]] vk::Image GetImage() const { return m_TextureImage; }
-		[[nodiscard]] vk::ImageView GetImageView() const { return m_TextureImageView; }
-		[[nodiscard]] vk::Sampler GetSampler() const { return m_TextureSampler; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::Image GetImage() const { return m_TextureImage; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::ImageView GetImageView() const { return m_TextureImageView; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::Sampler GetSampler() const { return m_TextureSampler; }
+		[[nodiscard]] OWC_FORCE_INLINE u32 GetWidth() const { return m_Width; }
+		[[nodiscard]] OWC_FORCE_INLINE u32 GetHeight() const { return m_Height; }
+
+		[[nodiscard]] OWC_FORCE_INLINE vk::AccessFlags2 GetCurrentAccessFlags() const { return m_CurrentAccessFlags; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::PipelineStageFlags2 GetCurrentPipelineStageFlags() const { return m_CurrentPipelineStageFlags; }
+		[[nodiscard]] OWC_FORCE_INLINE vk::ImageLayout GetCurrentLayout() const { return m_CurrentLayout; }
+		OWC_FORCE_INLINE void SetCurrentAccessFlags(const vk::AccessFlags2 previousAccessFlags) { m_CurrentAccessFlags = previousAccessFlags; }
+		OWC_FORCE_INLINE void SetCurrentPipelineStageFlags(const vk::PipelineStageFlags2 previousPipelineStageFlags) { m_CurrentPipelineStageFlags = previousPipelineStageFlags; }
+		OWC_FORCE_INLINE void SetCurrentImageLayout(const vk::ImageLayout previousLayout) { m_CurrentLayout = previousLayout; }
 
 	private:
 		void InitializeTexture();
@@ -59,6 +68,9 @@ namespace OWC::Graphics
 		vk::Sampler m_TextureSampler = vk::Sampler();
 		u32 m_Width = 0;
 		u32 m_Height = 0;
+		vk::AccessFlags2 m_CurrentAccessFlags = vk::AccessFlags2();
+		vk::PipelineStageFlags2 m_CurrentPipelineStageFlags = vk::PipelineStageFlags2();
+		vk::ImageLayout m_CurrentLayout = vk::ImageLayout();
 	};
 
 	class VulkanDynamicTextureBuffer : public DynamicTextureBuffer

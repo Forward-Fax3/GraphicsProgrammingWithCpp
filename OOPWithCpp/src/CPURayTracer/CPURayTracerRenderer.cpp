@@ -110,11 +110,13 @@ namespace OWC
 		using namespace OWC::Graphics;
 		constexpr u32 numberOfVertices = 6;
 
-		m_renderPass = Renderer::BeginPass();
+		m_renderPass = Renderer::GetStaticRenderPass();
+		Renderer::BeginRasterPass(m_renderPass);
 		Renderer::PipelineBind(m_renderPass, *m_Shader);
 		Renderer::BindUniform(m_renderPass, *m_Shader);
 		Renderer::BindDynamicTexture(m_renderPass, *m_Shader, 1, 0);
 		Renderer::Draw(m_renderPass, numberOfVertices);
+		Renderer::EndRasterPass(m_renderPass);
 		Renderer::EndPass(m_renderPass);
 	}
 

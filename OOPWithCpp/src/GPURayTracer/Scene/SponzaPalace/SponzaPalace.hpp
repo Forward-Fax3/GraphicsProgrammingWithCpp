@@ -37,6 +37,7 @@ namespace OWC
         std::shared_ptr<BaseTLAS> m_TLAS;
         std::shared_ptr<Graphics::GeneralBuffer> m_GPUBuffer;
         std::vector<GPUGLTFData> m_GPUData;
+        uSize m_GeometryBufferSize = 0;
         uSize m_GeometryBufferOffset = 0;
     };
 }// OWC

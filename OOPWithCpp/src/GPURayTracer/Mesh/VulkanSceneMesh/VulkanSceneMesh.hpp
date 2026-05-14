@@ -27,10 +27,13 @@ namespace OWC
 
         [[nodiscard]] i32 GetCustomInstanceIndex() const { return m_CustomInstanceIndex; }
         [[nodiscard]] vk::AccelerationStructureKHR GetAccelerationStructure() const { return m_AccelerationStructure; }
-        [[nodiscard]] const std::shared_ptr<Graphics::VulkanGeneralBuffer>& GetAccelerationStructureBuffer() const { return m_AccelerationStructureBuffer; }
+        [[nodiscard]] vk::Buffer GetAccelerationStructureBuffer() const { return m_Buffer; }
+        [[nodiscard]] vk::DeviceAddress GetAccelerationStructureBufferDeviceAddress() const { return m_BufferDeviceAddress; }
 
     private:
-        std::shared_ptr<Graphics::VulkanGeneralBuffer> m_AccelerationStructureBuffer;
+        vk::Buffer m_Buffer = vk::Buffer();
+        vk::DeviceAddress m_BufferDeviceAddress = vk::DeviceAddress();
+        vma::Allocation m_BufferMemory = vma::Allocation();
         vk::AccelerationStructureKHR m_AccelerationStructure;
         const tg3_model& m_Model;
         i32 m_CustomInstanceIndex;
