@@ -53,10 +53,14 @@ namespace OWC
 		s_Instance = nullptr;
 	}
 
-	void Application::Run() const
+	void Application::Run()
 	{
 		while (m_RunFlags.test(0)) // While application is running
 		{
+			const auto now = std::chrono::high_resolution_clock::now();
+			m_DeltaTime = std::chrono::duration<f32, std::milli>(now - m_LastTime).count();
+			m_LastTime = now;
+
 			m_LayerStack->OnUpdate();
 
 			m_ImGuiLayer->Begin();

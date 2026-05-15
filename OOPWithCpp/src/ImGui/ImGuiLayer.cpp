@@ -24,7 +24,7 @@ namespace OWC
 
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		// io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
 		const Vec2f32 windowPixelSize(Application::GetInstance().GetPixelSize());
 		io.DisplaySize = ImVec2(windowPixelSize.x, windowPixelSize.y);
@@ -46,18 +46,13 @@ namespace OWC
 		ImGui::DestroyContext();
 	}
 
-	void ImGuiLayer::OnUpdate()
-	{
-		const auto now = std::chrono::high_resolution_clock::now();
-		m_DeltaTime = std::chrono::duration<f32, std::milli>(now - m_LastTime).count();
-		m_LastTime = now;
-	}
-
 	void ImGuiLayer::ImGuiRender()
 	{
+		const auto& app = Application::GetConstInstance();
+
 		ImGui::Begin("Frame rate");
-		ImGui::Text("Delta Time: %.3f ms", m_DeltaTime);
-		ImGui::Text("FPS: %2.1f", 1000.0f / m_DeltaTime);
+		ImGui::Text("Delta Time: %.3f ms", app.GetDeltaTime());
+		ImGui::Text("FPS: %2.1f", 1000.0f / app.GetDeltaTime());
 		ImGui::End();
 	}
 	

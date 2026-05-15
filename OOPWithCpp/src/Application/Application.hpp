@@ -25,7 +25,7 @@ namespace OWC
 		Application(Application&&) = delete;
 		Application& operator=(Application&&) = delete;
 
-		void Run() const;
+		void Run();
 
 		OWC_FORCE_INLINE void PushLayer(const std::shared_ptr<Layer>& layer) { m_LayerStack->PushLayer(layer); }
 		OWC_FORCE_INLINE void PushOverlay(const std::shared_ptr<Layer>& overlay) { m_LayerStack->PushOverlay(overlay); }
@@ -49,6 +49,7 @@ namespace OWC
 		[[nodiscard]] OWC_FORCE_INLINE Vec2u GetPixelSize() const { return m_Window->GetPixelSize(); }
 
 		[[nodiscard]] OWC_FORCE_INLINE u32 IsFirstFrame() const { return m_IsFirstFrame; }
+		[[nodiscard]] OWC_FORCE_INLINE f32 GetDeltaTime() const { return m_DeltaTime; }
 
 	private:
 		void OnEvent(BaseEvent& event) const;
@@ -61,7 +62,10 @@ namespace OWC
 		std::shared_ptr<ImGuiLayer> m_ImGuiLayer = nullptr;
 
 		std::unordered_map<u32, bool> m_KeyStates;
-		mutable bool m_IsFirstFrame = true;
+		bool m_IsFirstFrame = true;
+
+		std::chrono::high_resolution_clock::time_point m_LastTime;
+		f32 m_DeltaTime = 0.0f;
 
 		static Application* s_Instance;
 	};

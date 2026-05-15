@@ -13,14 +13,16 @@
 #include "WindowMinimizeEvent.hpp"
 #include "WindowRestoreEvent.hpp"
 #include "WindowResize.hpp"
+#include "KeyEvent.hpp"
+#include "SDL3/SDL_keycode.h"
 
 #include "SponzaPalace.hpp"
 
 #include <array>
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/trigonometric.hpp>
 
-#include "Application.hpp"
 #include "glm/gtx/euler_angles.hpp"
 
 
@@ -33,7 +35,6 @@ namespace OWC
 
 	GPURayTracerRenderer::GPURayTracerRenderer()
 	{
-		m_ProjectionMatrix = glm::perspective(glm::radians(45.0f), 16.0f / 9.0f, 0.1f, 100.0f);
 		auto& app = Application::GetConstInstance();
 		m_Scene = std::make_shared<SponzaPalace>();
 		m_RenderTarget = Graphics::TextureBuffer::CreateTextureBuffer(app.GetPixelWidth(), app.GetPixelHeight());
@@ -53,6 +54,19 @@ namespace OWC
 	void GPURayTracerRenderer::OnUpdate()
 	{
 		using namespace OWC::Graphics;
+
+		if (glm::length(m_KeyPressedOnVec3) > 0.0f)
+		{
+			const auto& app = Application::GetConstInstance();
+			const float deltaTime = app.GetDeltaTime();
+			const Vec3 movePos = m_KeyPressedOnVec3 * m_MoveSpeed * deltaTime;
+			CalculateCamera(movePos);
+		}
+		else // CalculateCamera already creates a new random but camera may not be moved so do it on its own
+		{
+			u32 newRand = Rand::LinearFastRandValue(0u, std::numeric_limits<u32>::max());
+			m_GeneralGPUDataBuffer->UpdateBufferData(std::bit_cast<u8*>(&newRand), sizeof(GeneralGPUData::randSeed), offsetof(GeneralGPUData, randSeed));
+		}
 
 		if (m_ScreenNeedsRefreshing)
 		{
@@ -77,9 +91,6 @@ namespace OWC
 
 		m_UniformBuffer->UpdateBufferData(std::as_bytes(std::span<const UniformBufferObject>(&ubo, 1)));
 
-		auto newRand = Rand::LinearFastRandValue(0u, std::numeric_limits<u32>::max());
-		m_GeneralGPUDataBuffer->UpdateBufferData(std::bit_cast<u8*>(&newRand), sizeof(GeneralGPUData::randSeed), offsetof(GeneralGPUData, randSeed));
-
 		Renderer::SubmitRenderPass(m_RayTracingRenderPass, rayTracerWaitSemaphoreNames, rayTracerSignalSemaphoreNames);
 		Renderer::SubmitRenderPass(m_DisplayRenderPass, displayWaitSemaphoreNames);
 	}
@@ -90,8 +101,12 @@ namespace OWC
 		ImGui::Begin("GPU Renderer");
 		ImGui::Text("Number of samples: %zu", m_NumberOfSamples);
 		ImGui::Text("Ray tracer");
-		cameraMoved |= ImGui::DragFloat3("Camera Position", glm::value_ptr(m_CameraPosition), 0.1f);
+		ImGui::Text("Use W, A, S, D, R and F to move camera.");
+		ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", m_CameraPosition.x, m_CameraPosition.y, m_CameraPosition.z);
+		ImGui::SliderFloat("Move Speed", &m_MoveSpeed, 0.1f, 10.0f);
 		cameraMoved |= ImGui::DragFloat3("Camera Rotation", glm::value_ptr(m_CameraRotation), 0.1f);
+		ImGui::Separator();
+		cameraMoved |= ImGui::SliderFloat("Horizontal FOV", &m_HFOV, 1.0f, 179.0f);
 		ImGui::End();
 
 		if (cameraMoved)
@@ -120,6 +135,72 @@ namespace OWC
 			this->SetupPipeline();
 			this->SetupRenderPass();
 			return false;
+			});
+
+		dispatcher.Dispatch<KeyPressedEvent>([this](const KeyPressedEvent& event) {
+			constexpr float scale = 0.001f;
+
+			switch (event.GetKeycode())
+			{
+			case SDLK_W:
+				m_KeyPressedOnVec3 += Vec3(1.0f, 0.0f, 0.0f) * scale;
+				break;
+			case SDLK_S:
+				m_KeyPressedOnVec3 -= Vec3(1.0f, 0.0f, 0.0f) * scale;
+				break;
+			case SDLK_D:
+				m_KeyPressedOnVec3 += Vec3(0.0f, 0.0f, 1.0f) * scale;
+				break;
+			case SDLK_A:
+				m_KeyPressedOnVec3 -= Vec3(0.0f, 0.0f, 1.0f) * scale;
+				break;
+			case SDLK_R:
+				m_KeyPressedOnVec3 -= Vec3(0.0f, 1.0f, 0.0f) * scale;
+				break;
+			case SDLK_F:
+				m_KeyPressedOnVec3 += Vec3(0.0f, 1.0f, 0.0f) * scale;
+				break;
+			default:
+				return false;
+			}
+
+			if (glm::length(m_KeyPressedOnVec3) < scale)
+				m_KeyPressedOnVec3 = Vec3(0.0f); // set back to 0 completely to avoid floating point precision issues
+
+			return true;
+		});
+
+		dispatcher.Dispatch<KeyReleased>([this](const KeyReleased& event) {
+			constexpr float scale = 0.001f;
+
+			switch (event.GetKeycode())
+			{
+			case SDLK_W:
+				m_KeyPressedOnVec3 -= Vec3(1.0f, 0.0f, 0.0f) * scale;
+				break;
+			case SDLK_S:
+				m_KeyPressedOnVec3 += Vec3(1.0f, 0.0f, 0.0f) * scale;
+				break;
+			case SDLK_D:
+				m_KeyPressedOnVec3 -= Vec3(0.0f, 0.0f, 1.0f) * scale;
+				break;
+			case SDLK_A:
+				m_KeyPressedOnVec3 += Vec3(0.0f, 0.0f, 1.0f) * scale;
+				break;
+			case SDLK_R:
+				m_KeyPressedOnVec3 += Vec3(0.0f, 1.0f, 0.0f) * scale;
+				break;
+			case SDLK_F:
+				m_KeyPressedOnVec3 -= Vec3(0.0f, 1.0f, 0.0f) * scale;
+				break;
+			default:
+				return false;
+			}
+
+			if (glm::length(m_KeyPressedOnVec3) < scale)
+				m_KeyPressedOnVec3 = Vec3(0.0f); // set back to 0 completely to avoid floating point precision issues
+
+			return true;
 			});
 	}
 
@@ -269,15 +350,29 @@ namespace OWC
 		}
 	}
 
-	void GPURayTracerRenderer::CalculateCamera()
+	void GPURayTracerRenderer::CalculateCamera(const Vec3& movement /*= Vec3(0.0f)*/)
 	{
-		const Vec3 rotation = glm::radians(m_CameraRotation) + Vec3(glm::pi<f32>(), 0.0f, 0.0f);
+		const auto& app = Application::GetConstInstance();
+		const auto aspect = static_cast<f32>(app.GetPixelWidth()) / static_cast<f32>(app.GetPixelHeight());
+		const float VFOV = 2.0f * glm::atan(glm::tan(glm::radians(m_HFOV) / 2.0f) / aspect);
+		const auto projectionMatrix = glm::perspective(VFOV, aspect, 0.1f, 100.0f);
+
+		const Vec3 rotation = Vec3(-1.0, 1.0, 1.0) * glm::radians(m_CameraRotation) + Vec3(glm::pi<f32>(), 0.0f, 0.0f);
 		const Mat4 rotMat = glm::eulerAngleYXZ(rotation.y, rotation.x, rotation.z);
-		const Mat4 pos = glm::translate(Mat4(1.0f), m_CameraPosition);
-		const Mat4 invView = pos * rotMat;
+
+		const auto forward = glm::normalize(Vec3(rotMat * Vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+		const auto right = glm::normalize(Vec3(rotMat * Vec4(1.0f, 0.0f, 0.0f, 0.0f)));
+		const auto up = glm::normalize(Vec3(rotMat * Vec4(0.0f, 1.0f, 0.0f, 0.0f)));
+
+		m_CameraPosition += forward * movement.x;
+		m_CameraPosition += up * movement.y;
+		m_CameraPosition += right * movement.z;
+
+		const Mat4 posMat = glm::translate(Mat4(1.0f), m_CameraPosition);
+		const Mat4 invView = posMat * rotMat;
 
 		GeneralGPUData generalGPUData {
-			.InvProjection = glm::inverse(m_ProjectionMatrix),
+			.InvProjection = glm::inverse(projectionMatrix),
 			.InvViewMatrix = glm::transpose(invView),
 			.randSeed = Rand::LinearFastRandValue(0u, std::numeric_limits<u32>::max())
 		};

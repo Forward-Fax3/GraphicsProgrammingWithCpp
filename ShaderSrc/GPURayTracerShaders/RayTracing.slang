@@ -29,7 +29,6 @@ uniform RaytracingAccelerationStructure sceneBVH;
 [shader("raygeneration")]
 void rayGenShader()
 {
-    //printf("did gen");
     const uint2 intThreadIdx = DispatchRaysIndex().xy;
     const uint2 intScreanSize = DispatchRaysDimensions().xy;
 
@@ -40,7 +39,6 @@ void rayGenShader()
 
     const float4 viewCoords = mul(float4(screenCoords, 1.0, 1.0), PC.generalData.InvProjectionMatrix);
 
-    // Trace the ray.
     RayDesc ray;
     ray.Origin = mul(float4(0.0, 0.0, 0.0, 1.0), PC.generalData.InvViewMatrix).xyz;
     ray.Direction = mul(float4(normalize(viewCoords.xyz), 0.0), PC.generalData.InvViewMatrix).xyz;
@@ -58,7 +56,6 @@ void rayGenShader()
 [shader("miss")]
 void missShader(inout RayPayload payload)
 {
-    //printf("did miss");
     float3 rayDirection = WorldRayDirection();
 
     const float scale = 1.0f;

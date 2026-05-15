@@ -2,6 +2,7 @@
 // Created by forwardfax3 on 15/03/2026.
 //
 #pragma once
+#include <list>
 #include <memory>
 
 #include "Layer.hpp"
@@ -45,7 +46,7 @@ namespace OWC
     private: // methods
         void SetupRenderPass();
         void SetupPipeline();
-        void CalculateCamera();
+        void CalculateCamera(const Vec3& movement = Vec3(0.0f));
 
     private: // attributes
         std::unique_ptr<Graphics::BaseShader> m_RayTracingShader = nullptr;
@@ -57,10 +58,13 @@ namespace OWC
         std::shared_ptr<Graphics::GeneralBuffer> m_GeneralGPUDataBuffer = nullptr;
         uSize m_NumberOfSamples = 0;
 
-        Mat4 m_ProjectionMatrix = 0.0f;
-        Vec3 m_CameraPosition = Vec3(0.0f);
+        float m_HFOV = 90.0f;
+        Vec3 m_CameraPosition = Vec3(0.0f, 1.5f, 0.0f);
         Vec3 m_CameraRotation = Vec3(0.0f);
+        float m_MoveSpeed = 1.0f;
         bool m_ScreenNeedsRefreshing = false;
+
+        Vec3 m_KeyPressedOnVec3 = Vec3(0.0f);
 
         std::shared_ptr<BaseGPUScene> m_Scene = nullptr;
     };
