@@ -64,14 +64,18 @@ namespace OWC
 
         const auto sceneIndex = m_Model.default_scene == -1 ? 0 : m_Model.default_scene;
         const auto& scene = m_Model.scenes[sceneIndex];
-        i32 customInstancesIndex = 0;
+        u32 customInstancesIndex = 0;
+        std::vector<GPULightData> lightData;
 
         for (u32 i = 0; i < scene.nodes_count; i++)
-            IterateThroughNodes(m_Model, scene.nodes[i], Mat4(1.0f), customInstancesIndex);
+            IterateThroughNodes(m_Model, scene.nodes[i], Mat4(1.0f), customInstancesIndex, lightData);
 
         m_TLAS->CreateTLAS();
 
         m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GeometryBufferSize, m_GeometryBufferOffset);
+        m_LightBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(lightData.size() * sizeof(GPULightData));
+        m_LightBuffer->UpdateBufferData(std::bit_cast<u8*>(lightData.data()));
+        m_numberOfLights = static_cast<u32>(lightData.size());
 
         tg3_error_stack_free(&errorStack);
     }
@@ -81,7 +85,7 @@ namespace OWC
         tg3_model_free(&m_Model);
     }
 
-    void SponzaPalace::IterateThroughNodes(const tg3_model& model, const u32 nodeIndex, Mat4 parentTransform, i32& customInstancesIndex)
+    void SponzaPalace::IterateThroughNodes(const tg3_model& model, const u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData)
     {
         const tg3_node& node = m_Model.nodes[nodeIndex];
 
@@ -112,10 +116,53 @@ namespace OWC
 
         if (node.light != -1)
         {
-            
+            const tg3_light& light = m_Model.lights[node.light];
+            const std::string_view lightType = light.type.data;
+            const Vec3p colour = glm::make_vec3(light.color);
+
+            Log<LogLevel::Trace>("Found light of type {} with a range of {} and with intensity {} and colour ({}, {}, {})", lightType, light.range, light.intensity, colour.x, colour.y, colour.z);
+
+            if (lightType == "spot")
+            {
+                lightData.emplace_back(
+                    Vec3p(parentTransform[3]), // position
+                    0, // type (0 for spot)
+                    glm::normalize(Vec3p(-parentTransform[2])), // direction
+                    light.intensity != 0.0 ? static_cast<f32>(light.intensity) : 1.0f, // intensity
+                    colour, // colour
+                    static_cast<f32>(light.range), // range
+                    static_cast<f32>(light.spot.inner_cone_angle), // inner cone angle
+                    static_cast<f32>(light.spot.outer_cone_angle)  // outer cone angle
+                );
+            }
+            else if (lightType == "point")
+            {
+                lightData.emplace_back(
+                    Vec3p(parentTransform[3]), // position
+                    1, // type (1 for point)
+                    glm::normalize(Vec3p(-parentTransform[2])), // direction
+                    light.intensity != 0.0 ? static_cast<f32>(light.intensity) : 1.0f, // intensity
+                    colour, // colour
+                    static_cast<f32>(light.range)
+                );
+            }
+            else if (lightType == "directional")
+            {
+                lightData.emplace_back(
+                    Vec3p(parentTransform[3]), // position
+                    2, // type (2 for directional)
+                    glm::normalize(Vec3p(-parentTransform[2])), // direction
+                    light.intensity != 0.0 ? static_cast<f32>(light.intensity) : 1.0f, // intensity
+                    colour, // colour
+                    static_cast<f32>(light.range)
+                );
+            }
+            else
+                Log<LogLevel::Warn>("Unknown light type: {}", lightType);
+
         }
 
         for (u32 i = 0; i < node.children_count; i++)
-            IterateThroughNodes(model, node.children[i], parentTransform, customInstancesIndex);
+            IterateThroughNodes(model, node.children[i], parentTransform, customInstancesIndex, lightData);
     }
 } // OWC

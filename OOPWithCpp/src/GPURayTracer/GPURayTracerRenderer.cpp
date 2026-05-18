@@ -211,12 +211,18 @@ namespace OWC
 			uSize GeneralData;
 			uSize megaBuffer;
 			uSize GeometryBuffer;
+			uSize LightsBuffer;
+			u32 numberOfLights;
+			u32 numberOfBounces;
 		};
 
 		const PushConstantData pushConstantData = {
 			.GeneralData = m_GeneralGPUDataBuffer->GetDeviceBufferPtr(),
 			.megaBuffer = m_Scene->GetDeviceMegaBufferPtr(),
-			.GeometryBuffer = m_Scene->GetDeviceGeometryBufferPtr()
+			.GeometryBuffer = m_Scene->GetDeviceGeometryBufferPtr(),
+			.LightsBuffer = m_Scene->GetLightBufferPtr(),
+			.numberOfLights = m_Scene->GetNumberOfLights(),
+			.numberOfBounces = 8
 		};
 
 		Log<LogLevel::Debug>("GeneralData: {}, megaBuffer: {}, GeometryBuffer: {}", pushConstantData.GeneralData, pushConstantData.megaBuffer, pushConstantData.GeometryBuffer);
@@ -286,21 +292,21 @@ namespace OWC
 					.type = ShaderType::RayGen,
 					.language = ShaderData::ShaderLanguage::SPIRV,
 					.descriptorType = rayGenBindingDescriptions,
-					.entryPoint = "rayGenShader",
+					.entryPoint = "RayGenShader",
 				},
 				{
 					.bytecode = shaderSrc,
 					.type = ShaderType::RayMiss,
 					.language = ShaderData::ShaderLanguage::SPIRV,
 					.descriptorType = {},
-					.entryPoint = "missShader",
+					.entryPoint = "MissShader",
 				},
 				{
 					.bytecode = shaderSrc,
 					.type = ShaderType::RayClosestHit,
 					.language = ShaderData::ShaderLanguage::SPIRV,
 					.descriptorType = closestHitBindingDescriptions,
-					.entryPoint = "closestHitShader",
+					.entryPoint = "ClosestHitShader",
 				},
 			};
 

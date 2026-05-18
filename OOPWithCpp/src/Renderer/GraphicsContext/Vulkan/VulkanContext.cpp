@@ -265,7 +265,8 @@ namespace OWC::Graphics
 		vk::KHRRayTracingPipelineExtensionName,
 		vk::KHRBufferDeviceAddressExtensionName,
 		vk::KHRDeferredHostOperationsExtensionName,
-		vk::KHRShaderNonSemanticInfoExtensionName
+		vk::KHRShaderNonSemanticInfoExtensionName,
+		vk::KHRRayQueryExtensionName
 	};
 
 	VulkanContext::VulkanContext(SDL_Window& windowHandle, const WindowProperties& properties)
@@ -845,8 +846,12 @@ namespace OWC::Graphics
 			.setPNext(&pageableDeviceLocalMemoryFeature)
 			.setShaderObject(vk::True);
 
-		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeature = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
+		vk:VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeature = vk::PhysicalDeviceRayQueryFeaturesKHR()
 			.setPNext(&shaderObjectFeature)
+			.setRayQuery(vk::True);
+
+		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeature = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
+			.setPNext(&rayQueryFeature)
 			.setAccelerationStructure(vk::True);
 
 		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()

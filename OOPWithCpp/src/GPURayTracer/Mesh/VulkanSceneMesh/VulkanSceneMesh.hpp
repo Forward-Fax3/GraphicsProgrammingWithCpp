@@ -15,7 +15,7 @@ namespace OWC
     {
     public:
         VulkanSceneMesh() = delete;
-        explicit VulkanSceneMesh(const tg3_model& model, i32 meshIndex, i32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
+        explicit VulkanSceneMesh(const tg3_model& model, i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
         ~VulkanSceneMesh() override;
 
         VulkanSceneMesh(const VulkanSceneMesh&) = delete;
@@ -25,7 +25,7 @@ namespace OWC
 
         [[nodiscard]] const AttributeData& GetAttributeData(const std::string& attributeName) const override;
 
-        [[nodiscard]] i32 GetCustomInstanceIndex() const { return m_CustomInstanceIndex; }
+        [[nodiscard]] u32 GetCustomInstanceIndex() const { return m_CustomInstanceIndex; }
         [[nodiscard]] vk::AccelerationStructureKHR GetAccelerationStructure() const { return m_AccelerationStructure; }
         [[nodiscard]] vk::Buffer GetAccelerationStructureBuffer() const { return m_Buffer; }
         [[nodiscard]] vk::DeviceAddress GetAccelerationStructureBufferDeviceAddress() const { return m_BufferDeviceAddress; }
@@ -36,6 +36,6 @@ namespace OWC
         vma::Allocation m_BufferMemory = vma::Allocation();
         vk::AccelerationStructureKHR m_AccelerationStructure;
         const tg3_model& m_Model;
-        i32 m_CustomInstanceIndex;
+        u32 m_CustomInstanceIndex;
     };
 } // OWC

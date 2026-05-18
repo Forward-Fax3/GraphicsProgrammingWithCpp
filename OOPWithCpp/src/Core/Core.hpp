@@ -69,6 +69,10 @@ namespace OWC
 	using Vec3f32 = glm::vec<3, f32>;
 	using Vec4f32 = glm::vec<4, f32>;
 
+	using Vec2pf32 = glm::vec<2, f32, glm::packed_highp>;
+	using Vec3pf32 = glm::vec<3, f32, glm::packed_highp>;
+	using Vec4pf32 = glm::vec<4, f32, glm::packed_highp>;
+
 	using Mat2f32 = glm::mat<2, 2, f32>;
 	using Mat3f32 = glm::mat<3, 3, f32>;
 	using Mat4f32 = glm::mat<4, 4, f32>;
@@ -132,6 +136,10 @@ namespace OWC
 	using Vec2 = Vec2f32;
 	using Vec3 = Vec3f32;
 	using Vec4 = Vec4f32;
+
+	using Vec2p = Vec2pf32;
+	using Vec3p = Vec3pf32;
+	using Vec4p = Vec4pf32;
 
 	using Vec2us = Vec2uSize;
 	using Vec3us = Vec3uSize;

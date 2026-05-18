@@ -21,7 +21,7 @@
 
 namespace OWC
 {
-    VulkanSceneMesh::VulkanSceneMesh(const tg3_model& model, const i32 meshIndex, i32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData)
+    VulkanSceneMesh::VulkanSceneMesh(const tg3_model& model, const i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData)
         : m_Model(model), m_CustomInstanceIndex(customInstancesIndex)
     {
         using namespace OWC::Graphics;

@@ -24,20 +24,24 @@ namespace OWC
         SponzaPalace(SponzaPalace&&) noexcept = delete;
         SponzaPalace& operator=(SponzaPalace&&) noexcept = delete;
 
-        std::shared_ptr<BaseTLAS>& GetTLAS() override { return m_TLAS; }
-        uSize GetDeviceMegaBufferPtr() const override { return m_GPUBuffer->GetDeviceBufferPtr(); }
-        uSize GetDeviceGeometryBufferPtr() const override { return m_GPUBuffer->GetDeviceBufferPtr() + m_GeometryBufferOffset; }
+        [[nodiscard]] std::shared_ptr<BaseTLAS>& GetTLAS() override { return m_TLAS; }
+        [[nodiscard]] uSize GetDeviceMegaBufferPtr() const override { return m_GPUBuffer->GetDeviceBufferPtr(); }
+        [[nodiscard]] uSize GetDeviceGeometryBufferPtr() const override { return m_GPUBuffer->GetDeviceBufferPtr() + m_GeometryBufferOffset; }
+        [[nodiscard]] uSize GetLightBufferPtr() const override { return m_LightBuffer->GetDeviceBufferPtr(); }
+        [[nodiscard]] u32 GetNumberOfLights() const override { return m_numberOfLights; }
 
     private:
-        void IterateThroughNodes(const tg3_model& model, u32 nodeIndex, Mat4 parentTransform, i32& customInstancesIndex);
+        void IterateThroughNodes(const tg3_model& model, u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData);
 
     private:
         std::map<i32, std::shared_ptr<SceneMesh>> m_Meshes;
         tg3_model m_Model = {};
         std::shared_ptr<BaseTLAS> m_TLAS;
         std::shared_ptr<Graphics::GeneralBuffer> m_GPUBuffer;
+        std::shared_ptr<Graphics::GeneralBuffer> m_LightBuffer;
         std::vector<GPUGLTFData> m_GPUData;
         uSize m_GeometryBufferSize = 0;
         uSize m_GeometryBufferOffset = 0;
+        u32 m_numberOfLights = 0;
     };
 }// OWC

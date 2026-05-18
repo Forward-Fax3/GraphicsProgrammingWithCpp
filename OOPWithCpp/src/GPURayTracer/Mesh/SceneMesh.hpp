@@ -14,13 +14,26 @@ namespace OWC
 {
     struct GPUGLTFData
     {
-        u64 positionsOffset;
-        u64 indicesOffset;
-        u64 normalsOffset;
-        u64 coloursOffset;
-        u32 materialIndex;
-        u32 is16BitIndices; // bool
-        u32 _[2]; // pad to 48 bytes
+        u64 positionsOffset = 0;
+        u64 indicesOffset = 0;
+        u64 normalsOffset = 0;
+        u64 coloursOffset = 0;
+        u32 materialIndex = 0 ;
+        u32 is16BitIndices = 0; // bool
+        u32 _[2] = { 0, 0 }; // pad to 48 bytes
+    };
+
+    struct GPULightData
+    {
+        Vec3p position = Vec3p(0.0f);
+        u32 type = ~0u;
+        Vec3p direction = Vec3p(0.0f);
+        f32 intensity = 1.0f;
+        Vec3p Colour = Vec3p(1.0f);
+        f32 range = 0.0f;
+        f32 innerConeAngle = 0.0f;
+        f32 outerConeAngle = 0.0f;
+        u32 _[2] = { 0, 0 }; // pad to 64 bytes
     };
 
     struct AttributeData
@@ -44,6 +57,6 @@ namespace OWC
 
         [[nodiscard]] virtual const AttributeData& GetAttributeData(const std::string& attributeName) const = 0;
 
-        static std::shared_ptr<SceneMesh> CreateFromGLTFModelWithMeshIndex(const tg3_model& gltfMesh, i32 meshIndex, i32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
+        static std::shared_ptr<SceneMesh> CreateFromGLTFModelWithMeshIndex(const tg3_model& gltfMesh, i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
     };
 } // OWC
