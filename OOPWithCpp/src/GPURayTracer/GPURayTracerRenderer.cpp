@@ -37,15 +37,11 @@ namespace OWC
 	{
 		auto& app = Application::GetConstInstance();
 		m_Scene = std::make_shared<SponzaPalace>();
-		m_RenderTarget = Graphics::TextureBuffer::CreateTextureBuffer(app.GetPixelWidth(), app.GetPixelHeight());
 		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(UniformBufferObject));
 		m_GeneralGPUDataBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(sizeof(GeneralGPUData));
 		m_ScreenNeedsRefreshing = true;
 
-		std::vector<Vec4> nullImageData{};
-		nullImageData.resize(app.GetPixelWidth() * app.GetPixelHeight(), Vec4(0.0f));
-		m_RenderTarget->UpdateBufferData(nullImageData);
-
+		SetUpRenderImage();
 		SetupPipeline();
 		SetupRenderPass();
 		CalculateCamera();
@@ -118,8 +114,10 @@ namespace OWC
 		EventDispatcher dispatcher(e);
 
 		dispatcher.Dispatch<WindowRestore>([this](const WindowRestore& /*event*/) {
+			this->SetUpRenderImage();
 			this->SetupRenderPass();
 			this->SetActiveState(true);
+			m_ScreenNeedsRefreshing = true;
 			return false;
 			});
 
@@ -132,8 +130,10 @@ namespace OWC
 			});
 
 		dispatcher.Dispatch<WindowResize>([this](const WindowResize& /*event*/) {
+			this->SetUpRenderImage();
 			this->SetupPipeline();
 			this->SetupRenderPass();
+			m_ScreenNeedsRefreshing = true;
 			return false;
 			});
 
@@ -202,6 +202,15 @@ namespace OWC
 
 			return true;
 			});
+	}
+
+	void GPURayTracerRenderer::SetUpRenderImage()
+	{
+		const auto& app = Application::GetConstInstance();
+		m_RenderTarget = Graphics::TextureBuffer::CreateTextureBuffer(app.GetPixelWidth(), app.GetPixelHeight());
+		std::vector<Vec4> nullImageData{};
+		nullImageData.resize(app.GetPixelWidth() * app.GetPixelHeight(), Vec4(0.0f));
+		m_RenderTarget->UpdateBufferData(nullImageData);
 	}
 
 	void GPURayTracerRenderer::SetupRenderPass()

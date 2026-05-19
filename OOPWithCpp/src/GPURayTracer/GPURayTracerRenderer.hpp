@@ -44,6 +44,7 @@ namespace OWC
         void OnEvent(BaseEvent&) override;
 
     private: // methods
+        void SetUpRenderImage();
         void SetupRenderPass();
         void SetupPipeline();
         void CalculateCamera(const Vec3& movement = Vec3(0.0f));

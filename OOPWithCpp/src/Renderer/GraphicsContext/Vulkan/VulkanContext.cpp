@@ -947,12 +947,12 @@ namespace OWC::Graphics
 
 		// SDL gives the actual window size, so we can use that directly
 		vk::Extent2D swapchainExtent{};
-		swapchainExtent.width = m_WindowProperties.PixelWidth;
-		swapchainExtent.height = m_WindowProperties.PixelHeight;
+		swapchainExtent.width = glm::max(glm::min(m_WindowProperties.PixelWidth, surfaceCapabilities.surfaceCapabilities.maxImageExtent.width), surfaceCapabilities.surfaceCapabilities.minImageExtent.width);
+		swapchainExtent.height = glm::max(glm::min(m_WindowProperties.PixelHeight, surfaceCapabilities.surfaceCapabilities.maxImageExtent.height), surfaceCapabilities.surfaceCapabilities.minImageExtent.height);
 		Log<LogLevel::Debug>("Vulkan Swapchain Surface Capabilities:");
 		Log<LogLevel::Debug>(" Current Extent: {}x{}", swapchainExtent.width, swapchainExtent.height);
 
-		auto presentModeCompatibilities = vkCore.GetPhysicalDev().getSurfacePresentModesKHR(vkCore.GetSurface());
+		const auto presentModeCompatibilities = vkCore.GetPhysicalDev().getSurfacePresentModesKHR(vkCore.GetSurface());
 
 		if (presentModeCompatibilities.empty())
 			Log<LogLevel::Critical>("Failed to find any present modes for the swapchain");
@@ -961,7 +961,7 @@ namespace OWC::Graphics
 		for (const auto& presentMode : presentModeCompatibilities)
 			Log<LogLevel::Debug>(" {}", vk::to_string(presentMode));
 
-		auto selectedPresentMode = vk::PresentModeKHR::eFifo; // guaranteed to be available
+		constexpr auto selectedPresentMode = vk::PresentModeKHR::eFifo; // guaranteed to be available
 		// prefer mailbox present mode if available
 		/*
 		for (const auto& presentMode : presentModeCompatibilities)
