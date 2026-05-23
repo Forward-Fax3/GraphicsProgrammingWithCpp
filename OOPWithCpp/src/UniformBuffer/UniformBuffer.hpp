@@ -20,9 +20,15 @@ namespace OWC::Graphics
 		UniformBuffer(UniformBuffer&&) noexcept = default;
 		UniformBuffer& operator=(UniformBuffer&&) noexcept = default;
 
-		virtual void UpdateBufferData(std::span<const std::byte> data) = 0;
+		void UpdateBufferData(const std::span<const std::byte> data, const uSize size = 0, const uSize offset = 0)
+		{
+			UpdateBufferDataImpl(data, size, offset);
+		}
 
 		static std::shared_ptr<UniformBuffer> CreateUniformBuffer(uSize size);
+
+	private:
+		virtual void UpdateBufferDataImpl(std::span<const std::byte> data, uSize size, uSize offset) = 0;
 	};
 
 	class TextureBuffer

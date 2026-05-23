@@ -189,10 +189,12 @@ namespace OWC
             const u32 fallbackMaxVertex = positionData.count > 0 ? positionData.count - 1 : 0;
             const u32 maxIndex = computeMaxIndex(accessor, fallbackMaxVertex);
 
+            const u32 positionStride = positionData.byteStride > 0 ? positionData.byteStride : static_cast<u32>(sizeof(float) * 3);
+
             triangles.emplace_back(
                 vk::Format::eR32G32B32Sfloat,
                 vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + positionData.offset),
-                positionData.byteStride,
+                positionStride,
                 maxIndex,
                 accessor.component_type == TG3_COMPONENT_TYPE_UNSIGNED_SHORT ? vk::IndexType::eUint16 : vk::IndexType::eUint32,
                 vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + indexData.offset)
@@ -209,6 +211,10 @@ namespace OWC
 
             auto normalData = extractAttribute(prim, "NORMAL");
             auto colourData = extractAttribute(prim, "COLOR_0");
+            assert((normalData.byteStride == 12 || normalData.hasData == false) && (colourData.byteStride == 16 || colourData.hasData == false));
+            if (accessor.component_type != TG3_COMPONENT_TYPE_UNSIGNED_SHORT)
+                OWCDebugBreak();
+
             /*auto texCoordsdata = extractAttribute(prim, "TEXCOORD_0");
             auto Tangentsdata = extractAttribute(prim, "TANGENT");*/
             GPUData.emplace_back(
@@ -225,6 +231,8 @@ namespace OWC
             .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
             .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace)
             .setGeometries(geometries);
+
+        Log<LogLevel::Trace>("Mesh {} built {} geometries from {} primitives", meshIndex, geometries.size(), mesh.primitives_count);
 
         vk::AccelerationStructureBuildSizesInfoKHR buildSizes;
         device.getAccelerationStructureBuildSizesKHR(

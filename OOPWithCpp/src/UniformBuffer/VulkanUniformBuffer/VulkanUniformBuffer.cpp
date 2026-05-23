@@ -49,14 +49,17 @@ namespace OWC::Graphics
 			allocator.destroyBuffer(m_UniformBuffers[i], m_UniformBuffersMemory[i]);
 	}
 
-	void VulkanUniformBuffer::UpdateBufferData(std::span<const std::byte> data)
+	void VulkanUniformBuffer::UpdateBufferDataImpl(std::span<const std::byte> data, uSize size, uSize offset)
 	{
+		if (size == 0)
+			size = data.size();
+
 		const auto& vkCore = VulkanCore::GetInstance();
 		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
 		const uSize currentFrame = vkCore.GetCurrentFrameIndex();
 
 		const auto bufferCreateInfo = vk::BufferCreateInfo()
-			.setSize(data.size())
+			.setSize(size)
 			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
 			.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -67,15 +70,15 @@ namespace OWC::Graphics
 		vma::AllocationInfo stagingBufferAllocationInfo;
 		const auto [stagingBufferAllocation, stagingBuffer] = allocator.createBuffer(bufferCreateInfo, allocCreateInfo, stagingBufferAllocationInfo);
 
-		std::memcpy(stagingBufferAllocationInfo.pMappedData, data.data(), data.size());
+		std::memcpy(stagingBufferAllocationInfo.pMappedData, data.data(), size);
 
 		const auto& cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
 		cmdTransBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const auto copyBufferSize = vk::BufferCopy2()
 				.setSrcOffset(0)
-				.setDstOffset(0)
-				.setSize(data.size());
+				.setDstOffset(offset)
+				.setSize(size);
 		const auto copyBufferInfo = vk::CopyBufferInfo2()
 			.setSrcBuffer(stagingBuffer)
 			.setDstBuffer(m_UniformBuffers[currentFrame])
@@ -91,8 +94,8 @@ namespace OWC::Graphics
 			.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setBuffer(m_UniformBuffers[currentFrame])
-			.setOffset(0)
-			.setSize(data.size());
+			.setOffset(offset)
+			.setSize(size);
 
 		cmdTransBuf.pipelineBarrier2(vk::DependencyInfo()
 			.setBufferMemoryBarriers(transferBufferMemoryBarrier)
@@ -123,8 +126,8 @@ namespace OWC::Graphics
 			.setSrcQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setBuffer(m_UniformBuffers[currentFrame])
-			.setOffset(0)
-			.setSize(data.size());
+			.setOffset(offset)
+			.setSize(size);
 
 		cmdGraphicsBuffer.pipelineBarrier2(vk::DependencyInfo()
 			.setBufferMemoryBarriers(GraphicsBufferMemoryBarrier)

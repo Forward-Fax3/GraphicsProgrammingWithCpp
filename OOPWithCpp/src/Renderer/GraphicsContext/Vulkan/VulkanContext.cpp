@@ -6,6 +6,7 @@
 #include "Core.hpp"
 
 #include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 #include <SDL3/SDL_vulkan.h>
 #include <backends/imgui_impl_vulkan.h>

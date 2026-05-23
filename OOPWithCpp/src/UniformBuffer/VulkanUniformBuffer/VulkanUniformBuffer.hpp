@@ -19,12 +19,13 @@ namespace OWC::Graphics
 		VulkanUniformBuffer(VulkanUniformBuffer&&) noexcept = delete;
 		VulkanUniformBuffer& operator=(VulkanUniformBuffer&&) noexcept = delete;
 
-		void UpdateBufferData(std::span<const std::byte> data) override;
-
 		[[nodiscard]] vk::Buffer GetBuffer() const { return m_UniformBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; };
 		[[nodiscard]] uSize GetBufferSize() const { return static_cast<uSize>(VulkanCore::GetConstInstance().GetDevice().getBufferMemoryRequirements(m_UniformBuffers[0]).size); }
 
 		[[nodiscard]] std::vector<vk::Buffer> GetBuffers() const { return m_UniformBuffers; }
+
+	private:
+		void UpdateBufferDataImpl(std::span<const std::byte> data, uSize size, uSize offset) override;
 
 	private:
 		std::vector<vk::Buffer> m_UniformBuffers;

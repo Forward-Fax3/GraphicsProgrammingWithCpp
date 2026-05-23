@@ -19,6 +19,7 @@ struct GeneralData
     float4x4 InvProjectionMatrix;
     float4x4 InvViewMatrix;
     uint randSeed;
+    uint imageReset; // bool
 };
 
 struct [raypayload] RayPayload
@@ -33,7 +34,6 @@ struct [raypayload] RayPayload
 
 struct PushConstantData
 {
-    GeneralData* generalData;
     uint64_t mainBufferData;
     GeometryDescriptor* geomertyData;
     LightData* lightsBuffer;
@@ -43,8 +43,12 @@ struct PushConstantData
 
 [[push_constant]] ConstantBuffer<PushConstantData> PC;
 
-uniform RWTexture2D<float4> resultTexture;
-uniform RaytracingAccelerationStructure sceneBVH;
+[[vk::binding(0, 0)]]
+RWTexture2D<float4> resultTexture;
+[[vk::binding(1, 0)]]
+RaytracingAccelerationStructure sceneBVH;
+[[vk::binding(2, 0)]]
+ConstantBuffer<GeneralData> PerFrameData;
 
 static constexpr uint spotLight = 0;
 static constexpr uint pointLinght = 1;
@@ -204,12 +208,14 @@ void RayGenShader()
     const uint2 intThreadIdx = DispatchRaysIndex().xy;
     const uint2 intScreanSize = DispatchRaysDimensions().xy;
 
+    uint randVal = PerFrameData.randSeed + intThreadIdx.x + intScreanSize.x * intThreadIdx.y;
+
     const float2 threadIdx = (float2)intThreadIdx;
     const float2 screenSize = (float2)intScreanSize;
 
-    const float2 screenCoords = threadIdx / screenSize * 2.0 - 1.0;
+    const float2 screenCoords = (threadIdx + float2(Rand(randVal), Rand(randVal)) - 0.5f) / screenSize * 2.0 - 1.0;
 
-    const float4 viewCoords = mul(float4(screenCoords, 1.0, 1.0), PC.generalData.InvProjectionMatrix);
+    const float4 viewCoords = mul(float4(screenCoords, 1.0, 1.0), PerFrameData.InvProjectionMatrix);
 
     RayDesc ray;
     ray.TMin = 0.001;
@@ -217,10 +223,10 @@ void RayGenShader()
     RayPayload payload;
     payload.radiance = float3(0.0f);
     payload.throughput = float3(1.0f);
-    payload.randSeed = PC.generalData.randSeed + intThreadIdx.x + intScreanSize.x * intThreadIdx.y;
+    payload.randSeed = randVal;
     payload.depth = PC.numberOfBounces;
-    payload.newOrigin = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), PC.generalData.InvViewMatrix).xyz;
-    payload.newDirection = mul(float4(normalize(viewCoords.xyz), 0.0f), PC.generalData.InvViewMatrix).xyz;
+    payload.newOrigin = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), PerFrameData.InvViewMatrix).xyz;
+    payload.newDirection = mul(float4(normalize(viewCoords.xyz), 0.0f), PerFrameData.InvViewMatrix).xyz;
 
     while (payload.depth != 0)
     {
@@ -229,7 +235,10 @@ void RayGenShader()
         TraceRay(sceneBVH, RAY_FLAG_NONE, 0xFF, 0, 0, 0, ray, payload);
     }
 
-    resultTexture[intThreadIdx.xy] += float4(payload.radiance, 1.0f);
+    if (PerFrameData.imageReset == 1)
+        resultTexture[intThreadIdx.xy] = float4(payload.radiance, 1.0f);
+    else
+        resultTexture[intThreadIdx.xy] += float4(payload.radiance, 1.0f);
 }
 
 [shader("miss")]
@@ -256,12 +265,23 @@ void ClosestHitShader(inout RayPayload payload, in BuiltInTriangleIntersectionAt
 
     uint3 attributeIndex;
     if (geometry.is16BitIndices == 1)
-        attributeIndex = (uint3)reinterpret<uint16_t3*>(PC.mainBufferData + geometry.indicesOffset)[primitiveIndex];
+    {
+        uint16_t* idxBuf = reinterpret<uint16_t*>(PC.mainBufferData + geometry.indicesOffset);
+        attributeIndex = uint3(
+            (uint)idxBuf[primitiveIndex * 3 + 0],
+            (uint)idxBuf[primitiveIndex * 3 + 1],
+            (uint)idxBuf[primitiveIndex * 3 + 2]
+        );
+    }
     else // 32 bit indecies
         attributeIndex = reinterpret<uint3*>(PC.mainBufferData + geometry.indicesOffset)[primitiveIndex];
 
     float3 hitLocation = WorldRayOrigin() + WorldRayDirection() * RayTCurrent();
-    float3 hitNormal = normalize(GetTriangleAttributes<float3>(geometry.normalsOffset, attributeIndex, barycentricCoords));
+    float3 hitNormal = float3(0.0f, 1.0f, 0.0f);
+    if (geometry.normalsOffset != 0xFFFFFFFFFFFFFFFFULL)
+        hitNormal = normalize(GetTriangleAttributes<float3>(geometry.normalsOffset, attributeIndex, barycentricCoords));
+    //bool frontFace = dot(WorldRayDirection(), hitNormal) <= 0.0f;
+    //hitNormal = frontFace ? hitNormal : -hitNormal;
 
     // TODO: add materials
     // if (payload.depth == PC.numberOfBounces)
@@ -272,11 +292,9 @@ void ClosestHitShader(inout RayPayload payload, in BuiltInTriangleIntersectionAt
     payload.newOrigin = hitLocation + hitNormal * epsilon;
     payload.newDirection = newRayDirection;
 
-    float3 colour;
+    float3 colour = float3(0.8f);
     if (geometry.coloursOffset != 0xFFFFFFFFFFFFFFFFULL)
         colour = GetTriangleAttributes<float4>(geometry.coloursOffset, attributeIndex, barycentricCoords).xyz;
-    else
-        colour = float3(0.8f);
     colour *= oneOverPi;
 
     payload.throughput *= colour;

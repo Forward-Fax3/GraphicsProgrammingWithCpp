@@ -24,21 +24,16 @@
 #include <glm/trigonometric.hpp>
 
 #include "glm/gtx/euler_angles.hpp"
+#include "glm/gtx/norm.inl"
 
 
 namespace OWC
 {
-	//static bool operator>(const Vec2u& lhs, u32 rhs)
-	//{
-	//	return (lhs.x > rhs) && (lhs.y > rhs);
-	//}
-
 	GPURayTracerRenderer::GPURayTracerRenderer()
 	{
-		auto& app = Application::GetConstInstance();
 		m_Scene = std::make_shared<SponzaPalace>();
 		m_UniformBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(UniformBufferObject));
-		m_GeneralGPUDataBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(sizeof(GeneralGPUData));
+		m_RayTracingGPUDataBuffer = Graphics::UniformBuffer::CreateUniformBuffer(sizeof(GeneralGPUData));
 		m_ScreenNeedsRefreshing = true;
 
 		SetUpRenderImage();
@@ -51,34 +46,36 @@ namespace OWC
 	{
 		using namespace OWC::Graphics;
 
-		if (glm::length(m_KeyPressedOnVec3) > 0.0f)
+		if (glm::length2(m_KeyPressedOnVec3) > 0.0f) // length squared instead o length to avoid unnecessary square root
 		{
 			const auto& app = Application::GetConstInstance();
 			const float deltaTime = app.GetDeltaTime();
 			const Vec3 movePos = m_KeyPressedOnVec3 * m_MoveSpeed * deltaTime;
+			m_CameraNeedsRefreshing = Graphics::Renderer::GetNumberOfFramesInFlight(m_RayTracingRenderPass) - 1;
 			CalculateCamera(movePos);
+		}
+		else if (m_CameraNeedsRefreshing != 0)
+		{
+			m_CameraNeedsRefreshing--;
+			CalculateCamera();
 		}
 		else // CalculateCamera already creates a new random but camera may not be moved so do it on its own
 		{
 			u32 newRand = Rand::LinearFastRandValue(0u, std::numeric_limits<u32>::max());
-			m_GeneralGPUDataBuffer->UpdateBufferData(std::bit_cast<u8*>(&newRand), sizeof(GeneralGPUData::randSeed), offsetof(GeneralGPUData, randSeed));
+			m_RayTracingGPUDataBuffer->UpdateBufferData(std::as_bytes(std::span<const u32>(&newRand, 1)), sizeof(GeneralGPUData::randSeed), offsetof(GeneralGPUData, randSeed));
 		}
 
+		u32 GPURefreshScreen = false;
 		if (m_ScreenNeedsRefreshing)
 		{
-			const auto& app = Application::GetConstInstance();
 			m_ScreenNeedsRefreshing = false;
 			m_NumberOfSamples = 0;
-
-			std::vector<Vec4> nullImageData{};
-			nullImageData.resize(app.GetPixelWidth() * app.GetPixelHeight(), Vec4(0.0f));
-			m_RenderTarget->UpdateBufferData(nullImageData);
+			GPURefreshScreen = true;
 		}
 
+		m_RayTracingGPUDataBuffer->UpdateBufferData(std::as_bytes(std::span<const u32>(&GPURefreshScreen, 1)), sizeof(GeneralGPUData::GPURefreshScreen), offsetof(GeneralGPUData, GPURefreshScreen));
+
 		m_NumberOfSamples++;
-		std::array<std::string_view, 1> rayTracerWaitSemaphoreNames = { "ImageReady" };
-		std::array<std::string_view, 1> rayTracerSignalSemaphoreNames = { "RayTracerDone" };
-		std::array<std::string_view, 1> displayWaitSemaphoreNames = { "RayTracerDone" };
 
 		UniformBufferObject ubo{
 			.divider = 1.0f / static_cast<f32>(m_NumberOfSamples),
@@ -87,8 +84,27 @@ namespace OWC
 
 		m_UniformBuffer->UpdateBufferData(std::as_bytes(std::span<const UniformBufferObject>(&ubo, 1)));
 
-		Renderer::SubmitRenderPass(m_RayTracingRenderPass, rayTracerWaitSemaphoreNames, rayTracerSignalSemaphoreNames);
-		Renderer::SubmitRenderPass(m_DisplayRenderPass, displayWaitSemaphoreNames);
+		if (!Application::GetConstInstance().IsFirstFrame())
+		{
+			std::array<std::string_view, 1> releaseWaitSemaphoreNames = { "ImageReady" };
+			std::array<std::string_view, 1> releaseSignalSemaphoreNames = { "ImageRelease" };
+			std::array<std::string_view, 1> rayTracerWaitSemaphoreNames = { "ImageRelease" };
+			std::array<std::string_view, 1> rayTracerSignalSemaphoreNames = { "RayTracerDone" };
+			std::array<std::string_view, 1> displayWaitSemaphoreNames = { "RayTracerDone" };
+
+			Renderer::SubmitRenderPass(m_ImageReleaseRenderPass, releaseWaitSemaphoreNames, releaseSignalSemaphoreNames);
+			Renderer::SubmitRenderPass(m_RayTracingRenderPass, rayTracerWaitSemaphoreNames, rayTracerSignalSemaphoreNames);
+			Renderer::SubmitRenderPass(m_DisplayRenderPass, displayWaitSemaphoreNames);
+		}
+		else
+		{
+			std::array<std::string_view, 1> rayTracerWaitSemaphoreNames = { "ImageReady" };
+			std::array<std::string_view, 1> rayTracerSignalSemaphoreNames = { "RayTracerDone" };
+			std::array<std::string_view, 1> displayWaitSemaphoreNames = { "RayTracerDone" };
+
+			Renderer::SubmitRenderPass(m_RayTracingRenderPass, rayTracerWaitSemaphoreNames, rayTracerSignalSemaphoreNames);
+			Renderer::SubmitRenderPass(m_DisplayRenderPass, displayWaitSemaphoreNames);
+		}
 	}
 
 	void GPURayTracerRenderer::ImGuiRender()
@@ -106,7 +122,7 @@ namespace OWC
 		ImGui::End();
 
 		if (cameraMoved)
-			CalculateCamera();
+			m_CameraNeedsRefreshing = Graphics::Renderer::GetNumberOfFramesInFlight(m_RayTracingRenderPass);
 	}
 
 	void GPURayTracerRenderer::OnEvent(BaseEvent& e)
@@ -206,18 +222,14 @@ namespace OWC
 
 	void GPURayTracerRenderer::SetUpRenderImage()
 	{
-		const auto& app = Application::GetConstInstance();
+		auto& app = Application::GetConstInstance();
 		m_RenderTarget = Graphics::TextureBuffer::CreateTextureBuffer(app.GetPixelWidth(), app.GetPixelHeight());
-		std::vector<Vec4> nullImageData{};
-		nullImageData.resize(app.GetPixelWidth() * app.GetPixelHeight(), Vec4(0.0f));
-		m_RenderTarget->UpdateBufferData(nullImageData);
 	}
 
 	void GPURayTracerRenderer::SetupRenderPass()
 	{
 		struct PushConstantData
 		{
-			uSize GeneralData;
 			uSize megaBuffer;
 			uSize GeometryBuffer;
 			uSize LightsBuffer;
@@ -226,7 +238,6 @@ namespace OWC
 		};
 
 		const PushConstantData pushConstantData = {
-			.GeneralData = m_GeneralGPUDataBuffer->GetDeviceBufferPtr(),
 			.megaBuffer = m_Scene->GetDeviceMegaBufferPtr(),
 			.GeometryBuffer = m_Scene->GetDeviceGeometryBufferPtr(),
 			.LightsBuffer = m_Scene->GetLightBufferPtr(),
@@ -234,11 +245,9 @@ namespace OWC
 			.numberOfBounces = 8
 		};
 
-		Log<LogLevel::Debug>("GeneralData: {}, megaBuffer: {}, GeometryBuffer: {}", pushConstantData.GeneralData, pushConstantData.megaBuffer, pushConstantData.GeometryBuffer);
-
 		using namespace OWC::Graphics;
 		m_RayTracingRenderPass = Renderer::GetStaticRayTracingPass();
-		Renderer::TransitionImage(m_RayTracingRenderPass, m_RenderTarget, AccessMask::ShaderWrite, StageMask::RayTracing, ImageLayout::General);
+		Renderer::TransitionImage(m_RayTracingRenderPass, m_RenderTarget, AccessMask::ShaderWrite | AccessMask::ShaderRead, StageMask::RayTracing, ImageLayout::General);
 		Renderer::PipelineBind(m_RayTracingRenderPass, *m_RayTracingShader);
 		Renderer::PushConstant(m_RayTracingRenderPass, *m_RayTracingShader, sizeof(PushConstantData), &pushConstantData);
 		Renderer::BindUniform(m_RayTracingRenderPass, *m_RayTracingShader);
@@ -254,8 +263,12 @@ namespace OWC
 		Renderer::BindTexture(m_DisplayRenderPass, *m_DisplayShader, 1, 0);
 		Renderer::Draw(m_DisplayRenderPass, 6);
 		Renderer::EndRasterPass(m_DisplayRenderPass);
-		Renderer::TransitionImage(m_DisplayRenderPass, m_RenderTarget, AccessMask::None, StageMask::TopOfPipe, ImageLayout::General);
 		Renderer::EndPass(m_DisplayRenderPass);
+
+		// this is done last so that the internal state of m_RenderTarget is still neutral
+		m_ImageReleaseRenderPass = Renderer::GetStaticRenderPass();
+		Renderer::TransitionImage(m_ImageReleaseRenderPass, m_RenderTarget, AccessMask::None, StageMask::TopOfPipe, ImageLayout::General);
+		Renderer::EndPass(m_ImageReleaseRenderPass);
 	}
 
 	void GPURayTracerRenderer::SetupPipeline()
@@ -263,7 +276,7 @@ namespace OWC
 		using namespace OWC::Graphics;
 
 		{
-			std::vector<BindingDescription> rayGenBindingDescriptions = {
+			std::vector<BindingDescription> bindingDescriptions = {
 				{
 					.descriptorCount = 1,
 					.binding = 0,
@@ -275,21 +288,12 @@ namespace OWC
 					.binding = 1,
 					.descriptorType = DescriptorType::TLAS,
 					.stageFlags = (ShaderType::RayGen | ShaderType::RayClosestHit)
-				}
-			};
-
-			std::vector<BindingDescription> closestHitBindingDescriptions = {
-				/*{
-					.descriptorCount = 1,
-					.binding = 1,
-					.descriptorType = DescriptorType::RTblas,
-					.stageFlags = (ShaderType::RayGen | ShaderType::RayClosestHit)
-				},*/
+				},
 				{
 					.descriptorCount = 1,
 					.binding = 2,
-					.descriptorType = DescriptorType::StorageBuffer,
-					.stageFlags = (ShaderType::RayGen | ShaderType::RayClosestHit)
+					.descriptorType = DescriptorType::UniformBuffer,
+					.stageFlags = ShaderType::RayGen
 				}
 			};
 
@@ -300,7 +304,7 @@ namespace OWC
 					.bytecode = shaderSrc,
 					.type = ShaderType::RayGen,
 					.language = ShaderData::ShaderLanguage::SPIRV,
-					.descriptorType = rayGenBindingDescriptions,
+					.descriptorType = bindingDescriptions,
 					.entryPoint = "RayGenShader",
 				},
 				{
@@ -314,7 +318,7 @@ namespace OWC
 					.bytecode = shaderSrc,
 					.type = ShaderType::RayClosestHit,
 					.language = ShaderData::ShaderLanguage::SPIRV,
-					.descriptorType = closestHitBindingDescriptions,
+					.descriptorType = {},
 					.entryPoint = "ClosestHitShader",
 				},
 			};
@@ -322,6 +326,7 @@ namespace OWC
 			m_RayTracingShader = BaseShader::CreateRTShader(shaderDatas);
 			m_RayTracingShader->BindTexture(0, m_RenderTarget);
 			m_RayTracingShader->BindTLAS(1, m_Scene->GetTLAS());
+			m_RayTracingShader->BindUniform(2, m_RayTracingGPUDataBuffer);
 		}
 
 		{
@@ -392,7 +397,9 @@ namespace OWC
 			.randSeed = Rand::LinearFastRandValue(0u, std::numeric_limits<u32>::max())
 		};
 
-		m_GeneralGPUDataBuffer->UpdateBufferData(std::bit_cast<u8*>(&generalGPUData));
+		constexpr uSize size = sizeof(GeneralGPUData::InvProjection) + sizeof(GeneralGPUData::InvViewMatrix) + sizeof(GeneralGPUData::randSeed);
+
+		m_RayTracingGPUDataBuffer->UpdateBufferData(std::as_bytes(std::span<const GeneralGPUData>(&generalGPUData, 1)), size);
 		m_ScreenNeedsRefreshing = true;
 	}
 }

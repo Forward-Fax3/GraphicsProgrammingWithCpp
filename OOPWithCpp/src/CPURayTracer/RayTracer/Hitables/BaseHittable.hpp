@@ -9,7 +9,7 @@
 
 #ifndef BASEMATERIAL_HPP
 #include "BaseMaterial.hpp"
-#endif // !BASEMATERIAL_HPP
+#endif // BASEMATERIAL_HPP
 
 #if defined(_WIN32) || defined(_WIN64)
 #pragma warning(push)
@@ -111,7 +111,7 @@ namespace OWC
 			static_assert(sizeof(HitData) == 64, "HitData size is not 64 bytes!");
 			static_assert(alignof(HitData) == 64, "HitData alignment is not 64 bytes!");
 
-			__m256i zero = _mm256_setzero_si256();
+			const __m256i zero = _mm256_setzero_si256();
 			_mm256_store_si256(std::bit_cast<__m256i*>(this), zero);
 			_mm256_store_si256(std::bit_cast<__m256i*>(std::bit_cast<u8*>(this) + 32), zero);
 		}

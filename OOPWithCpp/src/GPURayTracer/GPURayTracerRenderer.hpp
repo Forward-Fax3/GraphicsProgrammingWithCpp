@@ -29,6 +29,7 @@ namespace OWC
             Mat4 InvProjection = 0.0f;
             Mat4 InvViewMatrix = 0.0f;
             u32 randSeed = 0;
+            u32 GPURefreshScreen = false;
         };
 
     public:
@@ -54,15 +55,17 @@ namespace OWC
         std::unique_ptr<Graphics::BaseShader> m_DisplayShader = nullptr;
         std::shared_ptr<Graphics::RenderPassData> m_RayTracingRenderPass = nullptr;
         std::shared_ptr<Graphics::RenderPassData> m_DisplayRenderPass = nullptr;
+        std::shared_ptr<Graphics::RenderPassData> m_ImageReleaseRenderPass = nullptr;
         std::shared_ptr<Graphics::UniformBuffer> m_UniformBuffer = nullptr;
         std::shared_ptr<Graphics::TextureBuffer> m_RenderTarget = nullptr;
-        std::shared_ptr<Graphics::GeneralBuffer> m_GeneralGPUDataBuffer = nullptr;
+        std::shared_ptr<Graphics::UniformBuffer> m_RayTracingGPUDataBuffer = nullptr;
         uSize m_NumberOfSamples = 0;
 
         float m_HFOV = 90.0f;
         Vec3 m_CameraPosition = Vec3(0.0f, 1.5f, 0.0f);
         Vec3 m_CameraRotation = Vec3(0.0f);
         float m_MoveSpeed = 1.0f;
+        u8 m_CameraNeedsRefreshing = false;
         bool m_ScreenNeedsRefreshing = false;
 
         Vec3 m_KeyPressedOnVec3 = Vec3(0.0f);
