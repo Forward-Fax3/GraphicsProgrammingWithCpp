@@ -59,6 +59,7 @@ The new additions have been to add GPU Ray-Tracer using the Vulkan ray tracing e
 	- a clang version that supports C++23
 	- CMake 4.1+
 	- Ninja
+    - A GPU that supports Vulkan ray tracing extensions (e.g. NVIDIA RTX series, AMD RX 6000 series, Intel Arc series)
 
 ## Getting Started (Cmake)
 - Clone the repository with `git clone --recurse-submodules https://github.com/Forward-Fax3/GraphicsProgrammingWithCpp.git`
