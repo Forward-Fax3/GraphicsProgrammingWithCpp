@@ -131,6 +131,7 @@ namespace OWC
 
 		dispatcher.Dispatch<WindowRestore>([this](const WindowRestore& /*event*/) {
 			this->SetUpRenderImage();
+			this->SetupPipeline();
 			this->SetupRenderPass();
 			this->SetActiveState(true);
 			m_ScreenNeedsRefreshing = true;
