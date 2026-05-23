@@ -38,6 +38,8 @@ namespace OWC::Graphics
 
 		void DrawImGui(ImDrawData* drawData) override;
 
+		void AddToEndOfFrameCleanUp(const std::function<void()>& func) override;
+
 		static vk::AccessFlags2 GetVulkanAccessMask(AccessMask accessMask);
 		static vk::PipelineStageFlags2 GetVulkanPipelineStageMask(StageMask stageMask);
 		static vk::ImageLayout GetVulkanImageLayout(ImageLayout layout);

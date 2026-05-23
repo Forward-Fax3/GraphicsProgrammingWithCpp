@@ -139,6 +139,11 @@ namespace OWC::Graphics
 		data->DrawImGui(drawData);
 	}
 
+	void Renderer::AddToEndOfFrameCleanUp(const std::shared_ptr<RenderPassData>& data, const std::function<void()>& func)
+	{
+		data->AddToEndOfFrameCleanUp(func);
+	}
+
 	void Renderer::BindTexture(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader, u32 binding, u32 textureID)
 	{
 		data->BindTexture(shader, binding, textureID);

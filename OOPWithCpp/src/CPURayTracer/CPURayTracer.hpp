@@ -48,7 +48,6 @@ namespace OWC
 		std::chrono::time_point<std::chrono::high_resolution_clock> m_LastTimePoint{};
 		std::shared_ptr<InterLayerData> m_InterLayerData = nullptr;
 		bool m_RayTracingStateUpdated = false;
-		bool m_ToggleRaytracedImage = false;
 		bool m_UseWindowResolution = true;
 		bool m_CameraSettingsUpdated = true;
 

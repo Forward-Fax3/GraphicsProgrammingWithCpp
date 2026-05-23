@@ -404,6 +404,11 @@ namespace OWC::Graphics
 		ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuf);
 	}
 
+	void VulkanRenderPass::AddToEndOfFrameCleanUp(const std::function<void()>& func)
+	{
+		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction(func);
+	}
+
 	vk::AccessFlags2 VulkanRenderPass::GetVulkanAccessMask(const AccessMask accessMask)
 	{
 		vk::AccessFlags2 accessFlags;

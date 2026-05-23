@@ -129,6 +129,8 @@ namespace OWC::Graphics
 
 		void virtual DrawImGui(ImDrawData* drawData) = 0;
 
+		void virtual AddToEndOfFrameCleanUp(const std::function<void()>& func) = 0;
+
 		[[nodiscard]] uSize virtual GetNumberOfFramesInFlight() const = 0;
 
 	protected:
@@ -170,6 +172,8 @@ namespace OWC::Graphics
 		static void RestartRenderPass(const std::shared_ptr<RenderPassData>& data);
 
 		static void DrawImGui(const std::shared_ptr<RenderPassData>& data, ImDrawData* drawData);
+
+		static void AddToEndOfFrameCleanUp(const std::shared_ptr<RenderPassData>& data, const std::function<void()>& func);
 
 		[[nodiscard]] static uSize GetNumberOfFramesInFlight(const std::shared_ptr<RenderPassData>& data);
 

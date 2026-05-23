@@ -83,6 +83,7 @@ namespace OWC
     SponzaPalace::~SponzaPalace()
     {
         tg3_model_free(&m_Model);
+
     }
 
     void SponzaPalace::IterateThroughNodes(const tg3_model& model, const u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData)

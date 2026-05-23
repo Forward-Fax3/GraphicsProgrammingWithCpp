@@ -1,6 +1,6 @@
 #pragma once
 #include "Core.hpp"
-#include <vector>
+#include <list>
 #include <memory>
 
 #include "Layer.hpp"
@@ -12,11 +12,7 @@ namespace OWC
 	class LayerStack
 	{
 	public:
-		OWC_FORCE_INLINE LayerStack()
-		{
-			// preallocate some memory to avoid multiple allocations
-			m_Layers.reserve(16);
-		}
+		OWC_FORCE_INLINE LayerStack() = default;
 		OWC_FORCE_INLINE ~LayerStack()
 		{
 			m_Layers.clear();
@@ -32,7 +28,7 @@ namespace OWC
 
 		OWC_FORCE_INLINE void PushLayer(const std::shared_ptr<Layer>& layer)
 		{
-			m_Layers.emplace(m_Layers.begin() + m_LayerInsertIndex, layer);
+			m_Layers.insert(std::next(m_Layers.begin(), m_LayerInsertIndex), layer);
 			m_LayerInsertIndex++;
 		}
 		
@@ -56,7 +52,7 @@ namespace OWC
 		void OnEvent(BaseEvent& event) const;
 
 	private:
-		std::vector<std::shared_ptr<Layer>> m_Layers;
+		std::list<std::shared_ptr<Layer>> m_Layers;
 		i32 m_LayerInsertIndex = 0;
 	};
 }
