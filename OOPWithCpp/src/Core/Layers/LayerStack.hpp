@@ -35,6 +35,7 @@ namespace OWC
 		OWC_FORCE_INLINE void PopLayer(const std::shared_ptr<Layer>& layer)
 		{
 			m_Layers.erase(std::ranges::find(m_Layers, layer));
+			m_LayerInsertIndex--;
 		}
 
 		OWC_FORCE_INLINE void PushOverlay(const std::shared_ptr<Layer>& overlay)

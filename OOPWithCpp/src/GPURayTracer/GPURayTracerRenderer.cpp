@@ -46,7 +46,7 @@ namespace OWC
 	{
 		using namespace OWC::Graphics;
 
-		if (glm::length2(m_KeyPressedOnVec3) > 0.0f) // length squared instead o length to avoid unnecessary square root
+		if (glm::length2(m_KeyPressedOnVec3) > 0.0f) // length squared instead of length to avoid unnecessary square root
 		{
 			const auto& app = Application::GetConstInstance();
 			const float deltaTime = app.GetDeltaTime();
@@ -119,6 +119,16 @@ namespace OWC
 		cameraMoved |= ImGui::DragFloat3("Camera Rotation", glm::value_ptr(m_CameraRotation), 0.1f);
 		ImGui::Separator();
 		cameraMoved |= ImGui::SliderFloat("Horizontal FOV", &m_HFOV, 1.0f, 179.0f);
+		if (ImGui::SliderInt("Number of Bounces", &m_NumberOfBounces, 0, 128))
+		{
+			m_NumberOfBounces = glm::clamp(m_NumberOfBounces, 0, 128);
+			m_ScreenNeedsRefreshing = true;
+			Graphics::Renderer::AddToEndOfFrameCleanUp([rayTracingRenderPass = std::move(m_RayTracingRenderPass), displayRenderPass = std::move(m_DisplayRenderPass), imageReleaseRenderPass = std::move(m_ImageReleaseRenderPass)]()
+			{
+					//Graphics::Renderer::WaitTillIdle();
+			}); // extend the life of the command buffers so that they get destroyed outside of use
+			SetupRenderPass();
+		}
 		ImGui::End();
 
 		if (cameraMoved)
@@ -243,7 +253,7 @@ namespace OWC
 			.GeometryBuffer = m_Scene->GetDeviceGeometryBufferPtr(),
 			.LightsBuffer = m_Scene->GetLightBufferPtr(),
 			.numberOfLights = m_Scene->GetNumberOfLights(),
-			.numberOfBounces = 8
+			.numberOfBounces = static_cast<u32>(m_NumberOfBounces)
 		};
 
 		using namespace OWC::Graphics;

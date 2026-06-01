@@ -3,6 +3,8 @@
 #include "CPURayTracerRenderer.hpp"
 #include "CPURayTracer.hpp"
 #include "InterLayerData.hpp"
+#include "WindowMinimizeEvent.hpp"
+#include "WindowRestoreEvent.hpp"
 
 #include <array>
 #include <string_view>
@@ -19,7 +21,7 @@ namespace OWC
 
 	void MainLayer::OnUpdate()
 	{
-		if (m_ActiveLayer == 0)
+		if (m_ActiveLayer == 0 && !m_IsMinimized)
 		{
 			std::array<std::string_view, 1> waitSemaphores = { "ImageReady" };
 			Graphics::Renderer::SubmitRenderPass(m_EmptyRenderPass, waitSemaphores);
@@ -51,14 +53,12 @@ namespace OWC
 				}
 				else
 				{
-					Graphics::Renderer::AddToEndOfFrameCleanUp(m_EmptyRenderPass, [testLayer = m_TestLayer, cpuRayTracerLayer = m_CPURayTracerLayer, &app]()
+					Graphics::Renderer::AddToEndOfFrameCleanUp([testLayer = std::move(m_TestLayer), cpuRayTracerLayer = std::move(m_CPURayTracerLayer), &app]()
 						{
 							app.PopLayer(testLayer);
 							app.PopLayer(cpuRayTracerLayer);
 						}
 					);
-					m_TestLayer.reset();
-					m_CPURayTracerLayer.reset();
 					m_ActiveLayer = 0;
 				}
 			}
@@ -75,16 +75,37 @@ namespace OWC
 				}
 				else
 				{
-					Graphics::Renderer::AddToEndOfFrameCleanUp(m_EmptyRenderPass, [gpuRayTracerLayer = m_GPURayTracerLayer, &app]()
+					Graphics::Renderer::AddToEndOfFrameCleanUp([gpuRayTracerLayer = std::move(m_GPURayTracerLayer), &app]()
 						{
 							app.PopLayer(gpuRayTracerLayer);
 						}
 					);
-					m_GPURayTracerLayer.reset();
 					m_ActiveLayer = 0;
 				}
 			}
 		}
 		ImGui::End();
 	}
+
+	void MainLayer::OnEvent(BaseEvent& event)
+	{
+		EventDispatcher dispatcher(event);
+
+		dispatcher.Dispatch<WindowRestore>([this](const WindowRestore&)
+			{
+				m_IsMinimized = false;
+				return false;
+			});
+
+		if (m_IsMinimized)
+			return;
+
+		dispatcher.Dispatch<WindowMinimize>([this](const WindowMinimize&)
+			{
+				m_IsMinimized = true;
+				return false;
+			});
+	}
+
+
 }

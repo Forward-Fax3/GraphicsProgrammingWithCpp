@@ -319,8 +319,6 @@ namespace OWC::Graphics
 		auto& vkCore = VulkanCore::GetInstance();
 		const auto& device = vkCore.GetDevice();
 
-		vkCore.ResetRenderPassDatas();
-
 		vkCore.GetVulkanMemoryAllocator().destroy();
 
 		vkCore.DestroySemaphores();
@@ -357,13 +355,6 @@ namespace OWC::Graphics
 	{
 		auto& vkCore = VulkanCore::GetInstance();
 		const auto& device = vkCore.GetDevice();
-
-		{
-			auto [temp, _] = vkCore.GetRenderPassDatas();
-			std::vector<std::shared_ptr<VulkanRenderPass>>& renderPassDatas = temp.get();
-
-			renderPassDatas.clear();
-		}
 
 		if (!m_IsMinimized)
 		{
@@ -482,8 +473,6 @@ namespace OWC::Graphics
 			.setWaitDstStageMask(waitDestinationStageMask);
 
 		vkCore.GetGraphicsQueue().submit(submitInfo, VK_NULL_HANDLE);
-
-		vkCore.GetRenderPassDatas().first.get().clear();
 	}
 
 	void VulkanContext::WaitForIdle()
@@ -1259,11 +1248,6 @@ namespace OWC::Graphics
 		vkCore.GetDevice().freeCommandBuffers(vkCore.GetGraphicsCommandPool(), m_EndRenderCmdBuf);
 
 		WriteCommandBuffers();
-	}
-
-	void VulkanContext::AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData)
-	{
-		VulkanCore::GetInstance().AddRenderPassData(renderPassData);
 	}
 
 	void VulkanContext::Minimize()

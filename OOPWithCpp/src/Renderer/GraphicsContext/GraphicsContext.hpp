@@ -41,8 +41,6 @@ namespace OWC::Graphics
 		virtual void FlushValidationMessages() = 0;
 #endif
 
-		virtual void AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData) = 0;
-
 		virtual void ImGuiInit() = 0;
 		virtual void ImGuiShutdown() = 0;
 		virtual void ImGuiNewFrame() = 0;

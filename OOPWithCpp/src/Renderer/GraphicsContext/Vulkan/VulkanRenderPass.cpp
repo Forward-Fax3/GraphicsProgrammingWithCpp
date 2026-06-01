@@ -519,4 +519,9 @@ namespace OWC::Graphics
 	{
 		return VulkanCore::GetConstInstance().GetNumberOfFramesInFlight();
 	}
+
+	void VulkanRenderPass::WaitTillIdle()
+	{
+		VulkanCore::GetConstInstance().GetDevice().waitIdle();
+	}
 }

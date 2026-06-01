@@ -86,9 +86,6 @@ namespace OWC::Graphics
 
 		static void Shutdown() { s_Instance.reset(); }
 
-		void AddRenderPassData(const std::shared_ptr<RenderPassData>& data);
-		void ResetRenderPassDatas();
-
 		[[nodiscard]] std::vector<vk::CommandBuffer> GetGraphicsCommandBuffer() const;
 		[[nodiscard]] std::vector<vk::CommandBuffer> GetComputeCommandBuffer() const;
 		[[nodiscard]] std::vector<vk::CommandBuffer> GetTransferCommandBuffer() const;
@@ -140,7 +137,6 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<std::list<std::function<void()>>>& GetEndOfFrameCleanUp() { return m_EndOfFrameCleanUp; }
-		[[nodiscard]] OWC_FORCE_INLINE std::pair<std::reference_wrapper<std::vector<std::shared_ptr<VulkanRenderPass>>>, std::unique_lock<std::mutex>> GetRenderPassDatas() { return { std::ref(m_RenderPassDatas), std::unique_lock(m_RenderPassesMutex) }; }
 
 		[[nodiscard]] OWC_FORCE_INLINE vk::Semaphore GetLastFrameFinishedSemaphore() const { return m_LastFrameWaitSemaphore; }
 
@@ -165,7 +161,7 @@ namespace OWC::Graphics
 		OWC_FORCE_INLINE void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
 		OWC_FORCE_INLINE void SetCurrentFrameIndex(uSize newIndex) { m_CurrentFrameIndex = newIndex; }
 		OWC_FORCE_INLINE void SetVulkanMemoryAllocator(const vma::Allocator& allocator) { m_Allocator = allocator; }
-		OWC_FORCE_INLINE void AddVulkanEndOfFrameCleanUpFunction(std::function<void()> func) { m_EndOfFrameCleanUp[m_CurrentFrameIndex].emplace_back(std::move(func)); }
+		OWC_FORCE_INLINE void AddVulkanEndOfFrameCleanUpFunction(const std::function<void()>& func) { m_EndOfFrameCleanUp[m_CurrentFrameIndex].emplace_back(func); }
 
 		OWC_FORCE_INLINE void SetLastFrameWaitSemaphore(const vk::Semaphore semaphore) { m_LastFrameWaitSemaphore = semaphore; }
 
@@ -244,10 +240,6 @@ namespace OWC::Graphics
 
 		std::vector<std::map<std::string, vk::Semaphore>> m_Semaphores{};
 		uSize m_CurrentFrameIndex = 0;
-
-		std::vector<std::shared_ptr<VulkanRenderPass>> m_RenderPassDatas{};
-
-		std::mutex m_RenderPassesMutex;
 
 		u32 m_GraphicsQueueFamilyIndex = 0;
 		u32 m_ComputeQueueFamilyIndex = 0;

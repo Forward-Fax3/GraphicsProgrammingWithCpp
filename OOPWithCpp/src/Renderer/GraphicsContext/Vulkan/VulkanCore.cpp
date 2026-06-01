@@ -29,25 +29,6 @@ namespace OWC::Graphics
 		}
 	}
 
-	void VulkanCore::AddRenderPassData(const std::shared_ptr<RenderPassData>& data)
-	{
-		auto vulkanRenderPass = std::dynamic_pointer_cast<VulkanRenderPass>(data);
-		if (!vulkanRenderPass)
-		{
-			Log<LogLevel::Error>("Failed to add RenderPassData: Invalid VulkanRenderPass pointer.");
-			return;
-		}
-
-		std::scoped_lock lock(m_RenderPassesMutex);
-		m_RenderPassDatas.push_back(vulkanRenderPass);
-	}
-
-	void VulkanCore::ResetRenderPassDatas()
-	{
-		std::scoped_lock lock(m_RenderPassesMutex);
-		m_RenderPassDatas.clear();
-	}
-
 	std::vector<vk::CommandBuffer> VulkanCore::GetGraphicsCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(

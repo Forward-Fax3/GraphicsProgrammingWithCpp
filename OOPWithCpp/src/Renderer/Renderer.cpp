@@ -126,7 +126,6 @@ namespace OWC::Graphics
 		bool waitForLastFrameToFinish)
 	{
 		data->submitRenderPass(waitSemaphoreNames, startSemaphoreNames, waitForLastFrameToFinish);
-		s_GC->AddRenderPassData(data);
 	}
 
 	void Renderer::RestartRenderPass(const std::shared_ptr<RenderPassData>& data)
@@ -139,9 +138,28 @@ namespace OWC::Graphics
 		data->DrawImGui(drawData);
 	}
 
-	void Renderer::AddToEndOfFrameCleanUp(const std::shared_ptr<RenderPassData>& data, const std::function<void()>& func)
+	void Renderer::WaitTillIdle()
 	{
-		data->AddToEndOfFrameCleanUp(func);
+		switch (s_API)
+		{
+		case OWC::Graphics::RendererAPI::Vulkan:
+			VulkanRenderPass::WaitTillIdle();
+			break;
+		default:
+			std::unreachable();
+		}
+	}
+
+	void Renderer::AddToEndOfFrameCleanUp(const std::function<void()>& func)
+	{
+		switch (s_API)
+		{
+		case OWC::Graphics::RendererAPI::Vulkan:
+			VulkanRenderPass::AddToEndOfFrameCleanUp(func);
+			break;
+		default:
+			std::unreachable();
+		}
 	}
 
 	void Renderer::BindTexture(const std::shared_ptr<RenderPassData>& data, const BaseShader& shader, u32 binding, u32 textureID)

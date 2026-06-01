@@ -43,7 +43,6 @@ namespace OWC::Graphics
 #ifndef DIST
 		void FlushValidationMessages() override;
 #endif
-		void AddRenderPassData(const std::shared_ptr<RenderPassData>& renderPassData) override;
 
 		void Minimize() override;
 		void Restore() override;
