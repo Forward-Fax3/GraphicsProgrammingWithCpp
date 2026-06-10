@@ -36,7 +36,7 @@ namespace OWC::Graphics
 	{
 	public:
 		VulkanTextureBuffer() = delete;
-		explicit VulkanTextureBuffer(const ImageLoader& image);
+		explicit VulkanTextureBuffer(const ImageLoader<f32, 4, glm::aligned_highp>& image);
 		explicit VulkanTextureBuffer(u32 width, u32 height);
 		~VulkanTextureBuffer() override;
 		VulkanTextureBuffer(VulkanTextureBuffer&) = delete;

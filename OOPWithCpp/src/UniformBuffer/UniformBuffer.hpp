@@ -43,7 +43,7 @@ namespace OWC::Graphics
 
 		virtual void UpdateBufferData(const std::vector<Vec4>& data) = 0;
 
-		static std::shared_ptr<TextureBuffer> CreateTextureBuffer(const ImageLoader& image);
+		static std::shared_ptr<TextureBuffer> CreateTextureBuffer(const ImageLoader<f32, 4, glm::aligned_highp>& image);
 		static std::shared_ptr<TextureBuffer> CreateTextureBuffer(u32 width, u32 height);
 	};
 

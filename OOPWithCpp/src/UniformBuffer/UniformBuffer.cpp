@@ -10,7 +10,7 @@ namespace OWC::Graphics
 		return std::make_shared<VulkanUniformBuffer>(size);
 	}
 
-	std::shared_ptr<TextureBuffer> TextureBuffer::CreateTextureBuffer(const ImageLoader& image)
+	std::shared_ptr<TextureBuffer> TextureBuffer::CreateTextureBuffer(const ImageLoader<f32, 4, glm::aligned_highp>& image)
 	{
 		// For now, only Vulkan is supported
 		return std::make_shared<VulkanTextureBuffer>(image);

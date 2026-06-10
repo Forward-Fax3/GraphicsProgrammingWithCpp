@@ -162,7 +162,7 @@ namespace OWC::Graphics
 	// VulkanTextureBuffer
 	//--------------------------------------------------------
 
-	VulkanTextureBuffer::VulkanTextureBuffer(const ImageLoader& image)
+	VulkanTextureBuffer::VulkanTextureBuffer(const ImageLoader<f32, 4, glm::aligned_highp>& image)
 		: m_Width(static_cast<u32>(image.GetWidth())), m_Height(static_cast<u32>(image.GetHeight()))
 	{
 		InitializeTexture();

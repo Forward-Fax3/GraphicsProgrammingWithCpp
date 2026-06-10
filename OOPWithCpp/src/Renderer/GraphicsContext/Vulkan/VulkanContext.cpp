@@ -530,7 +530,7 @@ namespace OWC::Graphics
 		createInfo.setPNext(&validationFeatures);
 #endif
 
-		const auto [extensionsAvailable, missingExtension] = IsExtentionAvailable(instanceExtensionProperties, extensions);
+		const auto [extensionsAvailable, missingExtension] = IsExtensionAvailable(instanceExtensionProperties, extensions);
 
 		if (!extensionsAvailable)
 			Log<LogLevel::Critical>("Vulkan instance is missing required extension: {}", missingExtension);
@@ -643,7 +643,7 @@ namespace OWC::Graphics
 
 		score += deviceProperties.properties.limits.maxImageDimension2D;
 
-		const auto [extensionsAvailable, missingExtension] = IsExtentionAvailable(supportedExtensions, g_DeviceExtensions);
+		const auto [extensionsAvailable, missingExtension] = IsExtensionAvailable(supportedExtensions, g_DeviceExtensions);
 		if (!extensionsAvailable)
 		{
 			Log<LogLevel::Warn>("Physical device {} is missing required extension: {}",
@@ -919,7 +919,7 @@ namespace OWC::Graphics
 
 		auto& vkCore = VulkanCore::GetConstInstance();
 
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats = vkCore.GetPhysicalDev().getSurfaceFormatsKHR(vkCore.GetSurface());
+		const std::vector<vk::SurfaceFormatKHR> surfaceFormats = vkCore.GetPhysicalDev().getSurfaceFormatsKHR(vkCore.GetSurface());
 		if (surfaceFormats.empty())
 			Log<LogLevel::Critical>("Failed to find any surface formats for the swapchain");
 

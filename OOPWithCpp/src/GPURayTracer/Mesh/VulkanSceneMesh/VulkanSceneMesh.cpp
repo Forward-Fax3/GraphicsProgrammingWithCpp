@@ -56,15 +56,11 @@ namespace OWC
         auto computeMaxIndex = [&model](const tg3_accessor& indexAccessor, const u32 fallbackMaxVertex) -> u32
         {
             if (indexAccessor.buffer_view < 0)
-            {
                 return fallbackMaxVertex;
-            }
 
             const tg3_buffer_view& bufferView = model.buffer_views[indexAccessor.buffer_view];
             if (bufferView.buffer < 0)
-            {
                 return fallbackMaxVertex;
-            }
 
             const tg3_buffer& buffer = model.buffers[bufferView.buffer];
             if (!buffer.data.data || buffer.data.count == 0)
@@ -91,15 +87,11 @@ namespace OWC
 
             const uint64_t stride = bufferView.byte_stride ? bufferView.byte_stride : componentSize;
             if (indexAccessor.count == 0)
-            {
                 return fallbackMaxVertex;
-            }
 
-            const uint64_t lastOffset = baseOffset + stride * (indexAccessor.count - 1);
-            if (baseOffset >= buffer.data.count || lastOffset + componentSize > buffer.data.count)
-            {
+            if (const uint64_t lastOffset = baseOffset + stride * (indexAccessor.count - 1);
+                baseOffset >= buffer.data.count || lastOffset + componentSize > buffer.data.count)
                 return fallbackMaxVertex;
-            }
 
             u32 maxIndex = 0;
             for (uint64_t i = 0; i < indexAccessor.count; i++)

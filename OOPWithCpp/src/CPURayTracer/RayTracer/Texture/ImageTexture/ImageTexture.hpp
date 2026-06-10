@@ -22,6 +22,6 @@ namespace OWC
         [[nodiscard]] Colour Value(const HitData& p) const override;
 
 	private:
-		ImageLoader m_Image;
+		ImageLoader<f32, 4, glm::aligned_highp> m_Image;
     };
 }

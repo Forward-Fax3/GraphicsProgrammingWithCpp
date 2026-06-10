@@ -6,10 +6,9 @@
 
 #include <vulkan/vulkan.hpp>
 #define VMA_VULKAN_VERSION 1004000
-#include <list>
-
 #include "vk_mem_alloc.hpp"
 
+#include <list>
 #include <mutex>
 #include <memory>
 #include <map>
@@ -29,30 +28,30 @@ namespace OWC::Graphics
 {
 	constexpr auto g_VulkanVersion = VK_MAKE_VERSION(1, 4, 0);
 
-	[[nodiscard]] OWC_FORCE_INLINE bool IsExtentionAvailable(const std::vector<vk::ExtensionProperties>& extentions, std::string_view requstExtention)
+	[[nodiscard]] OWC_FORCE_INLINE bool IsExtensionAvailable(const std::vector<vk::ExtensionProperties>& extensions, std::string_view requestExtension)
 	{
-		auto it = std::ranges::find_if(extentions, [&requstExtention](const vk::ExtensionProperties& ext) {
-			return requstExtention == ext.extensionName;
+		const auto it = std::ranges::find_if(extensions, [&requestExtension](const vk::ExtensionProperties& ext) {
+			return requestExtension == ext.extensionName;
 			});
 
-		return it != extentions.end();
+		return it != extensions.end();
 	}
 
-	[[nodiscard]] OWC_FORCE_INLINE std::pair<bool, std::string_view> IsExtentionAvailable(const std::vector<vk::ExtensionProperties>& extentions, std::span<const char*> requstLayer)
+	[[nodiscard]] OWC_FORCE_INLINE std::pair<bool, std::string_view> IsExtensionAvailable(const std::vector<vk::ExtensionProperties>& extensions, const std::span<const char*> requestLayer)
 	{
 		bool allAvailable = true;
 		std::string_view missingExt;
-		for (const std::string_view requstExt : requstLayer)
+		for (const std::string_view requestExt : requestLayer)
 		{
-			auto it = std::ranges::find_if(extentions, [&requstExt](const vk::ExtensionProperties& ext) {
-				return ext.extensionName == requstExt;
+			auto it = std::ranges::find_if(extensions, [&requestExt](const vk::ExtensionProperties& ext) {
+				return ext.extensionName == requestExt;
 				}
 			);
 
-			if (it == extentions.end())
+			if (it == extensions.end())
 			{
 				allAvailable = false;
-				missingExt = requstExt;
+				missingExt = requestExt;
 				break;
 			}
 		}
