@@ -9,15 +9,6 @@
 
 namespace OWC
 {
-    VulkanTLAS::~VulkanTLAS()
-    {
-        if (m_TLAS)
-        {
-            const auto& vkCore = Graphics::VulkanCore::GetConstInstance();
-            vkCore.GetDevice().destroyAccelerationStructureKHR(m_TLAS);
-        }
-    }
-
     void VulkanTLAS::AddInstance(const Mat4& transform, const std::shared_ptr<SceneMesh>& mesh)
     {
         const auto vulkanMesh = std::dynamic_pointer_cast<VulkanSceneMesh>(mesh);
@@ -57,53 +48,94 @@ namespace OWC
 
         auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eTopLevel)
-            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace)
+            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction)
             .setGeometries(accelerationStructureGeometry);
 
-        std::array primitiveCount = { static_cast<u32>(m_BLASInstances.size()) };
-
-        vk::AccelerationStructureBuildSizesInfoKHR buildSizes;
-        device.getAccelerationStructureBuildSizesKHR(
+        vk::AccelerationStructureBuildSizesInfoKHR buildSizes = device.getAccelerationStructureBuildSizesKHR(
             vk::AccelerationStructureBuildTypeKHR::eDevice,
-            &buildInfo,
-            primitiveCount.data(),
-            &buildSizes
+            buildInfo,
+            m_BLASInstances.size()
         );
 
         const vk::DeviceSize scratchBufferSize = alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
 
         VulkanGeneralBuffer scratchBuffer(scratchBufferSize);
-        m_TLASBuffer = std::make_shared<VulkanGeneralBuffer>(buildSizes.accelerationStructureSize);
+        const auto scratchTLASBuffer = std::make_shared<VulkanGeneralBuffer>(buildSizes.accelerationStructureSize);
 
-        const auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
+        auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eTopLevel)
             .setSize(buildSizes.accelerationStructureSize)
-            .setBuffer(m_TLASBuffer->GetBuffer());
+            .setBuffer(scratchTLASBuffer->GetBuffer());
 
-        m_TLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
+        auto scratchTLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
 
         buildInfo.setScratchData(vk::DeviceOrHostAddressKHR().setDeviceAddress(scratchBuffer.GetBufferDeviceAddress()))
-            .setDstAccelerationStructure(m_TLAS);
+            .setDstAccelerationStructure(scratchTLAS);
 
         auto cmd = vkCore.GetSingleTimeComputeCommandBuffer();
         constexpr auto barrierData = vk::MemoryBarrier2()
             .setSrcStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
             .setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR)
-            .setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
             .setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
 
         const auto buildRangesPtr = &accelerationStructureBuildRangeInfo;
+
+        vk::raii::QueryPool queryPool(device, vk::QueryPoolCreateInfo()
+            .setQueryType(vk::QueryType::eAccelerationStructureCompactedSizeKHR)
+            .setQueryCount(1));
+
         cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-        cmd.buildAccelerationStructuresKHR(1, &buildInfo, &buildRangesPtr);
+        cmd.buildAccelerationStructuresKHR(buildInfo, buildRangesPtr);
         cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierData));
+        cmd.resetQueryPool(*queryPool, 0, 1);
+        cmd.writeAccelerationStructuresPropertiesKHR(*scratchTLAS, vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, 0);
         cmd.end();
 
         auto fence = device.createFence(vk::FenceCreateInfo());
-        vkCore.GetComputeQueue().submit(vk::SubmitInfo().setCommandBuffers(cmd), fence);
-        if(device.waitForFences(fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+        auto cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
+        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
+        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
             Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
-        device.destroyFence(fence);
-        device.freeCommandBuffers(vkCore.GetComputeCommandPool(), cmd);
+
+        const auto [result, sizes] = (*device).getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, 1, sizeof(vk::DeviceSize), sizeof(vk::DeviceSize));
+
+        if (result != vk::Result::eSuccess)
+        {
+            Log<LogLevel::Error>("Failed to get query pool results for TLAS compaction size, will use originally created TLAS");
+            m_TLASBuffer = scratchTLASBuffer;
+            m_TLAS = std::move(scratchTLAS);
+            return;
+        }
+
+        Log<LogLevel::Trace>("TLAS starting size {}, compaction size: {}", buildSizes.accelerationStructureSize, sizes[0]);
+
+        m_TLASBuffer = std::make_shared<VulkanGeneralBuffer>(sizes[0]);
+        accelerationStructureCreateInfo.setSize(sizes[0]).setBuffer(m_TLASBuffer->GetBuffer());
+        m_TLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
+
+        const auto copyAccelerationStructureInfo = vk::CopyAccelerationStructureInfoKHR()
+            .setSrc(scratchTLAS)
+            .setDst(m_TLAS)
+            .setMode(vk::CopyAccelerationStructureModeKHR::eCompact);
+
+        constexpr auto barrierDataCopy = vk::MemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
+            .setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR)
+            .setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
+
+        cmd = vkCore.GetSingleTimeComputeCommandBuffer();
+        cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        cmd.copyAccelerationStructureKHR(copyAccelerationStructureInfo);
+        cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierDataCopy));
+        cmd.end();
+
+        device.resetFences(*fence);
+        cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
+        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
+        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+            Log<LogLevel::Critical>("Failed to wait for acceleration structure copy fence");
     }
 
     vk::TransformMatrixKHR VulkanTLAS::ConvertMat4ToVulkanTransform(const Mat4& transform)

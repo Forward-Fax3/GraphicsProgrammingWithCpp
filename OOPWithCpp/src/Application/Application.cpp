@@ -39,22 +39,21 @@ namespace OWC
 		Graphics::Renderer::Init();
 		m_LayerStack = std::make_unique<LayerStack>();
 		PushLayer(std::make_shared<MainLayer>());
-		m_ImGuiLayer = std::make_shared<ImGuiLayer>();
-		PushOverlay(m_ImGuiLayer);
+		const auto imGui = std::make_shared<ImGuiLayer>();
+		m_ImGuiLayer = imGui;
+		PushOverlay(imGui);
 	}
 
 	Application::~Application()
 	{
-		m_Shader.reset();
 		m_LayerStack->ClearLayers();
-		m_ImGuiLayer.reset(); // ImGuiLayer must be destroyed before Renderer shutdown
 		Graphics::Renderer::Shutdown();
-		m_Window.reset();
 		s_Instance = nullptr;
 	}
 
 	void Application::Run()
 	{
+		const auto imGui = m_ImGuiLayer.lock();
 		while (m_RunFlags.test(0)) // While application is running
 		{
 			const auto now = std::chrono::high_resolution_clock::now();
@@ -63,9 +62,9 @@ namespace OWC
 
 			m_LayerStack->OnUpdate();
 
-			m_ImGuiLayer->Begin();
+			imGui->Begin();
 			m_LayerStack->ImGuiRender();
-			m_ImGuiLayer->End();
+			imGui->End();
 
 			Graphics::Renderer::FinishRender();
 			m_IsFirstFrame = false;
@@ -111,11 +110,11 @@ namespace OWC
 				return true;
 			}
 			// broken at the moment
-//			if (e.GetKeycode() == SDLK_F5) 
-//			{
-//				s_Instance->Restart();
-//				return true;
-//			}
+			if (e.GetKeycode() == SDLK_F5)
+			{
+				s_Instance->Restart();
+				return true;
+			}
 			if (e.GetKeycode() == SDLK_F11)
 			{
 				s_Instance->m_Window->ToggleFullScreen();

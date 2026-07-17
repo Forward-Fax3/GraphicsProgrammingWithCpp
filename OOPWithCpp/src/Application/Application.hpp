@@ -58,8 +58,7 @@ namespace OWC
 		std::unique_ptr<Window> m_Window = nullptr;
 		std::unique_ptr<LayerStack> m_LayerStack = nullptr;
 		std::bitset<2>& m_RunFlags; // Bit 0: Application running, Bit 1: restart application
-		std::unique_ptr<Graphics::BaseShader> m_Shader = nullptr;
-		std::shared_ptr<ImGuiLayer> m_ImGuiLayer = nullptr;
+		std::weak_ptr<ImGuiLayer> m_ImGuiLayer;
 
 		std::unordered_map<u32, bool> m_KeyStates;
 		bool m_IsFirstFrame = true;

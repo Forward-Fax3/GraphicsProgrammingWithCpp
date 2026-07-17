@@ -5,7 +5,6 @@
 
 #include "Core.hpp"
 
-#include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 #include <vulkan/vulkan_to_string.hpp>
 #include <SDL3/SDL_vulkan.h>
@@ -316,24 +315,8 @@ namespace OWC::Graphics
 	VulkanContext::~VulkanContext()
 	{
 		WaitForIdle();
-		auto& vkCore = VulkanCore::GetInstance();
-		const auto& device = vkCore.GetDevice();
+		VulkanCore::GetInstance().DestroySemaphores();
 
-		vkCore.GetVulkanMemoryAllocator().destroy();
-
-		vkCore.DestroySemaphores();
-
-		device.destroyCommandPool(vkCore.GetGraphicsCommandPool());
-		device.destroyCommandPool(vkCore.GetComputeCommandPool());
-		device.destroyCommandPool(vkCore.GetTransferCommandPool());
-		device.destroyCommandPool(vkCore.GetDynamicGraphicsCommandPool());
-		device.destroyCommandPool(vkCore.GetDynamicComputeCommandPool());
-		device.destroyCommandPool(vkCore.GetDynamicTransferCommandPool());
-
-		DestroySwapchain();
-
-		SDL_Vulkan_DestroySurface(vkCore.GetVKInstance(), vkCore.GetSurface(), nullptr);
-		device.destroy();
 #ifndef DIST
 		// flush any remaining logged messages before destroying the debug messenger
 		debugMessageFunc(
@@ -342,11 +325,10 @@ namespace OWC::Graphics
 			nullptr,
 			nullptr
 		);
-
-		if (m_DebugCallback)
-				vkCore.GetVKInstance().destroyDebugUtilsMessengerEXT(m_DebugCallback);
 #endif
-		vkCore.GetVKInstance().destroy();
+
+		m_BeginRenderCmdBuf.clear();
+		m_EndRenderCmdBuf.clear();
 
 		VulkanCore::Shutdown();
 	}
@@ -365,27 +347,25 @@ namespace OWC::Graphics
 			vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eBottomOfPipe);
 			const vk::SubmitInfo submitInfo = vk::SubmitInfo()
 				.setSignalSemaphores(semaphores)
-				.setCommandBuffers(m_EndRenderCmdBuf[vkCore.GetCurrentFrameIndex()])
+				.setCommandBuffers(*m_EndRenderCmdBuf[vkCore.GetCurrentFrameIndex()])
 				.setWaitDstStageMask(waitDestinationStageMask)
 				.setWaitSemaphores(VK_NULL_HANDLE);
 
-			const vk::Fence fence = device.createFence(vk::FenceCreateInfo());
+			const vk::raii::Fence fence = device.createFence(vk::FenceCreateInfo());
 			vkCore.GetGraphicsQueue().submit(submitInfo, fence);
 
-			if (device.waitForFences(fence, VK_TRUE, std::numeric_limits<uint32_t>::max()) != vk::Result::eSuccess)
+			if (device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint32_t>::max()) != vk::Result::eSuccess)
 				Log<LogLevel::Critical>("Failed to wait for render finished fence");
 
-			device.destroyFence(fence);
-
 			auto& endOfFrameFuncs = vkCore.GetEndOfFrameCleanUp()[vkCore.GetCurrentFrameIndex()];
-			for (const auto& func : endOfFrameFuncs)
+			for (auto& func : endOfFrameFuncs)
 				func();
 			endOfFrameFuncs.clear();
 
 			auto indices = static_cast<u32>(vkCore.GetCurrentFrameIndex());
 			const auto result = VulkanCore::GetConstInstance().GetPresentQueue().presentKHR(
 				vk::PresentInfoKHR()
-				.setSwapchains(vkCore.GetSwapchain())
+				.setSwapchains(*vkCore.GetSwapchain())
 				.setSwapchainCount(1)
 				.setImageIndices(indices)
 				.setWaitSemaphores(semaphores)
@@ -466,10 +446,10 @@ namespace OWC::Graphics
 		auto imageReady = vkCore.GetSemaphoresFromNames(imageReadyName)[0];
 
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-		const vk::SubmitInfo submitInfo = vk::SubmitInfo()
+		const auto submitInfo = vk::SubmitInfo()
 			.setWaitSemaphores(imageAcquired)
 			.setSignalSemaphores(imageReady)
-			.setCommandBuffers(m_BeginRenderCmdBuf[vkCore.GetCurrentFrameIndex()])
+			.setCommandBuffers(*m_BeginRenderCmdBuf[vkCore.GetCurrentFrameIndex()])
 			.setWaitDstStageMask(waitDestinationStageMask);
 
 		vkCore.GetGraphicsQueue().submit(submitInfo, VK_NULL_HANDLE);
@@ -530,12 +510,10 @@ namespace OWC::Graphics
 		createInfo.setPNext(&validationFeatures);
 #endif
 
-		const auto [extensionsAvailable, missingExtension] = IsExtensionAvailable(instanceExtensionProperties, extensions);
-
-		if (!extensionsAvailable)
+		if (const auto [extensionsAvailable, missingExtension] = IsExtensionAvailable(instanceExtensionProperties, extensions); !extensionsAvailable)
 			Log<LogLevel::Critical>("Vulkan instance is missing required extension: {}", missingExtension);
 
-		constexpr vk::ApplicationInfo appInfo = vk::ApplicationInfo()
+		constexpr auto appInfo = vk::ApplicationInfo()
 			.setPApplicationName("OOPWithCpp Application")
 			.setApplicationVersion(VK_MAKE_VERSION(0, 0, 1))
 			.setPEngineName("OOPWithCpp Engine")
@@ -547,73 +525,83 @@ namespace OWC::Graphics
 			.setPpEnabledExtensionNames(extensions.data())
 			.setPApplicationInfo(&appInfo);
 
-		VulkanCore::GetInstance().SetInstance(vk::createInstance(createInfo));
+		const auto& vkCore = VulkanCore::GetConstInstance();
 
-		pfnVkCreateRayTracingPipelinesKHR = std::bit_cast<PFN_vkCreateRayTracingPipelinesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateRayTracingPipelinesKHR"));
-		pfnVkGetAccelerationStructureBuildSizesKHR = std::bit_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetAccelerationStructureBuildSizesKHR"));
-		pfnVkCreateAccelerationStructureKHR = std::bit_cast<PFN_vkCreateAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateAccelerationStructureKHR"));
-		pfnVkCmdBuildAccelerationStructureKHR = std::bit_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdBuildAccelerationStructuresKHR"));
-		pfnVkDestroyAccelerationStructureKHR = std::bit_cast<PFN_vkDestroyAccelerationStructureKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyAccelerationStructureKHR"));
-		pfnVkGetAccelerationStructureDeviceAddressKHR = std::bit_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetAccelerationStructureDeviceAddressKHR"));
-		pfnVkGetRayTracingShaderGroupHandlesKHR = std::bit_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkGetRayTracingShaderGroupHandlesKHR"));
-		pfnVkCmdTraceRaysKHR = std::bit_cast<PFN_vkCmdTraceRaysKHR>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCmdTraceRaysKHR"));
+		VulkanCore::GetInstance().SetInstance(vk::raii::Instance(vkCore.GetVKContext(), createInfo));
+		const auto& vkInstance = vkCore.GetVKInstance();
+
+		pfnVkCreateRayTracingPipelinesKHR = std::bit_cast<PFN_vkCreateRayTracingPipelinesKHR>(vkInstance.getProcAddr("vkCreateRayTracingPipelinesKHR"));
+		pfnVkGetAccelerationStructureBuildSizesKHR = std::bit_cast<PFN_vkGetAccelerationStructureBuildSizesKHR>(vkInstance.getProcAddr("vkGetAccelerationStructureBuildSizesKHR"));
+		pfnVkCreateAccelerationStructureKHR = std::bit_cast<PFN_vkCreateAccelerationStructureKHR>(vkInstance.getProcAddr("vkCreateAccelerationStructureKHR"));
+		pfnVkCmdBuildAccelerationStructureKHR = std::bit_cast<PFN_vkCmdBuildAccelerationStructuresKHR>(vkInstance.getProcAddr("vkCmdBuildAccelerationStructuresKHR"));
+		pfnVkDestroyAccelerationStructureKHR = std::bit_cast<PFN_vkDestroyAccelerationStructureKHR>(vkInstance.getProcAddr("vkDestroyAccelerationStructureKHR"));
+		pfnVkGetAccelerationStructureDeviceAddressKHR = std::bit_cast<PFN_vkGetAccelerationStructureDeviceAddressKHR>(vkInstance.getProcAddr("vkGetAccelerationStructureDeviceAddressKHR"));
+		pfnVkGetRayTracingShaderGroupHandlesKHR = std::bit_cast<PFN_vkGetRayTracingShaderGroupHandlesKHR>(vkInstance.getProcAddr("vkGetRayTracingShaderGroupHandlesKHR"));
+		pfnVkCmdTraceRaysKHR = std::bit_cast<PFN_vkCmdTraceRaysKHR>(vkInstance.getProcAddr("vkCmdTraceRaysKHR"));
 	}
 
 #ifndef DIST
 	void VulkanContext::EnableVulkanDebugging()
 	{
-		pfnVkCreateDebugUtilsMessengerEXT = std::bit_cast<PFN_vkCreateDebugUtilsMessengerEXT>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkCreateDebugUtilsMessengerEXT"));
-		pfnVkDestroyDebugUtilsMessengerEXT = std::bit_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(VulkanCore::GetConstInstance().GetVKInstance().getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
+		const auto& vkInstance = VulkanCore::GetConstInstance().GetVKInstance();
+
+		pfnVkCreateDebugUtilsMessengerEXT = std::bit_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkInstance.getProcAddr("vkCreateDebugUtilsMessengerEXT"));
+		pfnVkDestroyDebugUtilsMessengerEXT = std::bit_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkInstance.getProcAddr("vkDestroyDebugUtilsMessengerEXT"));
 		if (!pfnVkCreateDebugUtilsMessengerEXT || !pfnVkDestroyDebugUtilsMessengerEXT)
 			Log<LogLevel::Critical>("Failed to load Vulkan debug utils functions");
-		m_DebugCallback = VulkanCore::GetConstInstance().GetVKInstance().createDebugUtilsMessengerEXT(
-			vk::DebugUtilsMessengerCreateInfoEXT()
+
+		constexpr auto debugUtilsCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT()
 			.setMessageSeverity(
-				vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
-				vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
-				vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-				vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose |
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo |
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+			vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
 			).setMessageType(
-				vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-				vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-				vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-			).setPfnUserCallback(debugMessageFunc)
-		);
+			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+			vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+			vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+			).setPfnUserCallback(debugMessageFunc);
+
+		VulkanCore::GetInstance().SetDebugCallback(vk::raii::DebugUtilsMessengerEXT(vkInstance, debugUtilsCreateInfo));
 	}
 #endif
 
 	void VulkanContext::SurfaceInit(SDL_Window& windowHandle)
 	{
+		const auto& vkCore = VulkanCore::GetConstInstance();
+
 		VkSurfaceKHR surface{};
-		SDL_Vulkan_CreateSurface(&windowHandle, VulkanCore::GetInstance().GetVKInstance(), nullptr, &surface);
-		VulkanCore::GetInstance().SetSurface(vk::SurfaceKHR(surface));
+		SDL_Vulkan_CreateSurface(&windowHandle, *VulkanCore::GetInstance().GetVKInstance(), nullptr, &surface);
+
+		vk::raii::SurfaceKHR raiiSurface(vkCore.GetVKInstance(), surface);
+		VulkanCore::GetInstance().SetSurface(std::move(raiiSurface));
 	}
 
 	void VulkanContext::SelectPhysicalDevice()
 	{
-		const std::vector<vk::PhysicalDevice> physicalDevices = VulkanCore::GetConstInstance().GetVKInstance().enumeratePhysicalDevices();
+		const auto& vkCore = VulkanCore::GetConstInstance();
+		const auto& vkInstance = vkCore.GetVKInstance();
+
+		const vk::raii::PhysicalDevices physicalDevices(vkInstance);
 
 		if (physicalDevices.empty())
 			Log<LogLevel::Critical>("Failed to find GPUs with Vulkan support");
 
 		u32 highestScore = 0;
-		for (const auto& device : physicalDevices)
+		for (auto& device : physicalDevices)
 		{
-			auto [isSuitable, score] = IsPhysicalDeviceSuitable(device);
-			if (isSuitable && score > highestScore)
+			if (auto [isSuitable, score] = IsPhysicalDeviceSuitable(device); isSuitable && score > highestScore)
 			{
 				highestScore = score;
 				VulkanCore::GetInstance().SetPhysicalDevice(device);
 			}
 		}
 
-		const auto pDevice = VulkanCore::GetConstInstance().GetPhysicalDev();
-
-		if (!pDevice)
+		if (const auto pDevice = VulkanCore::GetConstInstance().GetPhysicalDev(); pDevice == nullptr)
 			Log<LogLevel::Critical>("Failed to find a suitable GPU");
 		else
 		{
-			auto deviceProperties = VulkanCore::GetConstInstance().GetPhysicalDev().getProperties();
+			auto deviceProperties = pDevice.getProperties();
 
 			Log<LogLevel::Debug>("Selected GPU: {} (ID: {}, GPU Type: {})",
 				deviceProperties.deviceName.data(),
@@ -643,8 +631,7 @@ namespace OWC::Graphics
 
 		score += deviceProperties.properties.limits.maxImageDimension2D;
 
-		const auto [extensionsAvailable, missingExtension] = IsExtensionAvailable(supportedExtensions, g_DeviceExtensions);
-		if (!extensionsAvailable)
+		if (const auto [extensionsAvailable, missingExtension] = IsExtensionAvailable(supportedExtensions, g_DeviceExtensions); !extensionsAvailable)
 		{
 			Log<LogLevel::Warn>("Physical device {} is missing required extension: {}",
 				deviceProperties.properties.deviceName.data(),
@@ -657,8 +644,8 @@ namespace OWC::Graphics
 
 	void VulkanContext::FindQueueFamilies()
 	{
-		auto queueFamilies = VulkanCore::GetConstInstance().GetPhysicalDev().getQueueFamilyProperties();
-		constexpr u32 indexMax = std::numeric_limits<u32>::max();
+		const auto queueFamilies = VulkanCore::GetConstInstance().GetPhysicalDev().getQueueFamilyProperties();
+		constexpr auto indexMax = std::numeric_limits<u32>::max();
 
 		for (u32 i = 0; i < static_cast<u32>(queueFamilies.size()); i++) // try to find all queue families in one loop and have different queue families if possible
 		{
@@ -706,7 +693,7 @@ namespace OWC::Graphics
 
 	void VulkanContext::CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties>& queueFamilies)
 	{
-		constexpr u32 indexMax = std::numeric_limits<u32>::max();
+		constexpr auto indexMax = std::numeric_limits<u32>::max();
 
 		std::map<u32, u32> numberOfUsesPerQueueFamily;
 		for (const auto& index : { m_QueueFamilyIndices.PresentFamily, m_QueueFamilyIndices.GraphicsFamily, m_QueueFamilyIndices.ComputeFamily, m_QueueFamilyIndices.TransferFamily })
@@ -766,7 +753,7 @@ namespace OWC::Graphics
 	{
 		std::map<u32, u32> queueFamilyUsageCount;
 
-		auto l_getQueue = [&](const u32 familyIndex) -> vk::Queue {
+		auto l_getQueue = [&](const u32 familyIndex) -> vk::raii::Queue {
 			if (!queueFamilyUsageCount.contains(familyIndex))
 				queueFamilyUsageCount[familyIndex] = 0;
 
@@ -824,43 +811,43 @@ namespace OWC::Graphics
 				.setPQueuePriorities(familyData.second.data())
 			);
 
-		vk::PhysicalDeviceMemoryPriorityFeaturesEXT memoryPriorityFeature = vk::PhysicalDeviceMemoryPriorityFeaturesEXT()
+		auto memoryPriorityFeature = vk::PhysicalDeviceMemoryPriorityFeaturesEXT()
 			.setPNext(nullptr)
 			.setMemoryPriority(vk::True);
 
-		vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT pageableDeviceLocalMemoryFeature = vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT()
+		auto pageableDeviceLocalMemoryFeature = vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT()
 			.setPNext(&memoryPriorityFeature)
 			.setPageableDeviceLocalMemory(vk::True);
 
-		vk::PhysicalDeviceShaderObjectFeaturesEXT shaderObjectFeature = vk::PhysicalDeviceShaderObjectFeaturesEXT()
+		auto shaderObjectFeature = vk::PhysicalDeviceShaderObjectFeaturesEXT()
 			.setPNext(&pageableDeviceLocalMemoryFeature)
 			.setShaderObject(vk::True);
 
-		vk:VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeature = vk::PhysicalDeviceRayQueryFeaturesKHR()
+		auto rayQueryFeature = vk::PhysicalDeviceRayQueryFeaturesKHR()
 			.setPNext(&shaderObjectFeature)
 			.setRayQuery(vk::True);
 
-		vk::PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeature = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
+		auto accelerationStructureFeature = vk::PhysicalDeviceAccelerationStructureFeaturesKHR()
 			.setPNext(&rayQueryFeature)
 			.setAccelerationStructure(vk::True);
 
-		vk::PhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
+		auto rayTracingPipelineFeature = vk::PhysicalDeviceRayTracingPipelineFeaturesKHR()
 			.setPNext(&accelerationStructureFeature)
 			.setRayTracingPipeline(vk::True);
 
-		vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR swapchainMaintenance1Feature = vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR()
+		auto swapchainMaintenance1Feature = vk::PhysicalDeviceSwapchainMaintenance1FeaturesKHR()
 			.setPNext(&rayTracingPipelineFeature)
 			.setSwapchainMaintenance1(vk::True);
 
-		vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR bufferDeviceAddressFeature = vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR()
+		auto bufferDeviceAddressFeature = vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR()
 			.setPNext(&swapchainMaintenance1Feature)
 			.setBufferDeviceAddress(vk::True);
 
-		vk::PhysicalDeviceMaintenance5Features maintenance5Feature = vk::PhysicalDeviceMaintenance5Features()
+		auto maintenance5Feature = vk::PhysicalDeviceMaintenance5Features()
 			.setPNext(&bufferDeviceAddressFeature)
 			.setMaintenance5(vk::True);
 
-		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeature = vk::PhysicalDeviceDescriptorIndexingFeatures()
+		auto descriptorIndexingFeature = vk::PhysicalDeviceDescriptorIndexingFeatures()
 			.setPNext(&maintenance5Feature)
 			.setRuntimeDescriptorArray(vk::True)
 			.setDescriptorBindingPartiallyBound(vk::True)
@@ -869,23 +856,23 @@ namespace OWC::Graphics
 			.setShaderStorageBufferArrayNonUniformIndexing(vk::True)
 			.setShaderUniformBufferArrayNonUniformIndexing(vk::True);
 
-		vk::PhysicalDeviceShaderDrawParameterFeatures shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParameterFeatures()
+		auto shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParameterFeatures()
 			.setPNext(&descriptorIndexingFeature)
 			.setShaderDrawParameters(vk::True);
 
-		vk::PhysicalDeviceSynchronization2Features synchronization2Feature = vk::PhysicalDeviceSynchronization2Features()
+		auto synchronization2Feature = vk::PhysicalDeviceSynchronization2Features()
 			.setPNext(&shaderDrawParametersFeature)
 			.setSynchronization2(vk::True);
 
-		vk::PhysicalDeviceDynamicRenderingLocalReadFeatures dynamicRenderingLocalReadFeature = vk::PhysicalDeviceDynamicRenderingLocalReadFeatures()
+		auto dynamicRenderingLocalReadFeature = vk::PhysicalDeviceDynamicRenderingLocalReadFeatures()
 			.setPNext(&synchronization2Feature)
 			.setDynamicRenderingLocalRead(vk::True);
 
-		vk::PhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeature = vk::PhysicalDeviceDynamicRenderingFeatures()
+		auto dynamicRenderingFeature = vk::PhysicalDeviceDynamicRenderingFeatures()
 			.setPNext(&dynamicRenderingLocalReadFeature)
 			.setDynamicRendering(vk::True);
 
-		vk::PhysicalDeviceFeatures2 enabledFeatures = vk::PhysicalDeviceFeatures2()
+		auto enabledFeatures = vk::PhysicalDeviceFeatures2()
 			.setPNext(&dynamicRenderingFeature)
 			.setFeatures(vk::PhysicalDeviceFeatures()
 				.setSamplerAnisotropy(vk::True)
@@ -898,14 +885,12 @@ namespace OWC::Graphics
 				.setFragmentStoresAndAtomics(vk::True)
 				.setShaderImageGatherExtended(vk::True));
 
-		VulkanCore::GetInstance().SetDevice(
-			VulkanCore::GetConstInstance().GetPhysicalDev().createDevice(
-				vk::DeviceCreateInfo()
-				.setQueueCreateInfos(deviceQueueCreateInfos)
-				.setPEnabledExtensionNames(g_DeviceExtensions)
-				.setPNext(&enabledFeatures)
-			)
+		vk::raii::Device device(VulkanCore::GetConstInstance().GetPhysicalDev(), vk::DeviceCreateInfo()
+			.setQueueCreateInfos(deviceQueueCreateInfos)
+			.setPEnabledExtensionNames(g_DeviceExtensions)
+			.setPNext(&enabledFeatures)
 		);
+		VulkanCore::GetInstance().SetDevice(std::move(device));
 
 		m_QueueFamilyIndices.UniqueIndices.reserve(uniqueQueueFamiliesMap.size());
 		for (const auto& familyIndex : std::views::keys(uniqueQueueFamiliesMap))
@@ -930,7 +915,8 @@ namespace OWC::Graphics
 		Log<LogLevel::Debug>(" Format: {}", vk::to_string(vkCore.GetSwapchainImageFormat()));
 		Log<LogLevel::Debug>(" Color Space: {}", vk::to_string(colourSpace));
 
-		vk::SurfaceCapabilities2KHR surfaceCapabilities = vkCore.GetPhysicalDev().getSurfaceCapabilities2KHR(vkCore.GetSurface());
+		vk::PhysicalDeviceSurfaceInfo2KHR surfaceInfo(*vkCore.GetSurface());
+		vk::SurfaceCapabilities2KHR surfaceCapabilities = vkCore.GetPhysicalDev().getSurfaceCapabilities2KHR(surfaceInfo);
 
 		if (surfaceCapabilities.surfaceCapabilities.currentExtent.width == 0 || surfaceCapabilities.surfaceCapabilities.currentExtent.height == 0)
 			Log<LogLevel::Critical>("Failed to get valid surface extents for the swapchain");
@@ -997,17 +983,14 @@ namespace OWC::Graphics
 			swapchainCreateInfo
 				.setImageSharingMode(vk::SharingMode::eConcurrent)
 				.setQueueFamilyIndexCount(static_cast<u32>(m_QueueFamilyIndices.UniqueIndices.size()))
-				.setPQueueFamilyIndices(m_QueueFamilyIndices.UniqueIndices.data());
+				.setPQueueFamilyIndices(m_QueueFamilyIndices.UniqueIndices.data())
+				.setOldSwapchain(*vkCore.GetSwapchain());
 
-		VulkanCore::GetInstance().SetSwapchain(vkCore.GetDevice().createSwapchainKHR(swapchainCreateInfo));
-
-		VulkanCore::GetInstance().SetSwapchainImages(
-			vkCore.GetDevice().getSwapchainImagesKHR(vkCore.GetSwapchain())
-		);
+		VulkanCore::GetInstance().SetSwapchain(vk::raii::SwapchainKHR(vkCore.GetDevice(), swapchainCreateInfo));
 
 		Log<LogLevel::Debug>("Vulkan Swapchain created with {} images", vkCore.GetSwapchainImages().size());
 
-		std::vector<vk::ImageView>& swapchainImageViews = VulkanCore::GetInstance().GetSwapchainImageViews();
+		std::vector<vk::raii::ImageView>& swapchainImageViews = VulkanCore::GetInstance().GetSwapchainImageViews();
 
 		for (const auto& image : vkCore.GetSwapchainImages())
 		{
@@ -1028,7 +1011,7 @@ namespace OWC::Graphics
 					.setBaseArrayLayer(0)
 					.setLayerCount(1)
 				);
-			swapchainImageViews.emplace_back(vkCore.GetDevice().createImageView(imageViewCreateInfo));
+			swapchainImageViews.emplace_back(vkCore.GetDevice(), imageViewCreateInfo);
 
 			Log<LogLevel::Debug>(" Created image view for swapchain image with handle {}", static_cast<void*>(imageViewCreateInfo.image));
 		}
@@ -1108,7 +1091,7 @@ namespace OWC::Graphics
 				);
 			const auto& cmdBuf = m_BeginRenderCmdBuf[i];
 
-			std::array<vk::ImageMemoryBarrier2, 1> imageMemoryBarrier = { vk::ImageMemoryBarrier2()
+			std::array imageMemoryBarrier = { vk::ImageMemoryBarrier2()
 					.setSrcStageMask(vk::PipelineStageFlagBits2::eNone)
 					.setDstStageMask(vk::PipelineStageFlagBits2::eColorAttachmentOutput)
 					.setSrcAccessMask(vk::AccessFlagBits2::eNone)
@@ -1129,7 +1112,7 @@ namespace OWC::Graphics
 				.setImageMemoryBarriers(imageMemoryBarrier)
 			);
 
-			const std::array<vk::RenderingAttachmentInfo, 1> renderingAttachmentInfo = {
+			const std::array renderingAttachmentInfo = {
 				vk::RenderingAttachmentInfo()
 					.setImageView(vkCore.GetSwapchainImageViews()[i])
 					.setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
@@ -1185,18 +1168,6 @@ namespace OWC::Graphics
 	{
 		auto& vkCore = VulkanCore::GetInstance();
 
-		constexpr vma::VulkanFunctions vulkanFunctions = vma::VulkanFunctions()
-			.setVkGetInstanceProcAddr([](const VkInstance instance, const char* pName) -> PFN_vkVoidFunction
-			{
-				const vk::Instance instanceHPP(instance);
-				return instanceHPP.getProcAddr(pName);
-			})
-			.setVkGetDeviceProcAddr([](const VkDevice device, const char* pName) -> PFN_vkVoidFunction
-			{
-				const vk::Device deviceHPP(device);
-				return deviceHPP.getProcAddr(pName);
-			});
-
 		vma::AllocatorCreateFlags allocatorFlags;
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eKhrMaintenance5;
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eKhrDedicatedAllocation;
@@ -1205,26 +1176,13 @@ namespace OWC::Graphics
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eExtMemoryBudget;
 		allocatorFlags |= vma::AllocatorCreateFlagBits::eBufferDeviceAddress;
 
-		const vma::AllocatorCreateInfo allocatorCreateInfo = vma::AllocatorCreateInfo()
+		const auto allocatorCreateInfo = vma::AllocatorCreateInfo()
 			.setPhysicalDevice(vkCore.GetPhysicalDev())
-			.setDevice(vkCore.GetDevice())
-			.setInstance(vkCore.GetVKInstance())
 			.setVulkanApiVersion(g_VulkanVersion)
 			.setFlags(allocatorFlags)
-			.setPreferredLargeHeapBlockSize(256ull * 1024 * 1024) // 256mb
-			.setPVulkanFunctions(&vulkanFunctions);
+			.setPreferredLargeHeapBlockSize(256ull * 1024 * 1024); // 256mb
 
-		vkCore.SetVulkanMemoryAllocator(vma::createAllocator(allocatorCreateInfo));
-	}
-
-	void VulkanContext::DestroySwapchain()
-	{
-		const auto& vkCore = VulkanCore::GetConstInstance();
-
-		for (const auto& imageView : vkCore.GetSwapchainImageViews())
-			vkCore.GetDevice().destroyImageView(imageView);
-
-		vkCore.GetDevice().destroySwapchainKHR(vkCore.GetSwapchain());
+		vkCore.SetVulkanMemoryAllocator(vma::raii::Allocator(vkCore.GetVKInstance(), vkCore.GetDevice(), allocatorCreateInfo));
 	}
 
 	void VulkanContext::RecreateSwapchain()
@@ -1232,7 +1190,6 @@ namespace OWC::Graphics
 		auto& vkCore = VulkanCore::GetInstance();
 		WaitForIdle();
 		vkCore.DestroySemaphores();
-		DestroySwapchain();
 		vkCore.GetSwapchainImages().clear();
 		vkCore.GetSwapchainImageViews().clear();
 		CreateSwapchain();
@@ -1241,11 +1198,10 @@ namespace OWC::Graphics
 
 	void VulkanContext::RewriteCommandBuffers()
 	{
-		const auto& vkCore = VulkanCore::GetInstance();
 		WaitForIdle();
 
-		vkCore.GetDevice().freeCommandBuffers(vkCore.GetGraphicsCommandPool(), m_BeginRenderCmdBuf);
-		vkCore.GetDevice().freeCommandBuffers(vkCore.GetGraphicsCommandPool(), m_EndRenderCmdBuf);
+		m_BeginRenderCmdBuf.clear();
+		m_EndRenderCmdBuf.clear();
 
 		WriteCommandBuffers();
 	}
@@ -1254,7 +1210,6 @@ namespace OWC::Graphics
 	{
 		auto& vkCore = VulkanCore::GetInstance();
 		WaitForIdle();
-		DestroySwapchain();
 		vkCore.GetSwapchainImages().clear();
 		vkCore.GetSwapchainImageViews().clear();
 		m_IsMinimized = true;
@@ -1274,7 +1229,7 @@ namespace OWC::Graphics
 	{
 		const auto& vkCore = VulkanCore::GetConstInstance();
 
-		std::array<vk::DescriptorPoolSize, 1> poolSizes = {
+		std::array poolSizes = {
 			vk::DescriptorPoolSize()
 				.setType(vk::DescriptorType::eCombinedImageSampler)
 				.setDescriptorCount(1000)
@@ -1289,13 +1244,13 @@ namespace OWC::Graphics
 
 		ImGui_ImplVulkan_InitInfo initInfo = {};
 		initInfo.ApiVersion = g_VulkanVersion;
-		initInfo.Instance = vkCore.GetVKInstance();
-		initInfo.PhysicalDevice = vkCore.GetPhysicalDev();
-		initInfo.Device = vkCore.GetDevice();
+		initInfo.Instance = *vkCore.GetVKInstance();
+		initInfo.PhysicalDevice = *vkCore.GetPhysicalDev();
+		initInfo.Device = *vkCore.GetDevice();
 		initInfo.QueueFamily = m_QueueFamilyIndices.GraphicsFamily;
 		initInfo.Queue = vkCore.GetGraphicsQueue();
 		initInfo.PipelineCache = nullptr;
-		initInfo.DescriptorPool = vkCore.GetImGuiDescriptorPool();
+		initInfo.DescriptorPool = *vkCore.GetImGuiDescriptorPool();
 		initInfo.UseDynamicRendering = true;
 		initInfo.MinAllocationSize = 1024 * 1024;
 		initInfo.MinImageCount = static_cast<u32>(vkCore.GetSwapchainImages().size());
@@ -1307,7 +1262,7 @@ namespace OWC::Graphics
 				Log<LogLevel::Error>("ImGui Vulkan Error: {}", vk::to_string(static_cast<vk::Result>(err)));
 		};
 
-		vk::PipelineRenderingCreateInfo pipelineInfo = vk::PipelineRenderingCreateInfo()
+		const auto pipelineInfo = vk::PipelineRenderingCreateInfo()
 			.setColorAttachmentCount(1)
 			.setColorAttachmentFormats(vkCore.GetSwapchainImageFormat())
 			.setDepthAttachmentFormat(vk::Format::eUndefined)
@@ -1321,8 +1276,6 @@ namespace OWC::Graphics
 	void VulkanContext::ImGuiShutdown()
 	{
 		ImGui_ImplVulkan_Shutdown();
-
-		VulkanCore::GetInstance().GetDevice().destroyDescriptorPool(VulkanCore::GetConstInstance().GetImGuiDescriptorPool());
 	}
 
 	void VulkanContext::ImGuiNewFrame()

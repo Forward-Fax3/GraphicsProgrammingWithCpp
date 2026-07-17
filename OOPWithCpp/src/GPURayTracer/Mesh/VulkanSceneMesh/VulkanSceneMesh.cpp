@@ -22,7 +22,7 @@
 namespace OWC
 {
     VulkanSceneMesh::VulkanSceneMesh(const tg3_model& model, const i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData)
-        : m_Model(model), m_CustomInstanceIndex(customInstancesIndex)
+        : m_CustomInstanceIndex(customInstancesIndex)
     {
         using namespace OWC::Graphics;
 		const auto& vkCore = VulkanCore::GetConstInstance();
@@ -221,17 +221,15 @@ namespace OWC
 
         auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
-            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace)
+            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction)
             .setGeometries(geometries);
 
         Log<LogLevel::Trace>("Mesh {} built {} geometries from {} primitives", meshIndex, geometries.size(), mesh.primitives_count);
 
-        vk::AccelerationStructureBuildSizesInfoKHR buildSizes;
-        device.getAccelerationStructureBuildSizesKHR(
+        vk::AccelerationStructureBuildSizesInfoKHR buildSizes = device.getAccelerationStructureBuildSizesKHR(
             vk::AccelerationStructureBuildTypeKHR::eDevice,
-            &buildInfo,
-            primitiveCount.data(),
-            &buildSizes
+            buildInfo,
+            primitiveCount
         );
 
         const vk::DeviceSize scratchBufferSize = alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
@@ -245,7 +243,7 @@ namespace OWC
                 vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
             );
 
-        const auto bufferInfo = vk::BufferCreateInfo()
+        auto bufferInfo = vk::BufferCreateInfo()
             .setPNext(&bufferUsageInfo2)
             .setSize(buildSizes.accelerationStructureSize)
             .setSharingMode(vk::SharingMode::eConcurrent)
@@ -255,51 +253,84 @@ namespace OWC
             .setUsage(vma::MemoryUsage::eGpuOnly)
             .setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
-        vma::AllocationInfo allocationInfo;
-        auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
-        m_Buffer = buffer;
-        m_BufferMemory = allocation;
+        auto scratchBLASBuffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
 
-        const auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
+        auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
             .setSize(buildSizes.accelerationStructureSize)
-            .setBuffer(m_Buffer);
+            .setBuffer(scratchBLASBuffer);
+
+        auto scratchBLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
+
+        buildInfo.setScratchData(vk::DeviceOrHostAddressKHR().setDeviceAddress(scratchBuffer.GetBufferDeviceAddress()))
+            .setDstAccelerationStructure(scratchBLAS);
+
+        auto cmd = vkCore.GetSingleTimeComputeCommandBuffer();
+
+        vk::raii::QueryPool queryPool(device, vk::QueryPoolCreateInfo()
+            .setQueryType(vk::QueryType::eAccelerationStructureCompactedSizeKHR)
+            .setQueryCount(1));
+
+        const auto buildRangesPtr = buildRanges.data();
+        cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        cmd.buildAccelerationStructuresKHR(buildInfo, buildRangesPtr);
+        cmd.resetQueryPool(*queryPool, 0, 1);
+        cmd.writeAccelerationStructuresPropertiesKHR(*scratchBLAS, vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, 0);
+        cmd.end();
+
+        auto fence = device.createFence(vk::FenceCreateInfo());
+        auto cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
+        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
+        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+            Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
+
+        const auto [result, sizes] = (*device).getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, 1, sizeof(vk::DeviceSize), sizeof(vk::DeviceSize));
+        if (result != vk::Result::eSuccess)
+        {
+            Log<LogLevel::Error>("Failed to get compacted size for BLAS of mesh {}, using original size", meshIndex);
+            m_Buffer = std::move(scratchBLASBuffer);
+            m_AccelerationStructure = std::move(scratchBLAS);
+            m_BufferDeviceAddress = vkCore.GetDevice().getAccelerationStructureAddressKHR(vk::AccelerationStructureDeviceAddressInfoKHR().setAccelerationStructure(m_AccelerationStructure));
+            return;
+        }
+
+        Log<LogLevel::Trace>("Mesh {} BLAS starting size {}, compaction size: {}", meshIndex, scratchBufferSize, sizes[0]);
+
+        bufferInfo.setSize(sizes[0]);
+        m_Buffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
+
+        accelerationStructureCreateInfo.setSize(sizes[0]).setBuffer(m_Buffer);
 
         m_AccelerationStructure = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
         m_BufferDeviceAddress = vkCore.GetDevice().getAccelerationStructureAddressKHR(vk::AccelerationStructureDeviceAddressInfoKHR().setAccelerationStructure(m_AccelerationStructure));
 
-        buildInfo.setScratchData(vk::DeviceOrHostAddressKHR().setDeviceAddress(scratchBuffer.GetBufferDeviceAddress()))
-            .setDstAccelerationStructure(m_AccelerationStructure);
+        const auto copyAccelerationStructureInfo = vk::CopyAccelerationStructureInfoKHR()
+            .setSrc(scratchBLAS)
+            .setDst(m_AccelerationStructure)
+            .setMode(vk::CopyAccelerationStructureModeKHR::eCompact);
 
-        auto cmd = vkCore.GetSingleTimeComputeCommandBuffer();
+        constexpr auto barrierDataCopy = vk::MemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
+            .setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR)
+            .setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
 
-        const auto buildRangesPtr = buildRanges.data();
+        cmd = vkCore.GetSingleTimeComputeCommandBuffer();
         cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-        cmd.buildAccelerationStructuresKHR(1, &buildInfo, &buildRangesPtr);
+        cmd.copyAccelerationStructureKHR(copyAccelerationStructureInfo);
+        cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierDataCopy));
         cmd.end();
 
-        auto fence = device.createFence(vk::FenceCreateInfo());
-        vkCore.GetComputeQueue().submit(vk::SubmitInfo().setCommandBuffers(cmd), fence);
-        if(device.waitForFences(fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
-            Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
-        device.destroyFence(fence);
-        device.freeCommandBuffers(vkCore.GetComputeCommandPool(), cmd);
+        device.resetFences(*fence);
+        cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
+        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
+        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+            Log<LogLevel::Critical>("Failed to wait for acceleration structure copy fence");
     }
 
-    VulkanSceneMesh::~VulkanSceneMesh()
-    {
-         if (m_AccelerationStructure)
-         {
-             const auto& vkCore = Graphics::VulkanCore::GetConstInstance();
-             const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-             vkCore.GetDevice().destroyAccelerationStructureKHR(m_AccelerationStructure);
-             allocator.destroyBuffer(m_Buffer, m_BufferMemory);
-         }
-    }
-
-    const AttributeData& VulkanSceneMesh::GetAttributeData(const std::string& attributeName) const
+    /*const AttributeData& VulkanSceneMesh::GetAttributeData(const std::string& attributeName) const
     {
         static AttributeData emptyData{};
         return emptyData;
-    }
+    }*/
 } // OWC

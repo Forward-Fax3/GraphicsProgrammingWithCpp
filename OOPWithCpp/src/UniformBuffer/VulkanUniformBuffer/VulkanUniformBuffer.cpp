@@ -17,49 +17,35 @@ namespace OWC::Graphics
 		const vk::DeviceSize bufferSize = size;
 
 		m_UniformBuffers.reserve(vkCore.GetNumberOfFramesInFlight());
-		m_UniformBuffersMemory.reserve(vkCore.GetNumberOfFramesInFlight());
 
 		const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
 
 		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
 		{
-			vk::BufferCreateInfo bufferInfo = vk::BufferCreateInfo()
+			const auto bufferInfo = vk::BufferCreateInfo()
 				.setSize(bufferSize)
 				.setUsage(vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eTransferDst)
 				.setSharingMode(vk::SharingMode::eConcurrent)
 				.setQueueFamilyIndices(queueIndices);
 
-			vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
+			constexpr auto allocInfo = vma::AllocationCreateInfo()
 				.setUsage(vma::MemoryUsage::eAutoPreferDevice)
 				.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
-			vma::AllocationInfo allocationInfo;
-			auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
-
-			m_UniformBuffers.emplace_back(buffer);
-			m_UniformBuffersMemory.emplace_back(allocation);
+			m_UniformBuffers.emplace_back(allocator, bufferInfo, allocInfo);
 		}
-	}
-
-	VulkanUniformBuffer::~VulkanUniformBuffer()
-	{
-		const auto& vkCore = VulkanCore::GetInstance();
-		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-		for (uSize i = 0; i < m_UniformBuffers.size(); i++)
-			allocator.destroyBuffer(m_UniformBuffers[i], m_UniformBuffersMemory[i]);
 	}
 
 	void VulkanUniformBuffer::UpdateBufferDataImpl(std::span<const std::byte> data, uSize size, uSize offset)
 	{
-		if (size == 0)
-			size = data.size();
+		vk::DeviceSize dataSize = size == 0ull ? data.size() : size;
 
 		const auto& vkCore = VulkanCore::GetInstance();
 		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
 		const uSize currentFrame = vkCore.GetCurrentFrameIndex();
 
 		const auto bufferCreateInfo = vk::BufferCreateInfo()
-			.setSize(size)
+			.setSize(dataSize)
 			.setUsage(vk::BufferUsageFlagBits::eTransferSrc)
 			.setSharingMode(vk::SharingMode::eExclusive);
 
@@ -68,17 +54,17 @@ namespace OWC::Graphics
 			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
 
 		vma::AllocationInfo stagingBufferAllocationInfo;
-		const auto [stagingBufferAllocation, stagingBuffer] = allocator.createBuffer(bufferCreateInfo, allocCreateInfo, stagingBufferAllocationInfo);
+		vma::raii::Buffer stagingBuffer(allocator, bufferCreateInfo, allocCreateInfo, &stagingBufferAllocationInfo);
 
-		std::memcpy(stagingBufferAllocationInfo.pMappedData, data.data(), size);
+		std::memcpy(stagingBufferAllocationInfo.pMappedData, data.data(), dataSize);
 
-		const auto& cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
+		auto cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
 		cmdTransBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const auto copyBufferSize = vk::BufferCopy2()
 				.setSrcOffset(0)
 				.setDstOffset(offset)
-				.setSize(size);
+				.setSize(dataSize);
 		const auto copyBufferInfo = vk::CopyBufferInfo2()
 			.setSrcBuffer(stagingBuffer)
 			.setDstBuffer(m_UniformBuffers[currentFrame])
@@ -95,14 +81,14 @@ namespace OWC::Graphics
 			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setBuffer(m_UniformBuffers[currentFrame])
 			.setOffset(offset)
-			.setSize(size);
+			.setSize(dataSize);
 
 		cmdTransBuf.pipelineBarrier2(vk::DependencyInfo()
 			.setBufferMemoryBarriers(transferBufferMemoryBarrier)
 		);
 		cmdTransBuf.end();
 
-		const auto semaphore = vkCore.GetSingleSemaphore();
+		auto semaphore = vkCore.GetSingleSemaphore();
 
 		const auto cmdTransferSubmit = vk::CommandBufferSubmitInfo().setCommandBuffer(cmdTransBuf);
 		const auto semaphoreSubmit = vk::SemaphoreSubmitInfo()
@@ -115,7 +101,7 @@ namespace OWC::Graphics
 
 		vkCore.GetTransferQueue().submit2(transferSubmitInfo);
 
-		const auto cmdGraphicsBuffer = vkCore.GetSingleTimeGraphicsCommandBuffer();
+		auto cmdGraphicsBuffer = vkCore.GetSingleTimeGraphicsCommandBuffer();
 		cmdGraphicsBuffer.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const auto GraphicsBufferMemoryBarrier = vk::BufferMemoryBarrier2()
@@ -127,7 +113,7 @@ namespace OWC::Graphics
 			.setDstQueueFamilyIndex(VK_QUEUE_FAMILY_IGNORED)
 			.setBuffer(m_UniformBuffers[currentFrame])
 			.setOffset(offset)
-			.setSize(size);
+			.setSize(dataSize);
 
 		cmdGraphicsBuffer.pipelineBarrier2(vk::DependencyInfo()
 			.setBufferMemoryBarriers(GraphicsBufferMemoryBarrier)
@@ -146,16 +132,7 @@ namespace OWC::Graphics
 			.setWaitSemaphoreInfos(graphicsSemaphore)
 		);
 
-		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([&vkCore, &allocator, stagingBuffer, stagingBufferAllocation, semaphore, cmdTransBuf, cmdGraphicsBuffer]()
-		{
-			const auto& device = vkCore.GetDevice();
-
-			device.freeCommandBuffers(vkCore.GetTransferCommandPool(), cmdTransBuf);
-			device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), cmdGraphicsBuffer);
-
-			allocator.destroyBuffer(stagingBuffer, stagingBufferAllocation);
-			vkCore.GetDevice().destroySemaphore(semaphore);
-		});
+		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([stagingBuffer = std::move(stagingBuffer), semaphore = std::move(semaphore), cmdTransBuf = std::move(cmdTransBuf), cmdGraphicsBuffer = std::move(cmdGraphicsBuffer)](){});
 	}
 
 	//--------------------------------------------------------
@@ -173,17 +150,6 @@ namespace OWC::Graphics
 		: m_Width(width), m_Height(height)
 	{
 		InitializeTexture();
-	}
-
-	VulkanTextureBuffer::~VulkanTextureBuffer()
-	{
-		const auto& vkCore = VulkanCore::GetConstInstance();
-		const auto& device = vkCore.GetDevice();
-		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-
-		device.destroySampler(m_TextureSampler);
-		device.destroyImageView(m_TextureImageView);
-		allocator.destroyImage(m_TextureImage, m_TextureImageMemory);
 	}
 
 	void VulkanTextureBuffer::UpdateBufferData(const std::vector<Vec4>& data)
@@ -211,19 +177,18 @@ namespace OWC::Graphics
 			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
 
 		vma::AllocationInfo stagingBufferAllocationInfo;
-		const auto [allocation, stagingBuffer] = allocator.createBuffer(bufferInfo, allocCreateInfo, stagingBufferAllocationInfo);
+		vma::raii::Buffer stagingBuffer(allocator, bufferInfo, allocCreateInfo, stagingBufferAllocationInfo);
 
 		if (stagingBufferAllocationInfo.pMappedData == nullptr || stagingBufferAllocationInfo.size != imageSize)
 		{
 			Log<LogLevel::Error>("Failed to map staging buffer memory in VulkanTextureBuffer::UpdateBufferData");
-			allocator.destroyBuffer(stagingBuffer, allocation);
 			return;
 		}
 
 		std::memcpy(stagingBufferAllocationInfo.pMappedData, data.data(), imageSize);
 
 		// Copy staging buffer to texture image and transition image layout
-		const auto& cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
+		auto cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
 		cmdTransBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const std::array imageMemoryBarrierBegin = {
@@ -312,20 +277,18 @@ namespace OWC::Graphics
 			.setStageMask(vk::PipelineStageFlagBits2::eAllTransfer);
 		*/
 
-		auto fence = device.createFence(vk::FenceCreateInfo());
+		const auto fence = device.createFence(vk::FenceCreateInfo());
 
 		const auto submitTransferInfo = vk::SubmitInfo2()
 			.setCommandBufferInfos(cmdTransferSubmitInfo);
 			//.setSignalSemaphoreInfos(signalSemaphoreTransferInfo);
-		vkCore.GetTransferQueue().submit2(submitTransferInfo, fence);
+		vkCore.GetTransferQueue().submit2(submitTransferInfo, *fence);
 
-		if (device.waitForFences(fence, VK_TRUE, UINT64_MAX) != vk::Result::eSuccess)
+		if (device.waitForFences(*fence, VK_TRUE, UINT64_MAX) != vk::Result::eSuccess)
 			Log<LogLevel::Critical>("Failed to wait for transfer finished fence");
 
-		device.destroyFence(fence);
-
 		/*
-		const auto cmdGraphicsBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
+		auto cmdGraphicsBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
 		cmdGraphicsBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 		const std::array graphicsImageBuffer = {
 			vk::ImageMemoryBarrier2()
@@ -361,17 +324,7 @@ namespace OWC::Graphics
 		vkCore.GetGraphicsQueue().submit2(submitGraphicsInfo);
 		*/
 
-		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([&vkCore, &allocator, cmdTransBuf, /*cmdGraphicsBuf, semaphore,*/ stagingBuffer, allocation]() -> void
-		{
-			const auto& device = vkCore.GetDevice();
-
-			device.freeCommandBuffers(vkCore.GetTransferCommandPool(), cmdTransBuf);
-			//device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), cmdGraphicsBuf);
-			//device.destroySemaphore(semaphore);
-
-			// Clean up staging buffer
-			allocator.destroyBuffer(stagingBuffer, allocation);
-		});
+		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([cmdTransBuf = std::move(cmdTransBuf), /*cmdGraphicsBuf, semaphore,*/ stagingBuffer = std::move(stagingBuffer)]() -> void {});
 	}
 
 	void VulkanTextureBuffer::InitializeTexture()
@@ -403,10 +356,10 @@ namespace OWC::Graphics
 			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
 		// Create image
-		std::tie(m_TextureImageMemory, m_TextureImage) = allocator.createImage(createInfo, vmaCreateInfo);
+		m_TextureImage = vma::raii::Image(allocator, createInfo, vmaCreateInfo);
 
 		// Create image view
-		m_TextureImageView = device.createImageView(vk::ImageViewCreateInfo()
+		m_TextureImageView = vk::raii::ImageView(device, vk::ImageViewCreateInfo()
 			.setImage(m_TextureImage)
 			.setViewType(vk::ImageViewType::e2D)
 			.setFormat(vk::Format::eR32G32B32A32Sfloat)
@@ -420,7 +373,7 @@ namespace OWC::Graphics
 		const f32 maxAnisotropy = vkCore.GetPhysicalDev().getProperties().limits.maxSamplerAnisotropy;
 
 		// Create sampler
-		m_TextureSampler = device.createSampler(vk::SamplerCreateInfo()
+		m_TextureSampler = vk::raii::Sampler(device, vk::SamplerCreateInfo()
 			.setMagFilter(vk::Filter::eLinear)
 			.setMinFilter(vk::Filter::eLinear)
 			.setAddressModeU(vk::SamplerAddressMode::eRepeat)
@@ -449,21 +402,71 @@ namespace OWC::Graphics
 	VulkanDynamicTextureBuffer::VulkanDynamicTextureBuffer(const u32 width, const u32 height)
 		: m_Width(width), m_Height(height)
 	{
-		InitializeTexture();
-	}
-
-	VulkanDynamicTextureBuffer::~VulkanDynamicTextureBuffer()
-	{
 		const auto& vkCore = VulkanCore::GetConstInstance();
 		const auto& device = vkCore.GetDevice();
 		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
 
-		for (uSize i = 0; i < m_TextureImage.size(); i++)
-		{
-			device.destroySampler(m_TextureSampler[i]);
-			device.destroyImageView(m_TextureImageView[i]);
+		m_TextureImage.reserve(vkCore.GetNumberOfFramesInFlight());
+		m_TextureImageView.reserve(vkCore.GetNumberOfFramesInFlight());
+		m_TextureSampler.reserve(vkCore.GetNumberOfFramesInFlight());
 
-			allocator.destroyImage(m_TextureImage[i], m_TextureImageMemory[i]);
+		const f32 maxAnisotropy = vkCore.GetPhysicalDev().getProperties().limits.maxSamplerAnisotropy;
+		const auto& allQueueFamilyIndices = vkCore.GetAllUniqueQueuesIndices();
+
+		const auto imageCreateInfo = vk::ImageCreateInfo()
+				.setImageType(vk::ImageType::e2D)
+				.setFormat(vk::Format::eR32G32B32A32Sfloat)
+				.setExtent(vk::Extent3D()
+					.setWidth(m_Width)
+					.setHeight(m_Height)
+					.setDepth(1))
+				.setMipLevels(1)
+				.setArrayLayers(1)
+				.setSamples(vk::SampleCountFlagBits::e1)
+				.setTiling(vk::ImageTiling::eOptimal)
+				.setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
+				.setSharingMode(vk::SharingMode::eConcurrent)
+				.setInitialLayout(vk::ImageLayout::eUndefined)
+				.setQueueFamilyIndices(allQueueFamilyIndices);
+
+		constexpr auto allocInfo = vma::AllocationCreateInfo()
+			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
+			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+
+		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
+		{
+			// Create image
+			m_TextureImage.emplace_back(allocator, imageCreateInfo, allocInfo);
+
+			// Create image view
+			m_TextureImageView.emplace_back(device, vk::ImageViewCreateInfo()
+				.setImage(m_TextureImage[i])
+				.setViewType(vk::ImageViewType::e2D)
+				.setFormat(vk::Format::eR32G32B32A32Sfloat)
+				.setSubresourceRange(vk::ImageSubresourceRange()
+					.setAspectMask(vk::ImageAspectFlagBits::eColor)
+					.setBaseMipLevel(0)
+					.setLevelCount(1)
+					.setBaseArrayLayer(0)
+					.setLayerCount(1)));
+
+			// Create sampler
+			m_TextureSampler.emplace_back(device,vk::SamplerCreateInfo()
+				.setMagFilter(vk::Filter::eLinear)
+				.setMinFilter(vk::Filter::eLinear)
+				.setAddressModeU(vk::SamplerAddressMode::eRepeat)
+				.setAddressModeV(vk::SamplerAddressMode::eRepeat)
+				.setAddressModeW(vk::SamplerAddressMode::eRepeat)
+				.setAnisotropyEnable(vk::True)
+				.setMaxAnisotropy(maxAnisotropy)
+				.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
+				.setUnnormalizedCoordinates(vk::False)
+				.setCompareEnable(vk::False)
+				.setCompareOp(vk::CompareOp::eAlways)
+				.setMipmapMode(vk::SamplerMipmapMode::eLinear)
+				.setMipLodBias(0.0f)
+				.setMinLod(0.0f)
+				.setMaxLod(0.0f));
 		}
 	}
 
@@ -486,12 +489,12 @@ namespace OWC::Graphics
 		.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
 
 		vma::AllocationInfo allocInfo;
-		const auto [allocation, stagingBuffer] = allocator.createBuffer(bufferCreateInfo, allocationCreateInfo, allocInfo);
+		vma::raii::Buffer stagingBuffer(allocator, bufferCreateInfo, allocationCreateInfo, allocInfo);
 
 		std::memcpy(allocInfo.pMappedData, data.data(), imageSize);
 
 		// Copy staging buffer to texture image and transition image layout
-		const auto& cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
+		auto cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
 		cmdTransBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const std::array imageMemoryBarrierBegin = {
@@ -579,7 +582,7 @@ namespace OWC::Graphics
 			.setSignalSemaphoreInfos(semaphoreTransferInfo);
 		vkCore.GetTransferQueue().submit2(submitTransferInfo);
 
-		const auto cmdGraphicsBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
+		auto cmdGraphicsBuf = vkCore.GetSingleTimeGraphicsCommandBuffer();
 		cmdGraphicsBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 		const std::array graphicsImageBuffer = {
 			vk::ImageMemoryBarrier2()
@@ -614,91 +617,10 @@ namespace OWC::Graphics
 			.setWaitSemaphoreInfos(semaphoreInfo);
 		vkCore.GetGraphicsQueue().submit2(submitGraphicsInfo);
 
-		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([&vkCore, &allocator, cmdTransBuf, cmdGraphicsBuf, semaphore, stagingBuffer, allocation]() -> void
-		{
-			const auto& device = vkCore.GetDevice();
-
-			device.freeCommandBuffers(vkCore.GetTransferCommandPool(), cmdTransBuf);
-			device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), cmdGraphicsBuf);
-			device.destroySemaphore(semaphore);
-
-			// Clean up staging buffer
-			allocator.destroyBuffer(stagingBuffer, allocation);
-		});
+		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction([cmdTransBuf = std::move(cmdTransBuf), cmdGraphicsBuf = std::move(cmdGraphicsBuf), semaphore = std::move(semaphore), stagingBuffer = std::move(stagingBuffer)]() -> void {});
 	}
 
-	void VulkanDynamicTextureBuffer::InitializeTexture()
-	{
-		const auto& vkCore = VulkanCore::GetConstInstance();
-		const auto& device = vkCore.GetDevice();
-		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-
-		m_TextureImage.resize(vkCore.GetNumberOfFramesInFlight());
-		m_TextureImageMemory.resize(vkCore.GetNumberOfFramesInFlight());
-		m_TextureImageView.resize(vkCore.GetNumberOfFramesInFlight());
-		m_TextureSampler.resize(vkCore.GetNumberOfFramesInFlight());
-
-		const f32 maxAnisotropy = vkCore.GetPhysicalDev().getProperties().limits.maxSamplerAnisotropy;
-		const auto& allQueueFamilyIndices = vkCore.GetAllUniqueQueuesIndices();
-
-		const auto imageCreateInfo = vk::ImageCreateInfo()
-				.setImageType(vk::ImageType::e2D)
-				.setFormat(vk::Format::eR32G32B32A32Sfloat)
-				.setExtent(vk::Extent3D()
-					.setWidth(m_Width)
-					.setHeight(m_Height)
-					.setDepth(1))
-				.setMipLevels(1)
-				.setArrayLayers(1)
-				.setSamples(vk::SampleCountFlagBits::e1)
-				.setTiling(vk::ImageTiling::eOptimal)
-				.setUsage(vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst)
-				.setSharingMode(vk::SharingMode::eConcurrent)
-				.setInitialLayout(vk::ImageLayout::eUndefined)
-				.setQueueFamilyIndices(allQueueFamilyIndices);
-
-		constexpr auto allocInfo = vma::AllocationCreateInfo()
-			.setUsage(vma::MemoryUsage::eAutoPreferDevice)
-			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
-
-		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
-		{
-			// Create image
-			std::tie(m_TextureImageMemory[i], m_TextureImage[i]) = allocator.createImage(imageCreateInfo, allocInfo);
-
-			// Create image view
-			m_TextureImageView[i] = device.createImageView(vk::ImageViewCreateInfo()
-				.setImage(m_TextureImage[i])
-				.setViewType(vk::ImageViewType::e2D)
-				.setFormat(vk::Format::eR32G32B32A32Sfloat)
-				.setSubresourceRange(vk::ImageSubresourceRange()
-					.setAspectMask(vk::ImageAspectFlagBits::eColor)
-					.setBaseMipLevel(0)
-					.setLevelCount(1)
-					.setBaseArrayLayer(0)
-					.setLayerCount(1)));
-
-			// Create sampler
-			m_TextureSampler[i] = device.createSampler(vk::SamplerCreateInfo()
-				.setMagFilter(vk::Filter::eLinear)
-				.setMinFilter(vk::Filter::eLinear)
-				.setAddressModeU(vk::SamplerAddressMode::eRepeat)
-				.setAddressModeV(vk::SamplerAddressMode::eRepeat)
-				.setAddressModeW(vk::SamplerAddressMode::eRepeat)
-				.setAnisotropyEnable(vk::True)
-				.setMaxAnisotropy(maxAnisotropy)
-				.setBorderColor(vk::BorderColor::eIntOpaqueBlack)
-				.setUnnormalizedCoordinates(vk::False)
-				.setCompareEnable(vk::False)
-				.setCompareOp(vk::CompareOp::eAlways)
-				.setMipmapMode(vk::SamplerMipmapMode::eLinear)
-				.setMipLodBias(0.0f)
-				.setMinLod(0.0f)
-				.setMaxLod(0.0f));
-		}
-	}
-
-	VulkanGeneralBuffer::VulkanGeneralBuffer(uSize size)
+	VulkanGeneralBuffer::VulkanGeneralBuffer(const uSize size)
 		: m_BufferSize(size)
 	{
 		const auto& vkCore = VulkanCore::GetInstance();
@@ -734,20 +656,9 @@ namespace OWC::Graphics
 			.setUsage(vma::MemoryUsage::eGpuOnly)
 			.setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
 
-		vma::AllocationInfo allocationInfo;
-		auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
-		m_Buffer = buffer;
-		m_BufferMemory = allocation;
+		m_Buffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
 
-		m_BufferDeviceAddress = vkCore.GetDevice().getBufferAddress(vk::BufferDeviceAddressInfo().setBuffer(m_Buffer));
-	}
-
-	VulkanGeneralBuffer::~VulkanGeneralBuffer()
-	{
-		const auto& vkCore = VulkanCore::GetConstInstance();
-		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-
-		allocator.destroyBuffer(m_Buffer, m_BufferMemory);
+		m_BufferDeviceAddress = vkCore.GetDevice().getBufferAddress(vk::BufferDeviceAddressInfo().setBuffer(*m_Buffer));
 	}
 
 	void VulkanGeneralBuffer::UpdateBufferDataImpl(const u8* data, uSize count, uSize offset)
@@ -778,11 +689,11 @@ namespace OWC::Graphics
 			.setFlags(vma::AllocationCreateFlagBits::eHostAccessSequentialWrite | vma::AllocationCreateFlagBits::eMapped);
 
 		vma::AllocationInfo allocInfo;
-		const auto [allocation, stagingBuffer] = allocator.createBuffer(bufferCreateInfo, allocationCreateInfo, allocInfo);
+		vma::raii::Buffer stagingBuffer(allocator, bufferCreateInfo, allocationCreateInfo, allocInfo);
 
 		std::memcpy(allocInfo.pMappedData, data, bufferSize);
 
-		const auto& cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
+		auto cmdTransBuf = vkCore.GetSingleTimeTransferCommandBuffer();
 		cmdTransBuf.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
 
 		const auto copyBufferSize = vk::BufferCopy2()
@@ -817,11 +728,9 @@ namespace OWC::Graphics
 		const auto cmdSubmit = vk::CommandBufferSubmitInfo().setCommandBuffer(cmdTransBuf);
 		const auto submitInfo = vk::SubmitInfo2().setCommandBufferInfos(cmdSubmit);
 		vkCore.GetTransferQueue().submit2(submitInfo, fence);
-		if (device.waitForFences(fence, VK_TRUE, UINT64_MAX) != vk::Result::eSuccess)
+		if (device.waitForFences(*fence, VK_TRUE, UINT64_MAX) != vk::Result::eSuccess)
 		{
 			Log<LogLevel::Error>("Failed to wait for fence in VulkanGeneralBuffer::UpdateBufferDataImpl");
 		}
-		device.destroyFence(fence);
-		allocator.destroyBuffer(stagingBuffer, allocation);
 	}
 }

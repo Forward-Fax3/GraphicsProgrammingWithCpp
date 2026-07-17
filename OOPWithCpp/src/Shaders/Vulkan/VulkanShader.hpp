@@ -25,7 +25,7 @@ namespace OWC::Graphics
 	{
 	public:
 		VulkanBaseShader() = default;
-		~VulkanBaseShader() override;
+		~VulkanBaseShader() override = default;
 		VulkanBaseShader(VulkanBaseShader&) = delete;
 		VulkanBaseShader& operator=(VulkanBaseShader&) = delete;
 		VulkanBaseShader(VulkanBaseShader&&) noexcept = delete;
@@ -35,31 +35,31 @@ namespace OWC::Graphics
 		void BindTexture(u32 binding, const std::shared_ptr<TextureBuffer>& textureBuffer) override;
 		void BindDynamicTexture(u32 binding, const std::shared_ptr<DynamicTextureBuffer>& dTextureBuffer) override;
 
-		[[nodiscard]] OWC_FORCE_INLINE vk::Pipeline GetPipeline() const { return m_Pipeline; }
-		[[nodiscard]] OWC_FORCE_INLINE vk::PipelineLayout GetPipelineLayout() const { return m_PipelineLayout; }
-		[[nodiscard]] OWC_FORCE_INLINE vk::ArrayProxyNoTemporaries<const vk::DescriptorSetLayout> GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
-		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorSet GetDescriptorSet() const { return m_DescriptorSets[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
-		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorSet GetSpecificDescriptorSet(const uSize i) const { return m_DescriptorSets[i]; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::Pipeline& GetPipeline() const { return m_Pipeline; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::PipelineLayout& GetPipelineLayout() const { return m_PipelineLayout; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::DescriptorSetLayout& GetDescriptorSetLayout() const { return m_DescriptorSetLayout; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::DescriptorSet& GetDescriptorSet() const { return m_DescriptorSets[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::DescriptorSet& GetSpecificDescriptorSet(const uSize i) const { return m_DescriptorSets[i]; }
 
 	protected:
 		[[nodiscard]] OWC_FORCE_INLINE vk::DescriptorPool GetDescriptorPool() const { return m_DescriptorPool; }
 
-		void OWC_FORCE_INLINE SetPipeline(const vk::Pipeline pipeline) { m_Pipeline = pipeline; }
-		void OWC_FORCE_INLINE SetPipelineLayout(const vk::PipelineLayout pipelineLayout) { m_PipelineLayout = pipelineLayout; }
-		void OWC_FORCE_INLINE SetDescriptorSetLayout(const vk::DescriptorSetLayout descriptorSetLayout) { m_DescriptorSetLayout = descriptorSetLayout; }
-		void OWC_FORCE_INLINE SetDescriptorPool(const vk::DescriptorPool descriptorPool) { m_DescriptorPool = descriptorPool; }
-		void OWC_FORCE_INLINE SetDescriptorSets(const std::vector<vk::DescriptorSet>& descriptorSet) { m_DescriptorSets = descriptorSet; }
+		void OWC_FORCE_INLINE SetPipeline(vk::raii::Pipeline&& pipeline) { m_Pipeline = std::move(pipeline); }
+		void OWC_FORCE_INLINE SetPipelineLayout(vk::raii::PipelineLayout&& pipelineLayout) { m_PipelineLayout = std::move(pipelineLayout); }
+		void OWC_FORCE_INLINE SetDescriptorSetLayout(vk::raii::DescriptorSetLayout&& descriptorSetLayout) { m_DescriptorSetLayout = std::move(descriptorSetLayout); }
+		void OWC_FORCE_INLINE SetDescriptorPool(vk::raii::DescriptorPool&& descriptorPool) { m_DescriptorPool = std::move(descriptorPool); }
+		void OWC_FORCE_INLINE SetDescriptorSets(std::vector<vk::raii::DescriptorSet>&& descriptorSet) { m_DescriptorSets = std::move(descriptorSet); }
 
 		[[nodiscard]] static VulkanShaderData ProcessShaderData(const ShaderData& shaderData, std::map<std::vector<u32>*, vk::ShaderModuleCreateInfo>& srcToShaderModulesMap);
 		[[nodiscard]] static vk::ShaderStageFlagBits ConvertToVulkanShaderStage(ShaderType type);
 		[[nodiscard]] static vk::DescriptorType ConvertToVulkanDescriptorType(DescriptorType type);
 
 	private:
-		vk::Pipeline m_Pipeline = vk::Pipeline();
-		vk::PipelineLayout m_PipelineLayout = vk::PipelineLayout();
-		vk::DescriptorSetLayout m_DescriptorSetLayout = vk::DescriptorSetLayout();
-		vk::DescriptorPool m_DescriptorPool = vk::DescriptorPool();
-		std::vector<vk::DescriptorSet> m_DescriptorSets = {};
+		vk::raii::Pipeline m_Pipeline = nullptr;
+		vk::raii::PipelineLayout m_PipelineLayout = nullptr;
+		vk::raii::DescriptorSetLayout m_DescriptorSetLayout = nullptr;
+		vk::raii::DescriptorPool m_DescriptorPool = nullptr;
+		std::vector<vk::raii::DescriptorSet> m_DescriptorSets = {};
 	};
 
 	class VulkanShader : public VulkanBaseShader
@@ -81,7 +81,7 @@ namespace OWC::Graphics
 	{
 	public:
 		explicit VulkanRayTracingShader(const std::span<ShaderData>& shaderDatas);
-		~VulkanRayTracingShader() override;
+		~VulkanRayTracingShader() override = default;
 
 		VulkanRayTracingShader(VulkanRayTracingShader&) = delete;
 		VulkanRayTracingShader& operator=(VulkanRayTracingShader&) = delete;
@@ -104,7 +104,7 @@ namespace OWC::Graphics
 		vk::StridedDeviceAddressRegionKHR m_HitGroupSBTEntry = {};
 		vk::StridedDeviceAddressRegionKHR m_MissGroupSBTEntry = {};
 		vk::StridedDeviceAddressRegionKHR m_CallableGroupSBTEntry = {}; // This won't be implemented yet
-		vk::Buffer m_SBTBuffer;
+		vma::raii::Buffer m_SBTBuffer = nullptr;
 		vma::Allocation m_SBTBufferAllocation;
 		std::vector<u8> m_ShaderHandles;
 		u32 m_ShaderGroupCount = 0;

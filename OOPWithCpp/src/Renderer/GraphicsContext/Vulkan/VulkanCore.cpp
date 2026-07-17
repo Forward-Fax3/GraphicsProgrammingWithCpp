@@ -29,108 +29,108 @@ namespace OWC::Graphics
 		}
 	}
 
-	std::vector<vk::CommandBuffer> VulkanCore::GetGraphicsCommandBuffer() const
+	std::vector<vk::raii::CommandBuffer> VulkanCore::GetGraphicsCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_GraphicsCommandPool)
+			.setCommandPool(*m_GraphicsCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(static_cast<u32>(m_SwapchainImageViews.size()))
 		);
 
 		for (const auto& cmdBuf : commandBuffers)
-			Log<LogLevel::Debug>("Created graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(std::bit_cast<const VkCommandBuffer>(cmdBuf)));
+			Log<LogLevel::Debug>("Created graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(std::bit_cast<const VkCommandBuffer>(*cmdBuf)));
 
 		return commandBuffers;
 	}
 
-	std::vector<vk::CommandBuffer> VulkanCore::GetComputeCommandBuffer() const
+	std::vector<vk::raii::CommandBuffer> VulkanCore::GetComputeCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-				.setCommandPool(m_ComputeCommandPool)
+				.setCommandPool(*m_ComputeCommandPool)
 				.setLevel(vk::CommandBufferLevel::ePrimary)
 				.setCommandBufferCount(static_cast<u32>(m_SwapchainImageViews.size()))
 		);
 		return commandBuffers;
 	}
 
-	std::vector<vk::CommandBuffer> VulkanCore::GetTransferCommandBuffer() const
+	std::vector<vk::raii::CommandBuffer> VulkanCore::GetTransferCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-				.setCommandPool(m_TransferCommandPool)
+				.setCommandPool(*m_TransferCommandPool)
 				.setLevel(vk::CommandBufferLevel::ePrimary)
 				.setCommandBufferCount(static_cast<u32>(m_SwapchainImageViews.size()))
 		);
 		return commandBuffers;
 	}
 
-	std::vector<vk::CommandBuffer> VulkanCore::GetDynamicGraphicsCommandBuffer() const
+	std::vector<vk::raii::CommandBuffer> VulkanCore::GetDynamicGraphicsCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_DynamicGraphicsCommandPool)
+			.setCommandPool(*m_DynamicGraphicsCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(static_cast<u32>(m_SwapchainImageViews.size()))
 		);
 
 		for (const auto& cmdbuf : commandBuffers)
-			Log<LogLevel::Debug>("Allocated dynamic graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(std::bit_cast<const VkCommandBuffer>(cmdbuf)));
+			Log<LogLevel::Debug>("Allocated dynamic graphics command buffer: ID: 0x{:x}", std::bit_cast<const uint64_t>(std::bit_cast<const VkCommandBuffer>(*cmdbuf)));
 
 		return commandBuffers;
 	}
 
-	std::vector<vk::CommandBuffer> VulkanCore::GetDynamicComputeCommandBuffer() const
+	std::vector<vk::raii::CommandBuffer> VulkanCore::GetDynamicComputeCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_DynamicComputeCommandPool)
+			.setCommandPool(*m_DynamicComputeCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(static_cast<u32>(m_SwapchainImageViews.size()))
 		);
 		return commandBuffers;
 	}
 
-	std::vector<vk::CommandBuffer> VulkanCore::GetDynamicTransferCommandBuffer() const
+	std::vector<vk::raii::CommandBuffer> VulkanCore::GetDynamicTransferCommandBuffer() const
 	{
 		auto commandBuffers = m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_DynamicTransferCommandPool)
+			.setCommandPool(*m_DynamicTransferCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(static_cast<u32>(m_SwapchainImageViews.size()))
 		);
 		return commandBuffers;
 	}
 
-	vk::CommandBuffer VulkanCore::GetSingleTimeGraphicsCommandBuffer() const
+	vk::raii::CommandBuffer VulkanCore::GetSingleTimeGraphicsCommandBuffer() const
 	{
-		return m_Device.allocateCommandBuffers(
+		return std::move(m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_GraphicsCommandPool)
+			.setCommandPool(*m_GraphicsCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(1)
-		)[0];
+		)[0]);
 	}
 
-	vk::CommandBuffer VulkanCore::GetSingleTimeComputeCommandBuffer() const
+	vk::raii::CommandBuffer VulkanCore::GetSingleTimeComputeCommandBuffer() const
 	{
-		return m_Device.allocateCommandBuffers(
+		return std::move(m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_ComputeCommandPool)
+			.setCommandPool(*m_ComputeCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(1)
-		)[0];
+		)[0]);
 	}
 
-	vk::CommandBuffer VulkanCore::GetSingleTimeTransferCommandBuffer() const
+	vk::raii::CommandBuffer VulkanCore::GetSingleTimeTransferCommandBuffer() const
 	{
-		return m_Device.allocateCommandBuffers(
+		return std::move(m_Device.allocateCommandBuffers(
 			vk::CommandBufferAllocateInfo()
-			.setCommandPool(m_TransferCommandPool)
+			.setCommandPool(*m_TransferCommandPool)
 			.setLevel(vk::CommandBufferLevel::ePrimary)
 			.setCommandBufferCount(1)
-		)[0];
+		)[0]);
 	}
 
 	std::vector<vk::Semaphore> VulkanCore::GetSemaphoresFromNames(std::span<std::string_view> semaphoreNames)
@@ -146,30 +146,29 @@ namespace OWC::Graphics
 			auto it = m_Semaphores[m_CurrentFrameIndex].find(std::string(name));
 
 			if (it != m_Semaphores[m_CurrentFrameIndex].end())
-				semaphores.push_back(it->second);
+				semaphores.emplace_back(*it->second);
 
 			else
 			{
 				for (uSize i = 0; i < m_SwapchainImageViews.size(); ++i)
 				{
 					constexpr auto semaphoreCreateInfo = vk::SemaphoreCreateInfo().setFlags(vk::SemaphoreCreateFlags());
-					vk::Semaphore semaphore = m_Device.createSemaphore(semaphoreCreateInfo);
-					m_Semaphores[i][std::string(name)] = semaphore;
-
-					Log<LogLevel::Debug>("Created semaphore: name: {}, ID: 0x{:x}", name, std::bit_cast<uint64_t>(static_cast<VkSemaphore>(semaphore)));
+					auto semaphore = m_Device.createSemaphore(semaphoreCreateInfo);
+					Log<LogLevel::Debug>("Created semaphore: name: {}, ID: 0x{:x}", name, std::bit_cast<uint64_t>(static_cast<VkSemaphore>(*semaphore)));
+					m_Semaphores[i].insert_or_assign(std::string(name), std::move(semaphore));
 				}
-				semaphores.push_back(m_Semaphores[m_CurrentFrameIndex][std::string(name)]);
+				semaphores.emplace_back(*m_Semaphores[m_CurrentFrameIndex].at(std::string(name)));
 			}
 		}
 
 		return semaphores;
 	}
 
-	vk::Semaphore VulkanCore::GetSingleSemaphore() const
+	vk::raii::Semaphore VulkanCore::GetSingleSemaphore() const
 	{
 		constexpr auto semaphoreCreateInfo = vk::SemaphoreCreateInfo()
 			.setFlags(vk::SemaphoreCreateFlags());
-		return m_Device.createSemaphore(semaphoreCreateInfo);
+		return vk::raii::Semaphore{ m_Device, semaphoreCreateInfo };
 	}
 
 	u32 VulkanCore::FindMemoryType(vk::DeviceSize size, vk::MemoryPropertyFlags properties) const

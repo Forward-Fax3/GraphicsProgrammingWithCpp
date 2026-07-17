@@ -9,17 +9,6 @@
 
 namespace OWC::Graphics
 {
-	VulkanBaseShader::~VulkanBaseShader()
-	{
-		const auto& device = VulkanCore::GetConstInstance().GetDevice();
-
-		device.destroyDescriptorPool(m_DescriptorPool);
-		device.destroyDescriptorSetLayout(m_DescriptorSetLayout);
-
-		device.destroyPipelineLayout(m_PipelineLayout);
-		device.destroyPipeline(m_Pipeline);
-	}
-
 	void VulkanBaseShader::BindUniform(u32 binding, const std::shared_ptr<UniformBuffer>& uniformBuffer)
 	{
 		const auto vulkanUniformBuffer = std::dynamic_pointer_cast<VulkanUniformBuffer>(uniformBuffer);
@@ -68,7 +57,7 @@ namespace OWC::Graphics
 		const auto& vkCore = VulkanCore::GetConstInstance();
 		const auto& device = vkCore.GetDevice();
 
-		vk::DescriptorImageInfo descriptorImageInfo = vk::DescriptorImageInfo()
+		const auto descriptorImageInfo = vk::DescriptorImageInfo()
 			.setImageLayout(vk::ImageLayout::eGeneral)
 			.setImageView(vulkanTextureBuffer->GetImageView())
 			.setSampler(vulkanTextureBuffer->GetSampler());
@@ -267,15 +256,15 @@ namespace OWC::Graphics
 			vk::DynamicState::eScissor
 		};
 
-		const vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo = vk::PipelineDynamicStateCreateInfo()
+		const auto dynamicStateCreateInfo = vk::PipelineDynamicStateCreateInfo()
 			.setDynamicStates(dynamicStates);
 
 		constexpr vk::PipelineVertexInputStateCreateInfo vertexInputInfo{};
-		constexpr vk::PipelineInputAssemblyStateCreateInfo inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
+		constexpr auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo()
 			.setTopology(vk::PrimitiveTopology::eTriangleList)
 			.setPrimitiveRestartEnable(vk::False);
 
-		const vk::Viewport viewport = vk::Viewport()
+		const auto viewport = vk::Viewport()
 			.setWidth(static_cast<f32>(app.GetPixelWidth()))
 			.setHeight(static_cast<f32>(app.GetPixelHeight()))
 			.setMinDepth(0.0f)
@@ -283,26 +272,26 @@ namespace OWC::Graphics
 			.setX(0.0f)
 			.setY(0.0f);
 		
-		const vk::Rect2D scissor = vk::Rect2D()
+		const auto scissor = vk::Rect2D()
 			.setOffset({ 0, 0 })
 			.setExtent({
 				app.GetPixelWidth(),
 				app.GetPixelHeight()
 			});
 
-		const vk::PipelineViewportStateCreateInfo viewportState = vk::PipelineViewportStateCreateInfo()
+		const auto viewportState = vk::PipelineViewportStateCreateInfo()
 			.setViewports(viewport)
 			.setScissors(scissor);
 
-		constexpr vk::PipelineRasterizationStateCreateInfo rasterizer = vk::PipelineRasterizationStateCreateInfo()
+		constexpr auto rasterizer = vk::PipelineRasterizationStateCreateInfo()
 			.setPolygonMode(vk::PolygonMode::eFill)
 			.setLineWidth(1.0f);
 
-		constexpr vk::PipelineMultisampleStateCreateInfo multisampling = vk::PipelineMultisampleStateCreateInfo()
+		constexpr auto multisampling = vk::PipelineMultisampleStateCreateInfo()
 			.setSampleShadingEnable(vk::False)
 			.setRasterizationSamples(vk::SampleCountFlagBits::e1);
 
-		constexpr vk::PipelineColorBlendAttachmentState colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
+		constexpr auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState()
 			.setColorWriteMask(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
 				vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA)
 			.setBlendEnable(vk::True)
@@ -311,11 +300,11 @@ namespace OWC::Graphics
 			.setColorBlendOp(vk::BlendOp::eAdd)
 			.setSrcAlphaBlendFactor(vk::BlendFactor::eOne);
 
-		const vk::PipelineColorBlendStateCreateInfo colorBlending = vk::PipelineColorBlendStateCreateInfo()
+		const auto colorBlending = vk::PipelineColorBlendStateCreateInfo()
 			.setLogicOpEnable(vk::False)
 			.setAttachments(colorBlendAttachment);
 
-		const vk::PipelineRenderingCreateInfo pipelineRenderingInfo = vk::PipelineRenderingCreateInfo()
+		const auto pipelineRenderingInfo = vk::PipelineRenderingCreateInfo()
 			.setColorAttachmentFormats(VulkanCore::GetConstInstance().GetSwapchainImageFormat());
 
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
@@ -329,17 +318,17 @@ namespace OWC::Graphics
 					ConvertToVulkanShaderStage(stageFlags)
 				);
 
-		vk::DescriptorSetLayoutCreateInfo layoutInfo = vk::DescriptorSetLayoutCreateInfo()
+		const auto layoutInfo = vk::DescriptorSetLayoutCreateInfo()
 			.setBindings(bindings);
 
 		SetDescriptorSetLayout(device.createDescriptorSetLayout(layoutInfo));
 
-		vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayouts(GetDescriptorSetLayout());
+		const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+			.setSetLayouts(*GetDescriptorSetLayout());
 
 		SetPipelineLayout(device.createPipelineLayout(pipelineLayoutInfo));
 
-		vk::GraphicsPipelineCreateInfo pipelineInfo = vk::GraphicsPipelineCreateInfo()
+		const auto pipelineInfo = vk::GraphicsPipelineCreateInfo()
 			.setPNext(&pipelineRenderingInfo)
 			.setStages(shaderStages)
 			.setPVertexInputState(&vertexInputInfo)
@@ -352,20 +341,7 @@ namespace OWC::Graphics
 			.setLayout(GetPipelineLayout())
 			.setSubpass(0);
 
-		vk::Pipeline pipeline = vk::Pipeline();
-
-		auto result = device.createGraphicsPipelines(
-			nullptr,
-			1,
-			&pipelineInfo,
-			nullptr,
-			&pipeline
-		);
-
-		if (result != vk::Result::eSuccess)
-			Log<LogLevel::Error>("VulkanShader::CreateVulkanPipeline: Failed to create Vulkan graphics pipeline!");
-		else
-			SetPipeline(pipeline);
+		SetPipeline(vk::raii::Pipeline(device, nullptr, pipelineInfo));
 
 		// build Descriptor Pool
 		// TODO: make this dynamic based on actual usage
@@ -397,22 +373,23 @@ namespace OWC::Graphics
 			}
 		}
 
-		vk::DescriptorPoolCreateInfo poolInfo = vk::DescriptorPoolCreateInfo()
+		const auto poolInfo = vk::DescriptorPoolCreateInfo()
+			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
 			.setPoolSizes(poolSize)
 			.setMaxSets(static_cast<u32>(vkCore.GetNumberOfFramesInFlight()));
 
 		SetDescriptorPool(device.createDescriptorPool(poolInfo));
-		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+		const auto allocInfo = vk::DescriptorSetAllocateInfo()
 			.setDescriptorPool(GetDescriptorPool())
-			.setSetLayouts(GetDescriptorSetLayout());
+			.setSetLayouts(*GetDescriptorSetLayout());
 
-		std::vector<vk::DescriptorSet> descriptorSets;
+		std::vector<vk::raii::DescriptorSet> descriptorSets;
 		descriptorSets.reserve(vkCore.GetNumberOfFramesInFlight());
 
 		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
-			descriptorSets.push_back(device.allocateDescriptorSets(allocInfo).front());
+			descriptorSets.push_back(std::move(device.allocateDescriptorSets(allocInfo).front()));
 
-		SetDescriptorSets(descriptorSets);
+		SetDescriptorSets(std::move(descriptorSets));
 	}
 
 	VulkanRayTracingShader::VulkanRayTracingShader(const std::span<ShaderData>& shaderDatas)
@@ -444,14 +421,6 @@ namespace OWC::Graphics
 		CreateShaderBindingTable(m_ShaderGroupCount);
 	}
 
-	VulkanRayTracingShader::~VulkanRayTracingShader()
-	{
-		const auto& vkCore = VulkanCore::GetConstInstance();
-		const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-
-		allocator.destroyBuffer(m_SBTBuffer, m_SBTBufferAllocation);
-	}
-
 	void VulkanRayTracingShader::BindTLAS(u32 binding, const std::shared_ptr<BaseTLAS>& tlas)
 	{
 		const auto vulkanTLASBuffer = std::dynamic_pointer_cast<VulkanTLAS>(tlas);
@@ -459,8 +428,8 @@ namespace OWC::Graphics
 		const auto& vkCore = VulkanCore::GetConstInstance();
 		const auto& device = vkCore.GetDevice();
 
-		auto descriptorAccelerationStructureInfo = vk::WriteDescriptorSetAccelerationStructureKHR()
-			.setPAccelerationStructures(&vulkanTLASBuffer->GetTLAS())
+		const auto descriptorAccelerationStructureInfo = vk::WriteDescriptorSetAccelerationStructureKHR()
+			.setPAccelerationStructures(&*vulkanTLASBuffer->GetTLAS())
 			.setAccelerationStructureCount(1);
 
 		std::vector<vk::WriteDescriptorSet> writeDescriptorSets{};
@@ -547,38 +516,29 @@ namespace OWC::Graphics
 				);
 		}
 
-		const vk::DescriptorSetLayoutCreateInfo layoutInfo = vk::DescriptorSetLayoutCreateInfo()
+		const auto layoutInfo = vk::DescriptorSetLayoutCreateInfo()
 			.setBindings(bindings);
 
 		SetDescriptorSetLayout(device.createDescriptorSetLayout(layoutInfo));
 
-		vk::PushConstantRange pushConstantRange = vk::PushConstantRange()
+		constexpr auto pushConstantRange = vk::PushConstantRange()
 			.setOffset(0)
 			.setSize(128) // TODO: make this configurable
 			.setStageFlags(vk::ShaderStageFlagBits::eRaygenKHR | vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eMissKHR);
 
-		const vk::PipelineLayoutCreateInfo pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
-			.setSetLayouts(GetDescriptorSetLayout())
+		const auto pipelineLayoutInfo = vk::PipelineLayoutCreateInfo()
+			.setSetLayouts(*GetDescriptorSetLayout())
 			.setPushConstantRanges(pushConstantRange);
 
 		SetPipelineLayout(device.createPipelineLayout(pipelineLayoutInfo));
 
-		const vk::RayTracingPipelineCreateInfoKHR rayTracingPipelineInfo = vk::RayTracingPipelineCreateInfoKHR()
+		const auto rayTracingPipelineInfo = vk::RayTracingPipelineCreateInfoKHR()
 			.setStages(shaderStages)
 			.setGroups(shaderGroups)
 			.setMaxPipelineRayRecursionDepth(8) // TODO: make this configurable
 			.setLayout(GetPipelineLayout());
 
-		const auto result = device.createRayTracingPipelineKHR(
-			{},
-			{},
-			rayTracingPipelineInfo
-		);
-
-		if (result.result != vk::Result::eSuccess)
-			Log<LogLevel::Error>("VulkanShader::CreateVulkanRayTracingPipeline: Failed to create Vulkan ray tracing pipeline!");
-		else
-			SetPipeline(result.value);
+		SetPipeline(vk::raii::Pipeline(device, nullptr, nullptr, rayTracingPipelineInfo));
 
 		m_ShaderGroupCount = static_cast<u32>(shaderGroups.size());
 
@@ -609,28 +569,28 @@ namespace OWC::Graphics
 			}
 		}
 
-		vk::DescriptorPoolCreateInfo poolInfo = vk::DescriptorPoolCreateInfo()
+		const auto poolInfo = vk::DescriptorPoolCreateInfo()
+			.setFlags(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet)
 			.setPoolSizes(poolSize)
 			.setMaxSets(static_cast<u32>(vkCore.GetNumberOfFramesInFlight()));
 
 		SetDescriptorPool(device.createDescriptorPool(poolInfo));
-		vk::DescriptorSetAllocateInfo allocInfo = vk::DescriptorSetAllocateInfo()
+		const auto allocInfo = vk::DescriptorSetAllocateInfo()
 			.setDescriptorPool(GetDescriptorPool())
-			.setSetLayouts(GetDescriptorSetLayout());
+			.setSetLayouts(*GetDescriptorSetLayout());
 
-		std::vector<vk::DescriptorSet> descriptorSets;
+		std::vector<vk::raii::DescriptorSet> descriptorSets;
 		descriptorSets.reserve(vkCore.GetNumberOfFramesInFlight());
 
 		for (uSize i = 0; i < vkCore.GetNumberOfFramesInFlight(); i++)
-			descriptorSets.push_back(device.allocateDescriptorSets(allocInfo).front());
+			descriptorSets.emplace_back(std::move(device.allocateDescriptorSets(allocInfo).front()));
 
-		SetDescriptorSets(descriptorSets);
+		SetDescriptorSets(std::move(descriptorSets));
 	}
 
 	void VulkanRayTracingShader::CreateShaderBindingTable(const u32 numberOfGroups)
 	{
 		const auto& vkCore = VulkanCore::GetConstInstance();
-		const auto& device = vkCore.GetDevice();
 		const auto& RTProps = vkCore.GetRayTracingPipelineProperties();
 
 		if (numberOfGroups < 3)
@@ -646,13 +606,7 @@ namespace OWC::Graphics
 		const u32 baseAlignment = RTProps.shaderGroupBaseAlignment;
 
 		const uSize shaderHandleSize = handleSize * numberOfGroups;
-		m_ShaderHandles.resize(shaderHandleSize);
-		auto result = device.getRayTracingShaderGroupHandlesKHR(GetPipeline(), 0, numberOfGroups, shaderHandleSize, m_ShaderHandles.data());
-		if (result != vk::Result::eSuccess)
-		{
-			Log<LogLevel::Error>("VulkanRayTracingShader::CreateShaderBindingTable: Failed to get ray tracing shader group handles!");
-			return;
-		}
+		m_ShaderHandles = GetPipeline().getRayTracingShaderGroupHandlesKHR<u8>(0, numberOfGroups, shaderHandleSize);
 
 		// nVidia vk_raytracing_tutorial helper func
 		auto alignUp = [](auto value, size_t alignment) noexcept { return ((value + alignment - 1) & ~(alignment - 1)); };
@@ -691,9 +645,7 @@ namespace OWC::Graphics
 			.setFlags(vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
 
 		vma::AllocationInfo allocationInfo;
-		auto [allocation, buffer] = allocator.createBuffer(bufferInfo, allocInfo, allocationInfo);
-		m_SBTBuffer = buffer;
-		m_SBTBufferAllocation = allocation;
+		m_SBTBuffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo, allocationInfo);
 
 		const auto pData = static_cast<u8*>(allocationInfo.pMappedData);
 

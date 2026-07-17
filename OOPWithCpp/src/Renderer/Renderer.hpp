@@ -172,7 +172,7 @@ namespace OWC::Graphics
 		static void DrawImGui(const std::shared_ptr<RenderPassData>& data, ImDrawData* drawData);
 
 		static void WaitTillIdle();
-		static void AddToEndOfFrameCleanUp(const std::function<void()>& func);
+		static void AddToEndOfFrameCleanUp(std::move_only_function<void()>&& func);
 
 		[[nodiscard]] static uSize GetNumberOfFramesInFlight(const std::shared_ptr<RenderPassData>& data);
 

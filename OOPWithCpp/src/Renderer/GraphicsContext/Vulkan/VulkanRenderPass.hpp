@@ -2,7 +2,7 @@
 #include "Renderer.hpp"
 #include "BaseShader.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include "vulkan/vulkan_raii.hpp"
 
 
 namespace OWC::Graphics
@@ -42,13 +42,13 @@ namespace OWC::Graphics
 		static vk::PipelineStageFlags2 GetVulkanPipelineStageMask(StageMask stageMask);
 		static vk::ImageLayout GetVulkanImageLayout(ImageLayout layout);
 
-		uSize GetNumberOfFramesInFlight() const override;
+		[[nodiscard]] uSize GetNumberOfFramesInFlight() const override;
 
 	public:
 		static void WaitTillIdle();
-		static void AddToEndOfFrameCleanUp(const std::function<void()>& func);
+		static void AddToEndOfFrameCleanUp(std::move_only_function<void()>&& func);
 
 	private:
-		std::vector<vk::CommandBuffer> m_CommandBuffers = {};
+		std::vector<vk::raii::CommandBuffer> m_CommandBuffers = {};
 	};
 }

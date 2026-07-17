@@ -2,7 +2,7 @@
 #include "GraphicsContext.hpp"
 #include "Renderer.hpp"
 
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 
 namespace OWC::Graphics
@@ -58,7 +58,7 @@ namespace OWC::Graphics
 		void EnableVulkanDebugging();
 #endif
 		static void SurfaceInit(SDL_Window& windowHandle);
-		void SelectPhysicalDevice();
+		static void SelectPhysicalDevice();
 		static std::pair<bool, u32> IsPhysicalDeviceSuitable(const vk::PhysicalDevice& device);
 		void FindQueueFamilies();
 		void CheckQueueFamilyValidity(const std::vector<vk::QueueFamilyProperties>& queueFamilies);
@@ -69,19 +69,14 @@ namespace OWC::Graphics
 		void WriteCommandBuffers();
 		static void CreateVulkanMemoryAllocator();
 
-		static void DestroySwapchain();
-
 		void RecreateSwapchain();
 		void RewriteCommandBuffers();
 
 	private:
-#ifndef DIST
-		vk::DebugUtilsMessengerEXT m_DebugCallback{};
-#endif
 		QueueFamilyIndices m_QueueFamilyIndices{};
 
-		std::vector<vk::CommandBuffer> m_BeginRenderCmdBuf{};
-		std::vector<vk::CommandBuffer> m_EndRenderCmdBuf{};
+		std::vector<vk::raii::CommandBuffer> m_BeginRenderCmdBuf{};
+		std::vector<vk::raii::CommandBuffer> m_EndRenderCmdBuf{};
 
 		const WindowProperties& m_WindowProperties;
 

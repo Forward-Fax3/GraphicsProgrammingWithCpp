@@ -4,14 +4,15 @@
 #include "Renderer.hpp"
 #include "VulkanRenderPass.hpp"
 
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 #define VMA_VULKAN_VERSION 1004000
-#include "vk_mem_alloc.hpp"
+#include "vk_mem_alloc_raii.hpp"
 
 #include <list>
 #include <mutex>
 #include <memory>
 #include <map>
+#include <functional>
 #include <ranges>
 
 
@@ -85,41 +86,42 @@ namespace OWC::Graphics
 
 		static void Shutdown() { s_Instance.reset(); }
 
-		[[nodiscard]] std::vector<vk::CommandBuffer> GetGraphicsCommandBuffer() const;
-		[[nodiscard]] std::vector<vk::CommandBuffer> GetComputeCommandBuffer() const;
-		[[nodiscard]] std::vector<vk::CommandBuffer> GetTransferCommandBuffer() const;
-		[[nodiscard]] std::vector<vk::CommandBuffer> GetDynamicGraphicsCommandBuffer() const;
-		[[nodiscard]] std::vector<vk::CommandBuffer> GetDynamicComputeCommandBuffer() const;
-		[[nodiscard]] std::vector<vk::CommandBuffer> GetDynamicTransferCommandBuffer() const;
-		[[nodiscard]] vk::CommandBuffer GetSingleTimeGraphicsCommandBuffer() const;
-		[[nodiscard]] vk::CommandBuffer GetSingleTimeComputeCommandBuffer() const;
-		[[nodiscard]] vk::CommandBuffer GetSingleTimeTransferCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::raii::CommandBuffer> GetGraphicsCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::raii::CommandBuffer> GetComputeCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::raii::CommandBuffer> GetTransferCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::raii::CommandBuffer> GetDynamicGraphicsCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::raii::CommandBuffer> GetDynamicComputeCommandBuffer() const;
+		[[nodiscard]] std::vector<vk::raii::CommandBuffer> GetDynamicTransferCommandBuffer() const;
+		[[nodiscard]] vk::raii::CommandBuffer GetSingleTimeGraphicsCommandBuffer() const;
+		[[nodiscard]] vk::raii::CommandBuffer GetSingleTimeComputeCommandBuffer() const;
+		[[nodiscard]] vk::raii::CommandBuffer GetSingleTimeTransferCommandBuffer() const;
 
 		[[nodiscard]] std::vector<vk::Semaphore> GetSemaphoresFromNames(std::span<std::string_view> semaphoreNames);
-		[[nodiscard]] vk::Semaphore GetSingleSemaphore() const;
+		[[nodiscard]] vk::raii::Semaphore GetSingleSemaphore() const;
 
 		[[nodiscard]] u32 FindMemoryType(vk::DeviceSize size, vk::MemoryPropertyFlags properties) const;
 
-		[[nodiscard]] OWC_FORCE_INLINE const vk::Instance& GetVKInstance() const { return m_Instance; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::SurfaceKHR& GetSurface() const { return m_Surface; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::PhysicalDevice& GetPhysicalDev() const { return m_PhysicalDevice; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::Device& GetDevice() const { return m_Device; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::Context& GetVKContext() const { return m_Context; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::Instance& GetVKInstance() const { return m_Instance; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::SurfaceKHR& GetSurface() const { return m_Surface; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::PhysicalDevice& GetPhysicalDev() const { return m_PhysicalDevice; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::Device& GetDevice() const { return m_Device; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::Queue& GetPresentQueue() const { return m_PresentQueue; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::Queue& GetGraphicsQueue() const { return m_GraphicsQueue; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::Queue& GetComputeQueue() const { return m_ComputeQueue; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::Queue& GetTransferQueue() const { return m_TransferQueue; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::CommandPool& GetGraphicsCommandPool() const { return m_GraphicsCommandPool; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::CommandPool& GetComputeCommandPool() const { return m_ComputeCommandPool; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::CommandPool& GetTransferCommandPool() const { return m_TransferCommandPool; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::CommandPool& GetDynamicGraphicsCommandPool() const { return m_DynamicGraphicsCommandPool; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::CommandPool& GetDynamicComputeCommandPool() const { return m_DynamicComputeCommandPool; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::CommandPool& GetDynamicTransferCommandPool() const { return m_DynamicTransferCommandPool; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::CommandPool& GetGraphicsCommandPool() const { return m_GraphicsCommandPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::CommandPool& GetComputeCommandPool() const { return m_ComputeCommandPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::CommandPool& GetTransferCommandPool() const { return m_TransferCommandPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::CommandPool& GetDynamicGraphicsCommandPool() const { return m_DynamicGraphicsCommandPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::CommandPool& GetDynamicComputeCommandPool() const { return m_DynamicComputeCommandPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::CommandPool& GetDynamicTransferCommandPool() const { return m_DynamicTransferCommandPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::SwapchainKHR& GetSwapchain() const { return m_Swapchain; }
 		[[nodiscard]] OWC_FORCE_INLINE const vk::Format& GetSwapchainImageFormat() const { return m_SwapchainImageFormat; }
-		[[nodiscard]] OWC_FORCE_INLINE const vk::DescriptorPool& GetImGuiDescriptorPool() const { return m_ImGuiDescriptorPool; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::DescriptorPool& GetImGuiDescriptorPool() const { return m_ImGuiDescriptorPool; }
 		[[nodiscard]] OWC_FORCE_INLINE const std::vector<vk::Image>& GetSwapchainImages() const { return m_SwapchainImages; }
-		[[nodiscard]] OWC_FORCE_INLINE const std::vector<vk::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
-		[[nodiscard]] OWC_FORCE_INLINE const vma::Allocator& GetVulkanMemoryAllocator() const { return m_Allocator; }
+		[[nodiscard]] OWC_FORCE_INLINE const std::vector<vk::raii::ImageView>& GetSwapchainImageViews() const { return m_SwapchainImageViews; }
+		[[nodiscard]] OWC_FORCE_INLINE const vma::raii::Allocator& GetVulkanMemoryAllocator() const { return m_Allocator; }
 		[[nodiscard]] OWC_FORCE_INLINE uSize GetCurrentFrameIndex() const { return m_CurrentFrameIndex; }
 		[[nodiscard]] OWC_FORCE_INLINE uSize GetNumberOfFramesInFlight() const { return m_SwapchainImageViews.size(); }
 
@@ -134,33 +136,37 @@ namespace OWC::Graphics
 		[[nodiscard]] OWC_FORCE_INLINE const std::vector<u32>& GetAllUniqueQueuesIndices() const { return m_UniqueQueueFamilyIndices;}
 
 		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::Image>& GetSwapchainImages() { return m_SwapchainImages; }
-		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
-		[[nodiscard]] OWC_FORCE_INLINE std::vector<std::list<std::function<void()>>>& GetEndOfFrameCleanUp() { return m_EndOfFrameCleanUp; }
+		[[nodiscard]] OWC_FORCE_INLINE std::vector<vk::raii::ImageView>& GetSwapchainImageViews() { return m_SwapchainImageViews; }
+
+		// Store end-of-frame cleanup callables as move-only type-erased wrappers (C++23)
+		[[nodiscard]] OWC_FORCE_INLINE std::vector<std::list<std::move_only_function<void()>>>& GetEndOfFrameCleanUp() { return m_EndOfFrameCleanUp; }
 
 		[[nodiscard]] OWC_FORCE_INLINE vk::Semaphore GetLastFrameFinishedSemaphore() const { return m_LastFrameWaitSemaphore; }
 
-		OWC_FORCE_INLINE void SetInstance(const vk::Instance& instance) { m_Instance = instance; }
-		OWC_FORCE_INLINE void SetSurface(const vk::SurfaceKHR& surface) { m_Surface = surface; }
-		OWC_FORCE_INLINE void SetPhysicalDevice(const vk::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
-		OWC_FORCE_INLINE void SetDevice(const vk::Device& device) { m_Device = device; }
+		OWC_FORCE_INLINE void SetInstance(vk::raii::Instance&& instance) { m_Instance = std::move(instance); }
+#ifndef DIST
+		OWC_FORCE_INLINE void SetDebugCallback(vk::raii::DebugUtilsMessengerEXT&& debugCallback) { m_DebugCallback = std::move(debugCallback); }
+#endif
+		OWC_FORCE_INLINE void SetSurface(vk::raii::SurfaceKHR&& surface) { m_Surface = std::move(surface); }
+		OWC_FORCE_INLINE void SetPhysicalDevice(const vk::raii::PhysicalDevice& physicalDevice) { m_PhysicalDevice = physicalDevice; }
+		OWC_FORCE_INLINE void SetDevice(vk::raii::Device&& device) { m_Device = std::move(device); }
 		OWC_FORCE_INLINE void SetPresentQueue(const vk::Queue& presentQueue) { m_PresentQueue = presentQueue; }
 		OWC_FORCE_INLINE void SetGraphicsQueue(const vk::Queue& graphicsQueue) { m_GraphicsQueue = graphicsQueue; }
 		OWC_FORCE_INLINE void SetComputeQueue(const vk::Queue& computeQueue) { m_ComputeQueue = computeQueue; }
 		OWC_FORCE_INLINE void SetTransferQueue(const vk::Queue& transferQueue) { m_TransferQueue = transferQueue; }
-		OWC_FORCE_INLINE void SetGraphicsCommandPool(const vk::CommandPool& commandPool) { m_GraphicsCommandPool = commandPool; }
-		OWC_FORCE_INLINE void SetComputeCommandPool(const vk::CommandPool& commandPool) { m_ComputeCommandPool = commandPool; }
-		OWC_FORCE_INLINE void SetTransferCommandPool(const vk::CommandPool& commandPool) { m_TransferCommandPool = commandPool; }
-		OWC_FORCE_INLINE void SetDynamicGraphicsCommandPool(const vk::CommandPool& commandPool) { m_DynamicGraphicsCommandPool = commandPool; }
-		OWC_FORCE_INLINE void SetDynamicComputeCommandPool(const vk::CommandPool& commandPool) { m_DynamicComputeCommandPool = commandPool; }
-		OWC_FORCE_INLINE void SetDynamicTransferCommandPool(const vk::CommandPool& commandPool) { m_DynamicTransferCommandPool = commandPool; }
+		OWC_FORCE_INLINE void SetGraphicsCommandPool(vk::raii::CommandPool&& commandPool) { m_GraphicsCommandPool = std::move(commandPool); }
+		OWC_FORCE_INLINE void SetComputeCommandPool(vk::raii::CommandPool&& commandPool) { m_ComputeCommandPool = std::move(commandPool); }
+		OWC_FORCE_INLINE void SetTransferCommandPool(vk::raii::CommandPool&& commandPool) { m_TransferCommandPool = std::move(commandPool); }
+		OWC_FORCE_INLINE void SetDynamicGraphicsCommandPool(vk::raii::CommandPool&& commandPool) { m_DynamicGraphicsCommandPool = std::move(commandPool); }
+		OWC_FORCE_INLINE void SetDynamicComputeCommandPool(vk::raii::CommandPool&& commandPool) { m_DynamicComputeCommandPool = std::move(commandPool); }
+		OWC_FORCE_INLINE void SetDynamicTransferCommandPool(vk::raii::CommandPool&& commandPool) { m_DynamicTransferCommandPool = std::move(commandPool); }
 		OWC_FORCE_INLINE void SetSwapchainImageFormat(const vk::Format& format) { m_SwapchainImageFormat = format; }
-		OWC_FORCE_INLINE void SetImGuiDescriptorPool(const vk::DescriptorPool& pool) { m_ImGuiDescriptorPool = pool;  }
-		OWC_FORCE_INLINE void SetSwapchain(const vk::SwapchainKHR& swapchain) { m_Swapchain = swapchain; }
-		OWC_FORCE_INLINE void SetSwapchainImages(const std::vector<vk::Image>& swapchainImages) { m_SwapchainImages = swapchainImages; }
-		OWC_FORCE_INLINE void SetSwapchainImageViews(const std::vector<vk::ImageView>& swapchainImageViews) { m_SwapchainImageViews = swapchainImageViews; }
-		OWC_FORCE_INLINE void SetCurrentFrameIndex(uSize newIndex) { m_CurrentFrameIndex = newIndex; }
-		OWC_FORCE_INLINE void SetVulkanMemoryAllocator(const vma::Allocator& allocator) { m_Allocator = allocator; }
-		OWC_FORCE_INLINE void AddVulkanEndOfFrameCleanUpFunction(const std::function<void()>& func) { m_EndOfFrameCleanUp[m_CurrentFrameIndex].emplace_back(func); }
+		OWC_FORCE_INLINE void SetImGuiDescriptorPool(vk::raii::DescriptorPool&& pool) { m_ImGuiDescriptorPool = std::move(pool);  }
+		OWC_FORCE_INLINE void SetSwapchain(vk::raii::SwapchainKHR&& swapchain) { m_Swapchain = std::move(swapchain); m_SwapchainImages = m_Swapchain.getImages(); }
+		OWC_FORCE_INLINE void SetSwapchainImageViews(std::vector<vk::raii::ImageView>&& swapchainImageViews) { m_SwapchainImageViews = std::move(swapchainImageViews); }
+		OWC_FORCE_INLINE void SetCurrentFrameIndex(const uSize newIndex) { m_CurrentFrameIndex = newIndex; }
+		OWC_FORCE_INLINE void SetVulkanMemoryAllocator(vma::raii::Allocator&& allocator) { m_Allocator = std::move(allocator); }
+		OWC_FORCE_INLINE void AddVulkanEndOfFrameCleanUpFunction(std::move_only_function<void()>&& func) { m_EndOfFrameCleanUp[m_CurrentFrameIndex].emplace_back(std::move(func)); }
 
 		OWC_FORCE_INLINE void SetLastFrameWaitSemaphore(const vk::Semaphore semaphore) { m_LastFrameWaitSemaphore = semaphore; }
 
@@ -194,50 +200,42 @@ namespace OWC::Graphics
 
 		OWC_FORCE_INLINE void DestroySemaphores()
 		{
-			for (auto& semaphores : m_Semaphores)
-			{
-				for (auto& semaphore : std::views::values(semaphores))
-					if (semaphore)
-					{
-						m_Device.destroySemaphore(semaphore);
-						semaphore = vk::Semaphore();
-					}
-
-				semaphores.clear();
-			}
-
 			m_Semaphores.clear();
 		}
 
 	private:
-		vk::Instance m_Instance = vk::Instance();
-		vk::SurfaceKHR m_Surface = vk::SurfaceKHR();
-		vk::PhysicalDevice m_PhysicalDevice = vk::PhysicalDevice();
-		vk::Device m_Device = vk::Device();
+		vk::raii::Context m_Context = vk::raii::Context();
+		vk::raii::Instance m_Instance = nullptr;
+#ifndef DIST
+		vk::raii::DebugUtilsMessengerEXT m_DebugCallback = nullptr;
+#endif
+		vk::raii::SurfaceKHR m_Surface = nullptr;
+		vk::raii::PhysicalDevice m_PhysicalDevice = nullptr;
+		vk::raii::Device m_Device = nullptr;
 		vk::Queue m_PresentQueue = vk::Queue();
 		vk::Queue m_GraphicsQueue = vk::Queue();
 		vk::Queue m_ComputeQueue = vk::Queue();
 		vk::Queue m_TransferQueue = vk::Queue();
-		vk::CommandPool m_GraphicsCommandPool = vk::CommandPool();
-		vk::CommandPool m_ComputeCommandPool = vk::CommandPool();
-		vk::CommandPool m_TransferCommandPool = vk::CommandPool();
-		vk::CommandPool m_DynamicGraphicsCommandPool = vk::CommandPool();
-		vk::CommandPool m_DynamicComputeCommandPool = vk::CommandPool();
-		vk::CommandPool m_DynamicTransferCommandPool = vk::CommandPool();
-		vk::SwapchainKHR m_Swapchain = vk::SwapchainKHR();
+		vk::raii::CommandPool m_GraphicsCommandPool = nullptr;
+		vk::raii::CommandPool m_ComputeCommandPool = nullptr;
+		vk::raii::CommandPool m_TransferCommandPool = nullptr;
+		vk::raii::CommandPool m_DynamicGraphicsCommandPool = nullptr;
+		vk::raii::CommandPool m_DynamicComputeCommandPool = nullptr;
+		vk::raii::CommandPool m_DynamicTransferCommandPool = nullptr;
+		vk::raii::SwapchainKHR m_Swapchain = nullptr;
 		vk::Format m_SwapchainImageFormat = vk::Format::eUndefined;
-		vk::DescriptorPool m_ImGuiDescriptorPool = vk::DescriptorPool();
+		vk::raii::DescriptorPool m_ImGuiDescriptorPool = nullptr;
 		std::vector<vk::Image> m_SwapchainImages{};
-		std::vector<vk::ImageView> m_SwapchainImageViews{};
+		std::vector<vk::raii::ImageView> m_SwapchainImageViews{};
 
 		vk::PhysicalDeviceRayTracingPipelinePropertiesKHR m_RayTracingPipelineProperties{};
 		vk::PhysicalDeviceAccelerationStructurePropertiesKHR m_AccelerationStructureProperties{};
 
-		std::vector<std::list<std::function<void()>>> m_EndOfFrameCleanUp{};
+		std::vector<std::list<std::move_only_function<void()>>> m_EndOfFrameCleanUp{};
 
-		vma::Allocator m_Allocator = vma::Allocator();
+		vma::raii::Allocator m_Allocator = nullptr;
 
-		std::vector<std::map<std::string, vk::Semaphore>> m_Semaphores{};
+		std::vector<std::map<std::string, vk::raii::Semaphore>> m_Semaphores{};
 		uSize m_CurrentFrameIndex = 0;
 
 		u32 m_GraphicsQueueFamilyIndex = 0;

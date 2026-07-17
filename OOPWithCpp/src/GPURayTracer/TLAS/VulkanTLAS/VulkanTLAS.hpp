@@ -15,7 +15,7 @@ namespace OWC
     {
     public:
         VulkanTLAS() = default; // default init because we need to add all instances first
-        ~VulkanTLAS() override;
+        ~VulkanTLAS() override = default;
 
         VulkanTLAS(const VulkanTLAS&) = delete;
         VulkanTLAS(VulkanTLAS&&) = delete;
@@ -25,13 +25,13 @@ namespace OWC
         void AddInstance(const Mat4& transform, const std::shared_ptr<SceneMesh>& mesh) override;
         void CreateTLAS() override;
 
-        const vk::AccelerationStructureKHR& GetTLAS() const { return m_TLAS; }
+        const vk::raii::AccelerationStructureKHR& GetTLAS() const { return m_TLAS; }
 
     private:
         [[nodiscard]] static vk::TransformMatrixKHR ConvertMat4ToVulkanTransform(const Mat4& transform);
 
     private:
-        vk::AccelerationStructureKHR m_TLAS;
+        vk::raii::AccelerationStructureKHR m_TLAS = nullptr;
         std::shared_ptr<Graphics::VulkanGeneralBuffer> m_TLASBuffer;
         std::vector<vk::AccelerationStructureInstanceKHR> m_BLASInstances;
     };

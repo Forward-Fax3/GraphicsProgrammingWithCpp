@@ -150,12 +150,12 @@ namespace OWC::Graphics
 		}
 	}
 
-	void Renderer::AddToEndOfFrameCleanUp(const std::function<void()>& func)
+	void Renderer::AddToEndOfFrameCleanUp(std::move_only_function<void()>&& func)
 	{
 		switch (s_API)
 		{
 		case OWC::Graphics::RendererAPI::Vulkan:
-			VulkanRenderPass::AddToEndOfFrameCleanUp(func);
+			VulkanRenderPass::AddToEndOfFrameCleanUp(std::move(func));
 			break;
 		default:
 			std::unreachable();

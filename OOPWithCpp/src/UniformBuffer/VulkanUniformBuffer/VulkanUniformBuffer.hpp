@@ -3,7 +3,7 @@
 #include "UniformBuffer.hpp"
 #include "VulkanCore.hpp"
 
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 
 namespace OWC::Graphics
@@ -13,23 +13,22 @@ namespace OWC::Graphics
 	public:
 		VulkanUniformBuffer() = delete;
 		explicit VulkanUniformBuffer(uSize size);
-		~VulkanUniformBuffer() override;
+		~VulkanUniformBuffer() override = default;
 		VulkanUniformBuffer(VulkanUniformBuffer&) = delete;
 		VulkanUniformBuffer& operator=(VulkanUniformBuffer&) = delete;
 		VulkanUniformBuffer(VulkanUniformBuffer&&) noexcept = delete;
 		VulkanUniformBuffer& operator=(VulkanUniformBuffer&&) noexcept = delete;
 
 		[[nodiscard]] vk::Buffer GetBuffer() const { return m_UniformBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; };
-		[[nodiscard]] uSize GetBufferSize() const { return static_cast<uSize>(VulkanCore::GetConstInstance().GetDevice().getBufferMemoryRequirements(m_UniformBuffers[0]).size); }
+		[[nodiscard]] uSize GetBufferSize() const { return m_UniformBuffers[0].getMemoryRequirements().size; }
 
-		[[nodiscard]] std::vector<vk::Buffer> GetBuffers() const { return m_UniformBuffers; }
+		[[nodiscard]] const std::vector<vma::raii::Buffer>& GetBuffers() const { return m_UniformBuffers; }
 
 	private:
 		void UpdateBufferDataImpl(std::span<const std::byte> data, uSize size, uSize offset) override;
 
 	private:
-		std::vector<vk::Buffer> m_UniformBuffers;
-		std::vector<vma::Allocation> m_UniformBuffersMemory;
+		std::vector<vma::raii::Buffer> m_UniformBuffers;
 	};
 
 	class VulkanTextureBuffer : public TextureBuffer
@@ -38,7 +37,7 @@ namespace OWC::Graphics
 		VulkanTextureBuffer() = delete;
 		explicit VulkanTextureBuffer(const ImageLoader<f32, 4, glm::aligned_highp>& image);
 		explicit VulkanTextureBuffer(u32 width, u32 height);
-		~VulkanTextureBuffer() override;
+		~VulkanTextureBuffer() override = default;
 		VulkanTextureBuffer(VulkanTextureBuffer&) = delete;
 		VulkanTextureBuffer& operator=(const VulkanTextureBuffer&) = delete;
 		VulkanTextureBuffer(VulkanTextureBuffer&&) noexcept = delete;
@@ -46,9 +45,9 @@ namespace OWC::Graphics
 
 		void UpdateBufferData(const std::vector<Vec4>& data) override;
 
-		[[nodiscard]] OWC_FORCE_INLINE vk::Image GetImage() const { return m_TextureImage; }
-		[[nodiscard]] OWC_FORCE_INLINE vk::ImageView GetImageView() const { return m_TextureImageView; }
-		[[nodiscard]] OWC_FORCE_INLINE vk::Sampler GetSampler() const { return m_TextureSampler; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::Image& GetImage() const { return m_TextureImage; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::ImageView& GetImageView() const { return m_TextureImageView; }
+		[[nodiscard]] OWC_FORCE_INLINE const vk::raii::Sampler& GetSampler() const { return m_TextureSampler; }
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetWidth() const { return m_Width; }
 		[[nodiscard]] OWC_FORCE_INLINE u32 GetHeight() const { return m_Height; }
 
@@ -63,10 +62,9 @@ namespace OWC::Graphics
 		void InitializeTexture();
 
 	private:
-		vk::Image m_TextureImage = vk::Image();
-		vma::Allocation m_TextureImageMemory = vma::Allocation();
-		vk::ImageView m_TextureImageView = vk::ImageView();
-		vk::Sampler m_TextureSampler = vk::Sampler();
+		vma::raii::Image m_TextureImage = nullptr;
+		vk::raii::ImageView m_TextureImageView = nullptr;
+		vk::raii::Sampler m_TextureSampler = nullptr;
 		u32 m_Width = 0;
 		u32 m_Height = 0;
 		vk::AccessFlags2 m_CurrentAccessFlags = vk::AccessFlags2();
@@ -79,7 +77,7 @@ namespace OWC::Graphics
 	public:
 		VulkanDynamicTextureBuffer() = delete;
 		explicit VulkanDynamicTextureBuffer(u32 width, u32 height);
-		~VulkanDynamicTextureBuffer() override;
+		~VulkanDynamicTextureBuffer() override = default;
 		VulkanDynamicTextureBuffer(VulkanDynamicTextureBuffer&) = delete;
 		VulkanDynamicTextureBuffer& operator=(VulkanDynamicTextureBuffer&) = delete;
 		VulkanDynamicTextureBuffer(VulkanDynamicTextureBuffer&&) noexcept = delete;
@@ -90,18 +88,14 @@ namespace OWC::Graphics
 		[[nodiscard]] vk::ImageView GetImageView() const { return m_TextureImageView[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
 		[[nodiscard]] vk::Sampler GetSampler() const { return m_TextureSampler[VulkanCore::GetConstInstance().GetCurrentFrameIndex()]; }
 
-		[[nodiscard]] const std::vector<vk::Image>& GetImages() const { return m_TextureImage; }
-		[[nodiscard]] const std::vector<vk::ImageView>& GetImageViews() const { return m_TextureImageView; }
-		[[nodiscard]] const std::vector<vk::Sampler>& GetSamplers() const { return m_TextureSampler; }
+		[[nodiscard]] const std::vector<vma::raii::Image>& GetImages() const { return m_TextureImage; }
+		[[nodiscard]] const std::vector<vk::raii::ImageView>& GetImageViews() const { return m_TextureImageView; }
+		[[nodiscard]] const std::vector<vk::raii::Sampler>& GetSamplers() const { return m_TextureSampler; }
 
 	private:
-		void InitializeTexture();
-
-	private:
-		std::vector<vk::Image> m_TextureImage = {};
-		std::vector<vma::Allocation> m_TextureImageMemory = {};
-		std::vector<vk::ImageView> m_TextureImageView = {};
-		std::vector<vk::Sampler> m_TextureSampler = {};
+		std::vector<vma::raii::Image> m_TextureImage = {};
+		std::vector<vk::raii::ImageView> m_TextureImageView = {};
+		std::vector<vk::raii::Sampler> m_TextureSampler = {};
 		u32 m_Width = 0;
 		u32 m_Height = 0;
 	};
@@ -111,22 +105,21 @@ namespace OWC::Graphics
 		public:
 		VulkanGeneralBuffer() = delete;
 		explicit VulkanGeneralBuffer(uSize size);
-		~VulkanGeneralBuffer() override;
+		~VulkanGeneralBuffer() override = default;
 		VulkanGeneralBuffer(VulkanGeneralBuffer&&) noexcept = delete;
 		VulkanGeneralBuffer& operator=(VulkanGeneralBuffer&&) noexcept = delete;
 
 		void UpdateBufferDataImpl(const u8* data, uSize count, uSize offset) override;
 
 		[[nodiscard]] vk::Buffer GetBuffer() const { return m_Buffer; }
-		[[nodiscard]] uSize GetBufferSize() const { return static_cast<uSize>(VulkanCore::GetConstInstance().GetDevice().getBufferMemoryRequirements(m_Buffer).size); }
+		[[nodiscard]] uSize GetBufferSize() const { return m_Buffer.getMemoryRequirements().size; }
 		[[nodiscard]] vk::DeviceAddress GetBufferDeviceAddress() const { return m_BufferDeviceAddress; }
 
 		[[nodiscard]] uSize GetDeviceBufferPtr() const override { return m_BufferDeviceAddress; }
 
 	private:
-		vk::Buffer m_Buffer = vk::Buffer();
+		vma::raii::Buffer m_Buffer = nullptr;
 		vk::DeviceAddress m_BufferDeviceAddress = vk::DeviceAddress();
-		vma::Allocation m_BufferMemory = vma::Allocation();
 		uSize m_BufferSize = 0;
 	};
 }

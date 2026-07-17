@@ -42,26 +42,27 @@ namespace OWC::Graphics
 			Log<LogLevel::Critical>("Invalid RenderPassType specified when creating VulkanRenderPass");
 	}
 
-	VulkanRenderPass::~VulkanRenderPass()
+	VulkanRenderPass::~VulkanRenderPass() = default; /*
 	{
 		const VulkanCore& vkCore = VulkanCore::GetConstInstance();
 		const vk::Device& device = vkCore.GetDevice();
 
+
 		if (GetRenderPassType() == RenderPassType::Static)
 			for (auto& cmdBuf : m_CommandBuffers)
-				device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), cmdBuf);
+				device.freeCommandBuffers(vkCore.GetGraphicsCommandPool(), *cmdBuf);
 		else if (GetRenderPassType() == RenderPassType::Dynamic)
 			for (auto& cmdBuf : m_CommandBuffers)
-				device.freeCommandBuffers(vkCore.GetDynamicGraphicsCommandPool(), cmdBuf);
+				device.freeCommandBuffers(vkCore.GetDynamicGraphicsCommandPool(), *cmdBuf);
 		else if (GetRenderPassType() == RenderPassType::StaticRayTracing)
 			for (auto& cmdBuf : m_CommandBuffers)
-				device.freeCommandBuffers(vkCore.GetComputeCommandPool(), cmdBuf);
+				device.freeCommandBuffers(vkCore.GetComputeCommandPool(), *cmdBuf);
 		else if (GetRenderPassType() == RenderPassType::DynamicRayTracing)
 			for (auto& cmdBuf : m_CommandBuffers)
-				device.freeCommandBuffers(vkCore.GetDynamicComputeCommandPool(), cmdBuf);
+				device.freeCommandBuffers(vkCore.GetDynamicComputeCommandPool(), *cmdBuf);
 		else
 			std::unreachable();
-	}
+	}*/
 
 	void VulkanRenderPass::PushConstant(const BaseShader& shader, uSize size, const void* dataPtr)
 	{
@@ -234,7 +235,7 @@ namespace OWC::Graphics
 				bindPoint,
 				vulkanShader.GetPipelineLayout(),
 				0,
-				vulkanShader.GetDescriptorSet(),
+				*vulkanShader.GetDescriptorSet(),
 				{}
 			);
 		else
@@ -243,7 +244,7 @@ namespace OWC::Graphics
 					bindPoint,
 					vulkanShader.GetPipelineLayout(),
 					0,
-					vulkanShader.GetDescriptorSet(),
+					*vulkanShader.GetDescriptorSet(),
 					{}
 				);
 	}
@@ -262,7 +263,7 @@ namespace OWC::Graphics
 				bindPoint,
 				vulkanShader.GetPipelineLayout(),
 				0,
-				vulkanShader.GetDescriptorSet(),
+				*vulkanShader.GetDescriptorSet(),
 				{}
 			);
 		else
@@ -271,7 +272,7 @@ namespace OWC::Graphics
 					bindPoint,
 					vulkanShader.GetPipelineLayout(),
 					0,
-					vulkanShader.GetDescriptorSet(),
+					*vulkanShader.GetDescriptorSet(),
 					{}
 				);
 	}
@@ -306,10 +307,10 @@ namespace OWC::Graphics
 
 		if (testBitMask(GetRenderPassType(), RenderPassType::Dynamic))
 			m_CommandBuffers[VulkanCore::GetConstInstance().GetCurrentFrameIndex()].traceRaysKHR(
-				&vulkanShader.GetRayGenShaderSBTEntry(),
-				&vulkanShader.GetMissGroupSBTEntry(),
-				&vulkanShader.GetHitGroupSBTEntry(),
-				&vulkanShader.GetCallableGroupSBTEntry(),
+				vulkanShader.GetRayGenShaderSBTEntry(),
+				vulkanShader.GetMissGroupSBTEntry(),
+				vulkanShader.GetHitGroupSBTEntry(),
+				vulkanShader.GetCallableGroupSBTEntry(),
 				Application::GetConstInstance().GetPixelWidth(),
 				Application::GetConstInstance().GetPixelHeight(),
 				depth
@@ -317,10 +318,10 @@ namespace OWC::Graphics
 		else
 			for (auto& cmdBuf : m_CommandBuffers)
 				cmdBuf.traceRaysKHR(
-					&vulkanShader.GetRayGenShaderSBTEntry(),
-					&vulkanShader.GetMissGroupSBTEntry(),
-					&vulkanShader.GetHitGroupSBTEntry(),
-					&vulkanShader.GetCallableGroupSBTEntry(),
+					vulkanShader.GetRayGenShaderSBTEntry(),
+					vulkanShader.GetMissGroupSBTEntry(),
+					vulkanShader.GetHitGroupSBTEntry(),
+					vulkanShader.GetCallableGroupSBTEntry(),
 					Application::GetConstInstance().GetPixelWidth(),
 					Application::GetConstInstance().GetPixelHeight(),
 					depth
@@ -338,7 +339,7 @@ namespace OWC::Graphics
 		if (testBitMask(GetRenderPassType(), RenderPassType::Static))
 			for (uSize i = 0; i != VulkanCore::GetConstInstance().GetSwapchainImages().size(); i++)
 			{
-				vk::CommandBuffer& cmdBuf = m_CommandBuffers[i];
+				vk::raii::CommandBuffer& cmdBuf = m_CommandBuffers[i];
 				cmdBuf.endRendering();
 			}
 		else
@@ -367,26 +368,42 @@ namespace OWC::Graphics
 		if (waitForLastFrameToFinish && !Application::GetConstInstance().IsFirstFrame())
 			waitSemaphores.push_back(vkCore.GetLastFrameFinishedSemaphore());
 
-		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eAllCommands);
-		vk::SubmitInfo submitInfo = vk::SubmitInfo()
-			.setWaitDstStageMask(waitDestinationStageMask)
-			.setCommandBuffers(m_CommandBuffers[vkCore.GetCurrentFrameIndex()])
-			.setCommandBufferCount(1);
+		vk::PipelineStageFlags2 waitDestinationStageMask(vk::PipelineStageFlagBits2::eAllCommands);
 
+		const auto cmdBufSubmitInfo = vk::CommandBufferSubmitInfo()
+			.setCommandBuffer(*m_CommandBuffers[vkCore.GetCurrentFrameIndex()]);
+
+		auto submitInfo = vk::SubmitInfo2()
+			.setCommandBufferInfos(cmdBufSubmitInfo);
+
+		vk::SemaphoreSubmitInfo waitSemaphoreSubmitInfo;
 		if (!waitSemaphores.empty())
-			submitInfo.setWaitSemaphores(waitSemaphores);
-		else
-			submitInfo.setWaitSemaphores(VK_NULL_HANDLE);
+		{
+			waitSemaphoreSubmitInfo = vk::SemaphoreSubmitInfo()
+				.setSemaphore(waitSemaphores.back())
+				.setStageMask(waitDestinationStageMask)
+				.setValue(0)
+				.setDeviceIndex(0);
 
+			submitInfo.setWaitSemaphoreInfos(waitSemaphoreSubmitInfo);
+		}
+
+		vk::SemaphoreSubmitInfo signalSemaphoreSubmitInfo;
 		if (!signalSemaphores.empty())
-			submitInfo.setSignalSemaphores(signalSemaphores);
-		else
-			submitInfo.setSignalSemaphores(VK_NULL_HANDLE);
+		{
+			signalSemaphoreSubmitInfo = vk::SemaphoreSubmitInfo()
+				.setSemaphore(signalSemaphores.back())
+				.setStageMask(waitDestinationStageMask)
+				.setValue(0)
+				.setDeviceIndex(0);
+
+			submitInfo.setSignalSemaphoreInfos(signalSemaphoreSubmitInfo);
+		}
 
 		if (testBitMask(GetRenderPassType(), RenderPassType::RayTracingBit))
-			vkCore.GetComputeQueue().submit(submitInfo);
+			vkCore.GetComputeQueue().submit2(submitInfo);
 		else
-			vkCore.GetGraphicsQueue().submit(submitInfo);
+			vkCore.GetGraphicsQueue().submit2(submitInfo);
 	}
 
 	void VulkanRenderPass::RestartRenderPass()
@@ -404,9 +421,9 @@ namespace OWC::Graphics
 		ImGui_ImplVulkan_RenderDrawData(drawData, cmdBuf);
 	}
 
-	void VulkanRenderPass::AddToEndOfFrameCleanUp(const std::function<void()>& func)
+	void VulkanRenderPass::AddToEndOfFrameCleanUp(std::move_only_function<void()>&& func)
 	{
-		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction(func);
+		VulkanCore::GetInstance().AddVulkanEndOfFrameCleanUpFunction(std::move(func));
 	}
 
 	vk::AccessFlags2 VulkanRenderPass::GetVulkanAccessMask(const AccessMask accessMask)
@@ -501,7 +518,7 @@ namespace OWC::Graphics
 				bindPoint,
 				vulkanShader.GetPipelineLayout(),
 				0,
-				vulkanShader.GetDescriptorSet(),
+				*vulkanShader.GetDescriptorSet(),
 				{}
 			);
 		else
@@ -510,7 +527,7 @@ namespace OWC::Graphics
 					bindPoint,
 					vulkanShader.GetPipelineLayout(),
 					0,
-					vulkanShader.GetDescriptorSet(),
+					*vulkanShader.GetDescriptorSet(),
 					{}
 				);
 	}
