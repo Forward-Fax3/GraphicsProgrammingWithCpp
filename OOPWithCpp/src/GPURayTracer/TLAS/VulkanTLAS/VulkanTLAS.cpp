@@ -9,32 +9,37 @@
 
 namespace OWC
 {
-    void VulkanTLAS::AddInstance(const Mat4& transform, const std::shared_ptr<SceneMesh>& mesh)
+    VulkanTLAS::VulkanTLAS(const std::map<i32, std::unique_ptr<SceneMesh>>& meshes, const std::vector<std::pair<Mat4, i32>>& meshIndices)
     {
-        const auto vulkanMesh = std::dynamic_pointer_cast<VulkanSceneMesh>(mesh);
+        CreateBLASes(meshes);
 
-        m_BLASInstances.emplace_back(
-            ConvertMat4ToVulkanTransform(transform),
-            vulkanMesh->GetCustomInstanceIndex(),
-            0xFF,
-            0,
-            vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable,
-            vulkanMesh->GetAccelerationStructureBufferDeviceAddress()
-        );
+        const auto& device = Graphics::VulkanCore::GetInstance().GetDevice();
+        const auto blasInstances = std::ranges::to<std::vector<vk::AccelerationStructureInstanceKHR>>(meshIndices | std::views::transform([this, &meshes, &device](const std::pair<Mat4, i32>& meshIndexPair) -> vk::AccelerationStructureInstanceKHR
+        {
+            return {
+                ConvertMat4ToVulkanTransform(meshIndexPair.first),
+                dynamic_cast<VulkanSceneMesh*>(meshes.at(meshIndexPair.second).get())->GetCustomInstanceIndex(),
+                0xFF,
+                0,
+                vk::GeometryInstanceFlagBitsKHR::eTriangleCullDisable,
+                device.getAccelerationStructureAddressKHR(vk::AccelerationStructureDeviceAddressInfoKHR().setAccelerationStructure(*this->m_BLASSes.at(meshIndexPair.second)))
+            };
+        }));
+
+        CreateTLAS(blasInstances);
     }
 
-    void VulkanTLAS::CreateTLAS()
+    void VulkanTLAS::CreateTLAS(const std::vector<vk::AccelerationStructureInstanceKHR>& BLASInstances)
     {
         using namespace OWC::Graphics;
 
         const auto& vkCore = VulkanCore::GetConstInstance();
         const auto& device = vkCore.GetDevice();
+        const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+        const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
 
-        // nVidia vk_raytracing_tutorial helper func
-        auto alignUp = [](auto value, size_t alignment) noexcept { return ((value + alignment - 1) & ~(alignment - 1)); };
-
-        VulkanGeneralBuffer buffer(m_BLASInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
-        buffer.UpdateBufferData(std::bit_cast<const u8*>(m_BLASInstances.data()));
+        VulkanGeneralBuffer buffer(BLASInstances.size() * sizeof(vk::AccelerationStructureInstanceKHR));
+        buffer.UpdateBufferData(std::bit_cast<const u8*>(BLASInstances.data()));
 
         auto accelerationStructureInstanceData = vk::AccelerationStructureGeometryInstancesDataKHR()
             .setData(vk::DeviceOrHostAddressConstKHR().setDeviceAddress(buffer.GetBufferDeviceAddress()));
@@ -44,7 +49,7 @@ namespace OWC
             .setGeometryType(vk::GeometryTypeKHR::eInstances);
 
         auto accelerationStructureBuildRangeInfo = vk::AccelerationStructureBuildRangeInfoKHR()
-            .setPrimitiveCount(static_cast<u32>(m_BLASInstances.size()));
+            .setPrimitiveCount(static_cast<u32>(BLASInstances.size()));
 
         auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eTopLevel)
@@ -54,18 +59,36 @@ namespace OWC
         vk::AccelerationStructureBuildSizesInfoKHR buildSizes = device.getAccelerationStructureBuildSizesKHR(
             vk::AccelerationStructureBuildTypeKHR::eDevice,
             buildInfo,
-            m_BLASInstances.size()
+            BLASInstances.size()
         );
 
         const vk::DeviceSize scratchBufferSize = alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
 
         VulkanGeneralBuffer scratchBuffer(scratchBufferSize);
-        const auto scratchTLASBuffer = std::make_shared<VulkanGeneralBuffer>(buildSizes.accelerationStructureSize);
+
+        constexpr auto bufferUsageInfo2 = vk::BufferUsageFlags2CreateInfo()
+            .setUsage(
+                vk::BufferUsageFlagBits2::eShaderDeviceAddress |
+                vk::BufferUsageFlagBits2::eAccelerationStructureBuildInputReadOnlyKHR |
+                vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
+            );
+
+        auto bufferInfo = vk::BufferCreateInfo()
+            .setPNext(&bufferUsageInfo2)
+            .setSize(buildSizes.accelerationStructureSize)
+            .setSharingMode(vk::SharingMode::eConcurrent)
+            .setQueueFamilyIndices(queueIndices);
+
+        constexpr vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
+            .setUsage(vma::MemoryUsage::eGpuOnly)
+            .setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+
+        vma::raii::Buffer scratchTLASBuffer(allocator, bufferInfo, allocInfo);
 
         auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eTopLevel)
             .setSize(buildSizes.accelerationStructureSize)
-            .setBuffer(scratchTLASBuffer->GetBuffer());
+            .setBuffer(*scratchTLASBuffer);
 
         auto scratchTLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
 
@@ -95,23 +118,26 @@ namespace OWC
         auto fence = device.createFence(vk::FenceCreateInfo());
         auto cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
         vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
-        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+        if (device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
             Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
 
-        const auto [result, sizes] = (*device).getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, 1, sizeof(vk::DeviceSize), sizeof(vk::DeviceSize));
+        const auto [result, sizes] = (*device).getQueryPoolResults<vk::DeviceSize>(
+            *queryPool, 0, 1, sizeof(vk::DeviceSize), sizeof(vk::DeviceSize));
 
         if (result != vk::Result::eSuccess)
         {
-            Log<LogLevel::Error>("Failed to get query pool results for TLAS compaction size, will use originally created TLAS");
-            m_TLASBuffer = scratchTLASBuffer;
+            Log<LogLevel::Error>(
+                "Failed to get query pool results for TLAS compaction size, will use originally created TLAS");
+            m_TLASBuffer = std::move(scratchTLASBuffer);
             m_TLAS = std::move(scratchTLAS);
             return;
         }
 
         Log<LogLevel::Trace>("TLAS starting size {}, compaction size: {}", buildSizes.accelerationStructureSize, sizes[0]);
 
-        m_TLASBuffer = std::make_shared<VulkanGeneralBuffer>(sizes[0]);
-        accelerationStructureCreateInfo.setSize(sizes[0]).setBuffer(m_TLASBuffer->GetBuffer());
+        bufferInfo.setSize(sizes[0]);
+        m_TLASBuffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
+        accelerationStructureCreateInfo.setSize(sizes[0]).setBuffer(*m_TLASBuffer);
         m_TLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
 
         const auto copyAccelerationStructureInfo = vk::CopyAccelerationStructureInfoKHR()
@@ -128,6 +154,190 @@ namespace OWC
         cmd = vkCore.GetSingleTimeComputeCommandBuffer();
         cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         cmd.copyAccelerationStructureKHR(copyAccelerationStructureInfo);
+        cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierDataCopy));
+        cmd.end();
+
+        device.resetFences(*fence);
+        cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
+        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
+        if (device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+            Log<LogLevel::Critical>("Failed to wait for acceleration structure copy fence");
+    }
+
+    void VulkanTLAS::CreateBLASes(const std::map<i32, std::unique_ptr<SceneMesh>>& meshes)
+    {
+        using namespace OWC::Graphics;
+
+        const auto& vkCore = VulkanCore::GetInstance();
+        const auto& device = vkCore.GetDevice();
+        const auto& allocator = vkCore.GetVulkanMemoryAllocator();
+        const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
+
+        constexpr uSize accelerationStructureAlignment = 256;
+
+        std::vector<vk::AccelerationStructureBuildSizesInfoKHR> buildSizesList;
+        std::vector<vk::raii::AccelerationStructureKHR> scratchBLASes;
+        std::vector<vk::AccelerationStructureBuildGeometryInfoKHR> buildGeometryInfos;
+        std::vector<const vk::AccelerationStructureBuildRangeInfoKHR*> buildRangeInfos;
+
+        buildSizesList.reserve(meshes.size());
+        scratchBLASes.reserve(meshes.size());
+        buildGeometryInfos.reserve(meshes.size());
+        buildRangeInfos.reserve(meshes.size());
+
+        vk::DeviceSize scratchBufferSize = 0;
+        vk::DeviceSize scratchBLASesSize = 0;
+
+        for (const auto& mesh : std::views::values(meshes))
+        {
+            const auto& vulkanMesh = *dynamic_cast<VulkanSceneMesh*>(mesh.get());
+            const auto& geometries = vulkanMesh.GetGeometries();
+            const auto& primitiveCount = vulkanMesh.GetPrimitiveCount();
+
+            auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
+                .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
+                .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction)
+                .setGeometries(geometries);
+
+            const auto buildSizes = device.getAccelerationStructureBuildSizesKHR(
+                vk::AccelerationStructureBuildTypeKHR::eDevice,
+                buildInfo,
+                primitiveCount
+            );
+
+            scratchBufferSize += alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
+            scratchBLASesSize += alignUp(buildSizes.accelerationStructureSize, accelerationStructureAlignment);
+            buildSizesList.emplace_back(buildSizes);
+        }
+
+        VulkanGeneralBuffer scratchBuffer(scratchBufferSize);
+
+        constexpr auto bufferUsageInfo2 = vk::BufferUsageFlags2CreateInfo()
+            .setUsage(
+                vk::BufferUsageFlagBits2::eShaderDeviceAddress |
+                vk::BufferUsageFlagBits2::eAccelerationStructureBuildInputReadOnlyKHR |
+                vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
+            );
+
+        auto bufferInfo = vk::BufferCreateInfo()
+            .setPNext(&bufferUsageInfo2)
+            .setSize(scratchBLASesSize)
+            .setSharingMode(vk::SharingMode::eConcurrent)
+            .setQueueFamilyIndices(queueIndices);
+
+        constexpr vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
+            .setUsage(vma::MemoryUsage::eGpuOnly)
+            .setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
+
+        auto scratchBLASBuffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
+
+        vk::DeviceSize scratchBufferOffset = 0;
+        vk::DeviceSize scratchBLASesOffset = 0;
+
+        std::vector<vk::DeviceSize> fullSizeBLASSize;
+        fullSizeBLASSize.reserve(meshes.size());
+
+        for (uSize i = 0; i < meshes.size(); i++)
+        {
+            const auto meshIndex = static_cast<i32>(i);
+            const auto& vulkanMesh = *dynamic_cast<VulkanSceneMesh*>(meshes.at(meshIndex).get());
+            const auto& geometries = vulkanMesh.GetGeometries();
+            const auto& buildRanges = vulkanMesh.GetBuildRanges();
+            const auto& buildSizes = buildSizesList.at(i);
+
+            auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
+                .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
+                .setSize(buildSizes.accelerationStructureSize)
+                .setBuffer(scratchBLASBuffer)
+                .setOffset(scratchBLASesOffset);
+
+            scratchBLASes.emplace_back(device.createAccelerationStructureKHR(accelerationStructureCreateInfo));
+
+            buildGeometryInfos.emplace_back(vk::AccelerationStructureTypeKHR::eBottomLevel,
+                (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction),
+                static_cast<vk::BuildAccelerationStructureModeKHR>(0),
+                VK_NULL_HANDLE,
+                *scratchBLASes.back(),
+                geometries.size(),
+                geometries.data(),
+                nullptr,
+                vk::DeviceOrHostAddressKHR().setDeviceAddress(scratchBuffer.GetBufferDeviceAddress() + scratchBufferOffset),
+                nullptr);
+
+            scratchBLASesOffset += alignUp(buildSizes.accelerationStructureSize, accelerationStructureAlignment);
+            scratchBufferOffset += alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
+
+            buildRangeInfos.emplace_back(buildRanges.data());
+            fullSizeBLASSize.emplace_back(buildSizes.accelerationStructureSize);
+        }
+
+        auto cmd = vkCore.GetSingleTimeComputeCommandBuffer();
+
+        vk::raii::QueryPool queryPool(device, vk::QueryPoolCreateInfo()
+            .setQueryType(vk::QueryType::eAccelerationStructureCompactedSizeKHR)
+            .setQueryCount(scratchBLASes.size()));
+
+        auto BLASesNonOwning = std::ranges::to<std::vector<vk::AccelerationStructureKHR>>(scratchBLASes | std::views::transform([](const auto& blas) { return *blas; }));
+
+        cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        cmd.buildAccelerationStructuresKHR(buildGeometryInfos, buildRangeInfos);
+        cmd.resetQueryPool(*queryPool, 0, buildGeometryInfos.size());
+        cmd.writeAccelerationStructuresPropertiesKHR(BLASesNonOwning, vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, 0);
+        cmd.end();
+
+        auto fence = device.createFence(vk::FenceCreateInfo());
+        auto cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
+        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
+        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
+            Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
+
+        const auto [result, sizes] = (*device).getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, scratchBLASes.size(), sizeof(vk::DeviceSize) * scratchBLASes.size(), sizeof(vk::DeviceSize));
+        if (result != vk::Result::eSuccess)
+            Log<LogLevel::Critical>("Failed to get compacted size for BLASes");
+
+        vk::DeviceSize trueBLASesSize = 0;
+
+        for (const auto size : sizes)
+            trueBLASesSize += alignUp(size, accelerationStructureAlignment);
+
+        bufferInfo.setSize(trueBLASesSize);
+        m_BLASesBuffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
+
+        m_BLASSes.reserve(meshes.size());
+
+        vk::DeviceSize trueBLASesSizeOffset = 0;
+
+        cmd = vkCore.GetSingleTimeComputeCommandBuffer();
+        cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+
+        for (uSize i = 0; i < meshes.size(); i++)
+        {
+            const auto meshIndex = static_cast<i32>(i);
+            Log<LogLevel::Trace>("Mesh {} BLAS starting size {}, compaction size: {}", meshIndex, fullSizeBLASSize[i], sizes[i]);
+
+            const auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
+                .setSize(sizes[i])
+                .setBuffer(m_BLASesBuffer)
+                .setOffset(trueBLASesSizeOffset);
+
+            trueBLASesSizeOffset += alignUp(sizes[i], accelerationStructureAlignment);
+
+            m_BLASSes.emplace_back(device.createAccelerationStructureKHR(accelerationStructureCreateInfo));
+
+            vk::CopyAccelerationStructureInfoKHR copyAccelerationStructureInfo(
+                *scratchBLASes[i],
+                *m_BLASSes.back(),
+                vk::CopyAccelerationStructureModeKHR::eCompact);
+
+            cmd.copyAccelerationStructureKHR(copyAccelerationStructureInfo);
+        }
+
+        constexpr auto barrierDataCopy = vk::MemoryBarrier2()
+            .setSrcStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
+            .setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR)
+            .setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR)
+            .setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
+
         cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierDataCopy));
         cmd.end();
 

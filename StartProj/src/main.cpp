@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 		FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_SYS_DEFAULT), ToCharPtr(error), 1024, nullptr);
 		MessageBoxA(nullptr, "Failed to load DLL", ToCharPtr(error), MB_OK | MB_ICONERROR);
 #else
-	std::println("Failed to load DLL: {}", dlerror());
+		std::println("Failed to load DLL: {}", dlerror());
 #endif
 		return 2;
 	}

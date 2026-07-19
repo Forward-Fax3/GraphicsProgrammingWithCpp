@@ -18,7 +18,6 @@
 namespace OWC
 {
     SponzaPalace::SponzaPalace()
-        : m_TLAS(BaseTLAS::CreateTopLevelAccelerationStructure())
     {
         constexpr std::string_view filename = "./../../../../../GLTFs/Sponza/NewSponza_Main_glTF_003.gltf";
 
@@ -67,10 +66,13 @@ namespace OWC
         u32 customInstancesIndex = 0;
         std::vector<GPULightData> lightData;
 
-        for (u32 i = 0; i < scene.nodes_count; i++)
-            IterateThroughNodes(m_Model, scene.nodes[i], Mat4(1.0f), customInstancesIndex, lightData);
+        std::map<i32, std::unique_ptr<SceneMesh>> meshMap;
+        std::vector<std::pair<Mat4, i32>> meshIndexes;
 
-        m_TLAS->CreateTLAS();
+        for (u32 i = 0; i < scene.nodes_count; i++)
+            IterateThroughNodes(scene.nodes[i], Mat4(1.0f), customInstancesIndex, lightData, meshMap, meshIndexes);
+
+        m_TLAS = BaseTLAS::CreateTopLevelAccelerationStructure(meshMap, meshIndexes);
 
         m_GPUBuffer->UpdateBufferData(std::bit_cast<u8*>(m_GPUData.data()), m_GeometryBufferSize, m_GeometryBufferOffset);
         m_LightBuffer = Graphics::GeneralBuffer::CreateGeneralBuffer(lightData.size() * sizeof(GPULightData));
@@ -83,10 +85,9 @@ namespace OWC
     SponzaPalace::~SponzaPalace()
     {
         tg3_model_free(&m_Model);
-
     }
 
-    void SponzaPalace::IterateThroughNodes(const tg3_model& model, const u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData)
+    void SponzaPalace::IterateThroughNodes(const u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData, std::map<i32, std::unique_ptr<SceneMesh>>& meshes, std::vector<std::pair<Mat4, i32>>& meshIndexes)
     {
         const tg3_node& node = m_Model.nodes[nodeIndex];
 
@@ -106,13 +107,13 @@ namespace OWC
 
         if (node.mesh != -1)
         {
-            if (!m_Meshes.contains(node.mesh))
+            if (!meshes.contains(node.mesh))
             {
-                m_Meshes.emplace(node.mesh, SceneMesh::CreateFromGLTFModelWithMeshIndex(m_Model, node.mesh, customInstancesIndex, m_GPUBuffer, m_GPUData));
-                customInstancesIndex += model.meshes[node.mesh].primitives_count;
+                meshes.emplace(node.mesh, SceneMesh::CreateFromGLTFModelWithMeshIndex(m_Model, node.mesh, customInstancesIndex, m_GPUBuffer, m_GPUData));
+                customInstancesIndex += m_Model.meshes[node.mesh].primitives_count;
             }
 
-            m_TLAS->AddInstance(parentTransform, m_Meshes[node.mesh]);
+            meshIndexes.emplace_back(parentTransform, node.mesh);
         }
 
         if (node.light != -1)
@@ -160,10 +161,9 @@ namespace OWC
             }
             else
                 Log<LogLevel::Warn>("Unknown light type: {}", lightType);
-
         }
 
         for (u32 i = 0; i < node.children_count; i++)
-            IterateThroughNodes(model, node.children[i], parentTransform, customInstancesIndex, lightData);
+            IterateThroughNodes(node.children[i], parentTransform, customInstancesIndex, lightData, meshes, meshIndexes);
     }
 } // OWC

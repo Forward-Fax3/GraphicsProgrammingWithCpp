@@ -4,6 +4,7 @@
 
 #pragma once
 #include <memory>
+#include <map>
 
 #include "Core.hpp"
 #include "SceneMesh.hpp"
@@ -21,9 +22,6 @@ namespace OWC
         BaseTLAS(BaseTLAS&&) noexcept = delete;
         BaseTLAS& operator=(BaseTLAS&&) noexcept = delete;
 
-        virtual void AddInstance(const Mat4& transform, const std::shared_ptr<SceneMesh>& mesh) = 0;
-        virtual void CreateTLAS() = 0;
-
-        static std::shared_ptr<BaseTLAS> CreateTopLevelAccelerationStructure();
+        static std::shared_ptr<BaseTLAS> CreateTopLevelAccelerationStructure(const std::map<i32, std::unique_ptr<SceneMesh>>& meshes, const std::vector<std::pair<Mat4, i32>>& meshIndices);
     };
 }

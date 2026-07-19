@@ -109,7 +109,6 @@ namespace OWC
 				s_Instance->Stop();
 				return true;
 			}
-			// broken at the moment
 			if (e.GetKeycode() == SDLK_F5)
 			{
 				s_Instance->Restart();

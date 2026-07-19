@@ -196,8 +196,14 @@ namespace OWC
 	};
 
 	template <typename T>
-	[[nodiscard]] constexpr bool testBitMask(T value, T bitMask) requires std::is_integral_v<T> || (std::is_enum_v<T> && HasAndOperator<T> && HasEqualOperator<T>)
+	[[nodiscard]] constexpr bool testBitMask(T value, T bitMask) noexcept requires std::is_integral_v<T> || (std::is_enum_v<T> && HasAndOperator<T> && HasEqualOperator<T>)
 	{
 		return (value & bitMask) == bitMask;
+	}
+
+	template <typename T>
+	[[nodiscard]] constexpr T alignUp(T value, size_t alignment) noexcept
+	{
+		return ((value + alignment - 1) & ~(alignment - 1));
 	}
 }

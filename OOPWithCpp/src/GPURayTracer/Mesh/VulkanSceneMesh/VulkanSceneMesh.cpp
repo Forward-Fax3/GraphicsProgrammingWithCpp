@@ -24,12 +24,6 @@ namespace OWC
     VulkanSceneMesh::VulkanSceneMesh(const tg3_model& model, const i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData)
         : m_CustomInstanceIndex(customInstancesIndex)
     {
-        using namespace OWC::Graphics;
-		const auto& vkCore = VulkanCore::GetConstInstance();
-        const auto& device = vkCore.GetDevice();
-        const auto& allocator = vkCore.GetVulkanMemoryAllocator();
-        const auto& queueIndices = vkCore.GetAllUniqueQueuesIndices();
-
         const tg3_mesh& mesh = model.meshes[meshIndex];
 
         auto extractAttribute = [&model](const tg3_primitive& prim, const std::string& attributeName) -> AttributeData
@@ -130,9 +124,6 @@ namespace OWC
             return maxIndex;
         };
 
-        // nVidia vk_raytracing_tutorial helper func
-        auto alignUp = [](auto value, size_t alignment) noexcept { return ((value + alignment - 1) & ~(alignment - 1)); };
-
         const auto vulkanBuffer = std::dynamic_pointer_cast<Graphics::VulkanGeneralBuffer>(GPUBuffer);
         if (!vulkanBuffer)
         {
@@ -141,15 +132,10 @@ namespace OWC
             return;
         }
 
-        std::vector<vk::AccelerationStructureGeometryKHR> geometries;
-        std::vector<u32> primitiveCount;
-        std::vector<vk::AccelerationStructureBuildRangeInfoKHR> buildRanges;
-        std::vector<vk::AccelerationStructureGeometryTrianglesDataKHR> triangles;
-
-        geometries.reserve(mesh.primitives_count);
-        primitiveCount.reserve(mesh.primitives_count);
-        buildRanges.reserve(mesh.primitives_count);
-        triangles.reserve(mesh.primitives_count);
+        m_Geometries.reserve(mesh.primitives_count);
+        m_PrimitiveCount.reserve(mesh.primitives_count);
+        m_BuildRanges.reserve(mesh.primitives_count);
+        m_Triangles.reserve(mesh.primitives_count);
 
         for (u32 i = 0; i < mesh.primitives_count; i++)
         {
@@ -183,7 +169,7 @@ namespace OWC
 
             const u32 positionStride = positionData.byteStride > 0 ? positionData.byteStride : static_cast<u32>(sizeof(float) * 3);
 
-            triangles.emplace_back(
+            m_Triangles.emplace_back(
                 vk::Format::eR32G32B32Sfloat,
                 vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + positionData.offset),
                 positionStride,
@@ -192,14 +178,14 @@ namespace OWC
                 vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + indexData.offset)
             );
 
-            geometries.emplace_back(
+            m_Geometries.emplace_back(
                 vk::GeometryTypeKHR::eTriangles,
                 vk::AccelerationStructureGeometryDataKHR()
-                    .setTriangles(triangles.back())
+                    .setTriangles(m_Triangles.back())
             );
 
-            primitiveCount.emplace_back(indexData.count / 3);
-            buildRanges.emplace_back(indexData.count / 3, 0, 0, 0);
+            m_PrimitiveCount.emplace_back(indexData.count / 3);
+            m_BuildRanges.emplace_back(indexData.count / 3, 0, 0, 0);
 
             auto normalData = extractAttribute(prim, "NORMAL");
             auto colourData = extractAttribute(prim, "COLOR_0");
@@ -219,113 +205,7 @@ namespace OWC
             );
         }
 
-        auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
-            .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
-            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction)
-            .setGeometries(geometries);
-
-        Log<LogLevel::Trace>("Mesh {} built {} geometries from {} primitives", meshIndex, geometries.size(), mesh.primitives_count);
-
-        vk::AccelerationStructureBuildSizesInfoKHR buildSizes = device.getAccelerationStructureBuildSizesKHR(
-            vk::AccelerationStructureBuildTypeKHR::eDevice,
-            buildInfo,
-            primitiveCount
-        );
-
-        const vk::DeviceSize scratchBufferSize = alignUp(buildSizes.buildScratchSize, vkCore.GetAccelerationStructureProperties().minAccelerationStructureScratchOffsetAlignment);
-
-        VulkanGeneralBuffer scratchBuffer(scratchBufferSize);
-
-        constexpr auto bufferUsageInfo2 = vk::BufferUsageFlags2CreateInfo()
-            .setUsage(
-                vk::BufferUsageFlagBits2::eShaderDeviceAddress |
-                vk::BufferUsageFlagBits2::eAccelerationStructureBuildInputReadOnlyKHR |
-                vk::BufferUsageFlagBits2::eAccelerationStructureStorageKHR
-            );
-
-        auto bufferInfo = vk::BufferCreateInfo()
-            .setPNext(&bufferUsageInfo2)
-            .setSize(buildSizes.accelerationStructureSize)
-            .setSharingMode(vk::SharingMode::eConcurrent)
-            .setQueueFamilyIndices(queueIndices);
-
-        constexpr vma::AllocationCreateInfo allocInfo = vma::AllocationCreateInfo()
-            .setUsage(vma::MemoryUsage::eGpuOnly)
-            .setFlags(vma::AllocationCreateFlagBits::eDedicatedMemory);
-
-        auto scratchBLASBuffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
-
-        auto accelerationStructureCreateInfo = vk::AccelerationStructureCreateInfoKHR()
-            .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
-            .setSize(buildSizes.accelerationStructureSize)
-            .setBuffer(scratchBLASBuffer);
-
-        auto scratchBLAS = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
-
-        buildInfo.setScratchData(vk::DeviceOrHostAddressKHR().setDeviceAddress(scratchBuffer.GetBufferDeviceAddress()))
-            .setDstAccelerationStructure(scratchBLAS);
-
-        auto cmd = vkCore.GetSingleTimeComputeCommandBuffer();
-
-        vk::raii::QueryPool queryPool(device, vk::QueryPoolCreateInfo()
-            .setQueryType(vk::QueryType::eAccelerationStructureCompactedSizeKHR)
-            .setQueryCount(1));
-
-        const auto buildRangesPtr = buildRanges.data();
-        cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-        cmd.buildAccelerationStructuresKHR(buildInfo, buildRangesPtr);
-        cmd.resetQueryPool(*queryPool, 0, 1);
-        cmd.writeAccelerationStructuresPropertiesKHR(*scratchBLAS, vk::QueryType::eAccelerationStructureCompactedSizeKHR, *queryPool, 0);
-        cmd.end();
-
-        auto fence = device.createFence(vk::FenceCreateInfo());
-        auto cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
-        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
-        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
-            Log<LogLevel::Critical>("Failed to wait for acceleration structure build fence");
-
-        const auto [result, sizes] = (*device).getQueryPoolResults<vk::DeviceSize>(*queryPool, 0, 1, sizeof(vk::DeviceSize), sizeof(vk::DeviceSize));
-        if (result != vk::Result::eSuccess)
-        {
-            Log<LogLevel::Error>("Failed to get compacted size for BLAS of mesh {}, using original size", meshIndex);
-            m_Buffer = std::move(scratchBLASBuffer);
-            m_AccelerationStructure = std::move(scratchBLAS);
-            m_BufferDeviceAddress = vkCore.GetDevice().getAccelerationStructureAddressKHR(vk::AccelerationStructureDeviceAddressInfoKHR().setAccelerationStructure(m_AccelerationStructure));
-            return;
-        }
-
-        Log<LogLevel::Trace>("Mesh {} BLAS starting size {}, compaction size: {}", meshIndex, scratchBufferSize, sizes[0]);
-
-        bufferInfo.setSize(sizes[0]);
-        m_Buffer = vma::raii::Buffer(allocator, bufferInfo, allocInfo);
-
-        accelerationStructureCreateInfo.setSize(sizes[0]).setBuffer(m_Buffer);
-
-        m_AccelerationStructure = device.createAccelerationStructureKHR(accelerationStructureCreateInfo);
-        m_BufferDeviceAddress = vkCore.GetDevice().getAccelerationStructureAddressKHR(vk::AccelerationStructureDeviceAddressInfoKHR().setAccelerationStructure(m_AccelerationStructure));
-
-        const auto copyAccelerationStructureInfo = vk::CopyAccelerationStructureInfoKHR()
-            .setSrc(scratchBLAS)
-            .setDst(m_AccelerationStructure)
-            .setMode(vk::CopyAccelerationStructureModeKHR::eCompact);
-
-        constexpr auto barrierDataCopy = vk::MemoryBarrier2()
-            .setSrcStageMask(vk::PipelineStageFlagBits2::eAccelerationStructureBuildKHR)
-            .setSrcAccessMask(vk::AccessFlagBits2::eAccelerationStructureWriteKHR)
-            .setDstStageMask(vk::PipelineStageFlagBits2::eRayTracingShaderKHR)
-            .setDstAccessMask(vk::AccessFlagBits2::eAccelerationStructureReadKHR);
-
-        cmd = vkCore.GetSingleTimeComputeCommandBuffer();
-        cmd.begin(vk::CommandBufferBeginInfo().setFlags(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-        cmd.copyAccelerationStructureKHR(copyAccelerationStructureInfo);
-        cmd.pipelineBarrier2(vk::DependencyInfo().setMemoryBarriers(barrierDataCopy));
-        cmd.end();
-
-        device.resetFences(*fence);
-        cmdSubmitInfo = vk::CommandBufferSubmitInfo().setCommandBuffer(cmd);
-        vkCore.GetComputeQueue().submit2(vk::SubmitInfo2().setCommandBufferInfos(cmdSubmitInfo), *fence);
-        if(device.waitForFences(*fence, VK_TRUE, std::numeric_limits<uint64_t>::max()) != vk::Result::eSuccess)
-            Log<LogLevel::Critical>("Failed to wait for acceleration structure copy fence");
+        Log<LogLevel::Trace>("Mesh {} prepped {} geometries from {} primitives", meshIndex, m_Geometries.size(), mesh.primitives_count);
     }
 
     /*const AttributeData& VulkanSceneMesh::GetAttributeData(const std::string& attributeName) const

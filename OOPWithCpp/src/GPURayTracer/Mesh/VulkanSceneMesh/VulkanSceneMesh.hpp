@@ -26,14 +26,22 @@ namespace OWC
         //[[nodiscard]] const AttributeData& GetAttributeData(const std::string& attributeName) const override;
 
         [[nodiscard]] u32 GetCustomInstanceIndex() const { return m_CustomInstanceIndex; }
-        [[nodiscard]] vk::AccelerationStructureKHR GetAccelerationStructure() const { return m_AccelerationStructure; }
-        [[nodiscard]] vk::Buffer GetAccelerationStructureBuffer() const { return m_Buffer; }
-        [[nodiscard]] vk::DeviceAddress GetAccelerationStructureBufferDeviceAddress() const { return m_BufferDeviceAddress; }
+        //[[nodiscard]] vk::AccelerationStructureKHR GetAccelerationStructure() const { return m_AccelerationStructure; }
+        //[[nodiscard]] vk::Buffer GetAccelerationStructureBuffer() const { return m_Buffer; }
+        //[[nodiscard]] vk::DeviceAddress GetAccelerationStructureBufferDeviceAddress() const { return m_BufferDeviceAddress; }
+        [[nodiscard]] const std::vector<vk::AccelerationStructureGeometryKHR>& GetGeometries() const { return m_Geometries; }
+        [[nodiscard]] const std::vector<u32>& GetPrimitiveCount() const { return m_PrimitiveCount; }
+        [[nodiscard]] const std::vector<vk::AccelerationStructureBuildRangeInfoKHR>& GetBuildRanges() const { return m_BuildRanges; }
+        [[nodiscard]] const std::vector<vk::AccelerationStructureGeometryTrianglesDataKHR>& GetTriangles() const { return m_Triangles; }
 
     private:
-        vma::raii::Buffer m_Buffer = nullptr;
-        vk::DeviceAddress m_BufferDeviceAddress = vk::DeviceAddress();
-        vk::raii::AccelerationStructureKHR m_AccelerationStructure = nullptr;
+        //vma::raii::Buffer m_Buffer = nullptr;
+        //vk::DeviceAddress m_BufferDeviceAddress = vk::DeviceAddress();
+        //vk::raii::AccelerationStructureKHR m_AccelerationStructure = nullptr;
+        std::vector<vk::AccelerationStructureGeometryKHR> m_Geometries;
+        std::vector<u32> m_PrimitiveCount;
+        std::vector<vk::AccelerationStructureBuildRangeInfoKHR> m_BuildRanges;
+        std::vector<vk::AccelerationStructureGeometryTrianglesDataKHR> m_Triangles;
         u32 m_CustomInstanceIndex;
     };
 } // OWC

@@ -14,7 +14,7 @@ namespace OWC
     class VulkanTLAS : public BaseTLAS
     {
     public:
-        VulkanTLAS() = default; // default init because we need to add all instances first
+        VulkanTLAS(const std::map<i32, std::unique_ptr<SceneMesh>>& meshes, const std::vector<std::pair<Mat4, i32>>& meshIndices);
         ~VulkanTLAS() override = default;
 
         VulkanTLAS(const VulkanTLAS&) = delete;
@@ -22,17 +22,18 @@ namespace OWC
         VulkanTLAS& operator=(const VulkanTLAS&) = delete;
         VulkanTLAS& operator=(VulkanTLAS&&) = delete;
 
-        void AddInstance(const Mat4& transform, const std::shared_ptr<SceneMesh>& mesh) override;
-        void CreateTLAS() override;
-
-        const vk::raii::AccelerationStructureKHR& GetTLAS() const { return m_TLAS; }
+        [[nodiscard]] const vk::raii::AccelerationStructureKHR& GetTLAS() const { return m_TLAS; }
 
     private:
+        void CreateBLASes(const std::map<i32, std::unique_ptr<SceneMesh>>& meshes);
+        void CreateTLAS(const std::vector<vk::AccelerationStructureInstanceKHR>& meshIndices);
+
         [[nodiscard]] static vk::TransformMatrixKHR ConvertMat4ToVulkanTransform(const Mat4& transform);
 
     private:
+        vma::raii::Buffer m_BLASesBuffer = nullptr;
+        std::vector<vk::raii::AccelerationStructureKHR> m_BLASSes;
+        vma::raii::Buffer m_TLASBuffer = nullptr;
         vk::raii::AccelerationStructureKHR m_TLAS = nullptr;
-        std::shared_ptr<Graphics::VulkanGeneralBuffer> m_TLASBuffer;
-        std::vector<vk::AccelerationStructureInstanceKHR> m_BLASInstances;
     };
 }

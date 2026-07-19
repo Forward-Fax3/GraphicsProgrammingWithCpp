@@ -55,8 +55,6 @@ namespace OWC
         SceneMesh(SceneMesh&&) noexcept = delete;
         SceneMesh& operator=(SceneMesh&&) noexcept = delete;
 
-        //[[nodiscard]] virtual const AttributeData& GetAttributeData(const std::string& attributeName) const = 0;
-
-        static std::shared_ptr<SceneMesh> CreateFromGLTFModelWithMeshIndex(const tg3_model& gltfMesh, i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
+        static std::unique_ptr<SceneMesh> CreateFromGLTFModelWithMeshIndex(const tg3_model& gltfMesh, i32 meshIndex, u32 customInstancesIndex, const std::shared_ptr<Graphics::GeneralBuffer>& GPUBuffer, std::vector<GPUGLTFData>& GPUData);
     };
 } // OWC

@@ -31,10 +31,9 @@ namespace OWC
         [[nodiscard]] u32 GetNumberOfLights() const override { return m_numberOfLights; }
 
     private:
-        void IterateThroughNodes(const tg3_model& model, u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData);
+        void IterateThroughNodes(u32 nodeIndex, Mat4 parentTransform, u32& customInstancesIndex, std::vector<GPULightData>& lightData, std::map<i32, std::unique_ptr<SceneMesh>>& meshes, std::vector<std::pair<Mat4, i32>>& meshIndexes);
 
     private:
-        std::map<i32, std::shared_ptr<SceneMesh>> m_Meshes;
         tg3_model m_Model = {};
         std::shared_ptr<BaseTLAS> m_TLAS;
         std::shared_ptr<Graphics::GeneralBuffer> m_GPUBuffer;
