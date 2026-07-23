@@ -26,3 +26,15 @@ target_compile_options(StartProj PRIVATE
 target_link_options(StartProj PRIVATE
         ${Polly_LINK_FLAGS}
 )
+
+if (MINGW AND LTO_ENABLED)
+    set_target_properties(StartProj PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION false
+    )
+    target_compile_options(StartProj PRIVATE -flto=thin)
+    target_link_options(StartProj PRIVATE -flto=thin -fuse-ld=lld)
+endif()
+
+if (MINGW)
+    target_link_libraries(StartProj PRIVATE stdc++exp)
+endif ()

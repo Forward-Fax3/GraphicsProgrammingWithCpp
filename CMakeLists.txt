@@ -52,6 +52,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "clang_Debug")
     add_compile_definitions(DEBUG)
     set(CMAKE_CONFIG_FLAGS
             -g
+            -gdwarf-4
             -O0
             -fno-omit-frame-pointer
             -fno-inline
@@ -66,6 +67,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "clang_Debug_Optimized")
     add_compile_definitions(DEBUG_O EN_ENABLE_ASSERTS)
     set(CMAKE_CONFIG_FLAGS
             -g
+            -gdwarf-4
             -O2
             ${Polly_FLAGS}
             -ffast-math

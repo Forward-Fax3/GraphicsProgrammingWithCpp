@@ -64,6 +64,13 @@ foreach (TargetArch SSE4_2 AVX2 AVX512)
             ${Polly_LINK_FLAGS}
             ${TargetLinks}
     )
+    if (MINGW AND LTO_ENABLED)
+        set_target_properties(GraphicsProgrammingWithCpp${TargetArch} PROPERTIES
+                INTERPROCEDURAL_OPTIMIZATION false
+        )
+        target_compile_options(GraphicsProgrammingWithCpp${TargetArch} PRIVATE -flto=thin)
+        target_link_options(GraphicsProgrammingWithCpp${TargetArch} PRIVATE -flto=thin -fuse-ld=lld)
+    endif()
 endforeach ()
 
 target_compile_options(GraphicsProgrammingWithCppSSE4_2 PRIVATE

@@ -1,5 +1,6 @@
 ﻿#if defined(_WIN32) || defined(_WIN64)
 #include <Windows.h>
+#include <intrin.h>
 #else
 #include <cpuid.h>
 #include <dlfcn.h>
@@ -23,10 +24,10 @@
 #define DLL u8".so"
 #endif
 
-#if defined(_WIN32) || defined(_WIN64)
-#define OOP_WITH_CPP u8"GraphicsProgrammingWithCpp\\GraphicsProgrammingWithCpp"
-#else
+#if defined(unix) || defined(__MINGW32__ ) || defined(__MINGW64__) || defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #define OOP_WITH_CPP u8"GraphicsProgrammingWithCpp/libGraphicsProgrammingWithCpp"
+#else
+#define OOP_WITH_CPP u8"GraphicsProgrammingWithCpp\\GraphicsProgrammingWithCpp"
 #endif
 
 using Start = void (*)(int, char**);
@@ -68,7 +69,7 @@ static bool AVX2AndFMA3Supported()
 
 	__cpuidex(cpuInfo.data(), 1, 0);
 
-	int ECXfn1FeatureBits = (1 << 12) | (1 < 22) | (1 << 26) | (1 << 27) | (1 << 28) | (1 << 29); // FMA3, MOVBE, XSAVE, OSXSAVE, AVX, and XSAVE are all required to use AVX2 instructions, so we check for all of them here
+	int ECXfn1FeatureBits = (1 << 12) | (1 << 22) | (1 << 26) | (1 << 27) | (1 << 28) | (1 << 29); // FMA3, MOVBE, XSAVE, OSXSAVE, AVX, and XSAVE are all required to use AVX2 instructions, so we check for all of them here
 	bool doesHaveECXfn1Features = (cpuInfo[2] & ECXfn1FeatureBits) == ECXfn1FeatureBits; // checks the ECX register for FMA3
 
 	__cpuidex(cpuInfo.data(), 0x80000001, 0);
@@ -85,7 +86,7 @@ static bool SSE4_2Supported()
 
 	__cpuidex(cpuInfo.data(), 1, 0);
 
-	int ECXFeatureBits = (1 << 0) | (1 << 9) | (1 << 13) | (1 < 19) | (1 << 20) | (1 < 23); // SSE3, SSSE3, cx16, SSE4.1, SSE4.2 required for x86-64-v2
+	int ECXFeatureBits = (1 << 0) | (1 << 9) | (1 << 13) | (1 << 19) | (1 << 20) | (1 << 23); // SSE3, SSSE3, cx16, SSE4.1, SSE4.2 required for x86-64-v2
 	bool doesHaveECXfn1Features = (cpuInfo[2] & ECXFeatureBits) == ECXFeatureBits; // checks the ECX register for SSE4.2
 
 
@@ -125,7 +126,7 @@ int main(int argc, char** argv)
 #else
 	void* dll = dlopen(ToCharPtr(path), RTLD_LAZY);
 #endif
-	
+
 	if (dll == nullptr)
 	{
 #if defined(_WIN32) || defined(_WIN64)
@@ -133,7 +134,7 @@ int main(int argc, char** argv)
 		FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_SYS_DEFAULT), ToCharPtr(error), 1024, nullptr);
 		MessageBoxA(nullptr, "Failed to load DLL", ToCharPtr(error), MB_OK | MB_ICONERROR);
 #else
-		std::println("Failed to load DLL: {}", dlerror());
+	std::println("Failed to load DLL: {}", dlerror());
 #endif
 		return 2;
 	}

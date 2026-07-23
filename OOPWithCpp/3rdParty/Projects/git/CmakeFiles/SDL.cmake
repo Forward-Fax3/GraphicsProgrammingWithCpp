@@ -5,7 +5,7 @@ set(SDL_USE_CMAKE_BUILD TRUE CACHE BOOL "Force CMake build")
 
 set(VULKAN_INCLUDE_DIRS ${Vulkan_INCLUDE_DIRS} CACHE PATH "System Vulkan Headers")
 
-if (WIN32)
+if (WIN32 AND MSVC)
     cmake_path(GET CMAKE_RC_COMPILER PARENT_PATH _rc_arch_dir)    # .../x64
     cmake_path(GET _rc_arch_dir PARENT_PATH _rc_ver_dir)          # .../10.0.26100.0
     cmake_path(GET _rc_ver_dir FILENAME _rc_version)              # 10.0.26100.0
@@ -15,6 +15,7 @@ if (WIN32)
     set(CMAKE_RC_FLAGS "/I\"${_rc_sdk_root}/Include/${_rc_version}/um\" /I\"${_rc_sdk_root}/Include/${_rc_version}/shared\"")
 endif ()
 
+set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OOPWithCpp/3rdParty/Projects/git/SDL)
 
 if (UNIX)
@@ -64,7 +65,10 @@ if (UNIX)
     )
 else ()
     set (TargetDirectories "")
-    set (TargetLinks "")
+    set (TargetLinks
+            imm32
+            hid
+    )
 endif ()
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)

@@ -609,14 +609,15 @@ namespace OWC::Graphics
 				vk::to_string(deviceProperties.deviceType));
 			Log<LogLevel::NewLine>();
 
-			auto asProperties = vk::PhysicalDeviceAccelerationStructurePropertiesKHR();
-			auto rtPipeline = vk::PhysicalDeviceRayTracingPipelinePropertiesKHR();
-			rtPipeline.pNext = &asProperties;
-			auto deviceProperties2 = vk::PhysicalDeviceProperties2();
-			deviceProperties2.pNext = &rtPipeline;
-			pDevice.getProperties2(&deviceProperties2);
+			auto chain = pDevice.getProperties2<
+				vk::PhysicalDeviceProperties2,
+				vk::PhysicalDeviceRayTracingPipelinePropertiesKHR,
+				vk::PhysicalDeviceAccelerationStructurePropertiesKHR>();
 
-			VulkanCore::GetInstance().SetRTPhysicalDeviceProperties(rtPipeline, asProperties);
+			VulkanCore::GetInstance().SetRTPhysicalDeviceProperties(
+				chain.get<vk::PhysicalDeviceRayTracingPipelinePropertiesKHR>(),
+				chain.get<vk::PhysicalDeviceAccelerationStructurePropertiesKHR>()
+				);
 		}
 	}
 
@@ -839,7 +840,7 @@ namespace OWC::Graphics
 			.setPNext(&rayTracingPipelineFeature)
 			.setSwapchainMaintenance1(vk::True);
 
-		auto bufferDeviceAddressFeature = vk::PhysicalDeviceBufferDeviceAddressFeaturesKHR()
+		auto bufferDeviceAddressFeature = vk::PhysicalDeviceBufferDeviceAddressFeatures()
 			.setPNext(&swapchainMaintenance1Feature)
 			.setBufferDeviceAddress(vk::True);
 
@@ -856,7 +857,7 @@ namespace OWC::Graphics
 			.setShaderStorageBufferArrayNonUniformIndexing(vk::True)
 			.setShaderUniformBufferArrayNonUniformIndexing(vk::True);
 
-		auto shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParameterFeatures()
+		auto shaderDrawParametersFeature = vk::PhysicalDeviceShaderDrawParametersFeatures()
 			.setPNext(&descriptorIndexingFeature)
 			.setShaderDrawParameters(vk::True);
 
@@ -885,12 +886,12 @@ namespace OWC::Graphics
 				.setFragmentStoresAndAtomics(vk::True)
 				.setShaderImageGatherExtended(vk::True));
 
-		vk::raii::Device device(VulkanCore::GetConstInstance().GetPhysicalDev(), vk::DeviceCreateInfo()
+
+		VulkanCore::GetInstance().SetDevice(vk::raii::Device(VulkanCore::GetConstInstance().GetPhysicalDev(), vk::DeviceCreateInfo()
 			.setQueueCreateInfos(deviceQueueCreateInfos)
 			.setPEnabledExtensionNames(g_DeviceExtensions)
 			.setPNext(&enabledFeatures)
-		);
-		VulkanCore::GetInstance().SetDevice(std::move(device));
+		));
 
 		m_QueueFamilyIndices.UniqueIndices.reserve(uniqueQueueFamiliesMap.size());
 		for (const auto& familyIndex : std::views::keys(uniqueQueueFamiliesMap))
