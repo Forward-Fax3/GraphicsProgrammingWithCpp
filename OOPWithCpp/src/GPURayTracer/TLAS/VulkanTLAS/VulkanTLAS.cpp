@@ -53,7 +53,7 @@ namespace OWC
 
         auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
             .setType(vk::AccelerationStructureTypeKHR::eTopLevel)
-            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction)
+            .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction | vk::BuildAccelerationStructureFlagBitsKHR::eLowMemory)
             .setGeometries(accelerationStructureGeometry);
 
         vk::AccelerationStructureBuildSizesInfoKHR buildSizes = device.getAccelerationStructureBuildSizesKHR(
@@ -196,7 +196,7 @@ namespace OWC
 
             auto buildInfo = vk::AccelerationStructureBuildGeometryInfoKHR()
                 .setType(vk::AccelerationStructureTypeKHR::eBottomLevel)
-                .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction)
+                .setFlags(vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction | vk::BuildAccelerationStructureFlagBitsKHR::eLowMemory)
                 .setGeometries(geometries);
 
             const auto buildSizes = device.getAccelerationStructureBuildSizesKHR(
@@ -254,7 +254,7 @@ namespace OWC
             scratchBLASes.emplace_back(device.createAccelerationStructureKHR(accelerationStructureCreateInfo));
 
             buildGeometryInfos.emplace_back(vk::AccelerationStructureTypeKHR::eBottomLevel,
-                (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction),
+                (vk::BuildAccelerationStructureFlagBitsKHR::ePreferFastTrace | vk::BuildAccelerationStructureFlagBitsKHR::eAllowCompaction | vk::BuildAccelerationStructureFlagBitsKHR::eLowMemory),
                 static_cast<vk::BuildAccelerationStructureModeKHR>(0),
                 VK_NULL_HANDLE,
                 *scratchBLASes.back(),

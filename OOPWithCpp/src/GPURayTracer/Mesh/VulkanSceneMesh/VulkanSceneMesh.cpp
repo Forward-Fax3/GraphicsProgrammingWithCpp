@@ -30,7 +30,7 @@ namespace OWC
         {
             for (u32 i = 0; i < prim.attributes_count; i++)
             {
-                if (const auto& [key, accessorIndex] = prim.attributes[i]; std::string_view(key.data) == attributeName)
+                if (const auto& [key, accessorIndex] = prim.attributes[i]; tg3_str_equals_cstr(key, attributeName.c_str()))
                 {
                     const tg3_accessor& acc = model.accessors[accessorIndex];
                     const tg3_buffer_view& bv = model.buffer_views[acc.buffer_view];
@@ -178,10 +178,16 @@ namespace OWC
                 vk::DeviceOrHostAddressConstKHR().setDeviceAddress(vulkanBuffer->GetBufferDeviceAddress() + indexData.offset)
             );
 
+            bool isOpaque = false;
+            if (prim.material != -1)
+                if (const auto& material = model.materials[prim.material]; tg3_str_equals_cstr(material.alpha_mode, "OPAQUE"))
+                    isOpaque = true;
+
             m_Geometries.emplace_back(
                 vk::GeometryTypeKHR::eTriangles,
                 vk::AccelerationStructureGeometryDataKHR()
-                    .setTriangles(m_Triangles.back())
+                    .setTriangles(m_Triangles.back()),
+                (isOpaque) ? vk::GeometryFlagBitsKHR::eOpaque : vk::GeometryFlagBitsKHR::eNoDuplicateAnyHitInvocation
             );
 
             m_PrimitiveCount.emplace_back(indexData.count / 3);
